@@ -34,6 +34,7 @@ const MapItem parse_map[] = {
     {"schi", 0, _bmff_parse_box_scheme_info},
     {"sinf", 0, _bmff_parse_box_protection_scheme_info},
     {"ipro", 0, _bmff_parse_box_item_protection},
+    {"meta", 0, _bmff_parse_box_meta},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -774,10 +775,11 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(size < 34)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     MetaBox *box = (MetaBox*) ctx->malloc(sizeof(MetaBox));
+    memset(box, 0, sizeof(MetaBox));
 
     const uint8_t *ptr = data;
     const uint8_t *end = &data[size];
@@ -788,33 +790,52 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
         return res;
     }
 
-    ptr += box->handler.box.size;
+    ptr += box->handler->box.size;
 
     // parse all the optional and "other" boxes
+    // define a structure we can use to make a box type to a parsing function
     struct Map {
-        uint8_t type[4];
-        parse_func func;
-        Box **box;
+        uint8_t type[4];    // box type
+        parse_func func;    // parsing function
+        AbstractBox **box_ptr;  // address of the pointer to the parsed box
     };
-    struct Map map[2] = {
-         { "pitm", _bmff_parse_box_primary_item, (Box**)&box->primary_resource },
-         { "pitm", _bmff_parse_box_primary_item, (Box**)&box->primary_resource },
+    // map of parsing functions
+    const int map_count = 6;
+    struct Map map[6] = {
+         { "pitm", _bmff_parse_box_primary_item, (AbstractBox**)&box->primary_resource },
+         { "dinf", _bmff_parse_box_generic_container, (AbstractBox**)&box->file_locations },
+         { "iloc", _bmff_parse_box_item_location, (AbstractBox**)&box->item_locations },
+         { "ipro", _bmff_parse_box_item_protection, (AbstractBox**)&box->protections },
+         { "iinf", _bmff_parse_box_item_info, (AbstractBox**)&box->item_infos },
+         { "ipmc", _bmff_parse_box_ipmp_control, (AbstractBox**)&box->ipmp_control },
     };
 
-    // Primary Item Box
+    // Parse optional Boxes
     while(ptr < end) {
         int i=0;
-        for(; i<2; ++i) {
+        // find the parser for the next box
+        int found=0;
+        for(; i<map_count; ++i) {
             if(memcmp(&ptr[4], map[i].type, 4) == 0) {
-                res = map[i].func(ctx, ptr, end-ptr, map[i].box);
+                found=1;
+                res = map[i].func(ctx, ptr, end-ptr, (Box**)map[i].box_ptr);
                 if(res != BMFF_OK) return res;
-                // TODO: ptr += ((FullBox*)*(map[i].box))->box.size;
+                ptr += (*(map[i].box_ptr))->box.size;
             }
         }
+
+        // if no parser was found, we must be parsing one of the "other" boxes.
+        // Don't parse the "other" boxes, just assign the data to the MetaBox
+        // when we reach the first Box, and keep track of how many there are.
+        if(!found) {
+          box->other_boxes_len++;
+          if(!box->other_boxes) {
+            box->other_boxes = (Box*)ptr;
+          }
+        }
+
         ptr += parse_u32(ptr);
     }
-    // Data Information Box
-    // Item Location Box
     // Item Protection Box
     // Item Info Box
     // IPMP Control Box

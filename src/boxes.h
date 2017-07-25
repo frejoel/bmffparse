@@ -68,7 +68,12 @@ typedef struct FullBox {
     uint32_t    flags;
 } FullBox;
 
-// All Boxes that can container other Boxes inherit the ContainerBox.
+// Abstraction of a Box that all Boxes inherit from.
+typedef struct AbstractBox {
+    Box box;
+} AbstractBox;
+
+// All Boxes that can contain other Boxes inherit the ContainerBox.
 typedef struct ContainerBox {
     Box         box;
     uint32_t    child_count;
@@ -213,14 +218,14 @@ typedef struct ItemProtectionBox { // ipro
 } ItemProtectionBox;
 
 typedef struct MetaBox { // meta
-    FullBox     box;
-    HandlerBox  handler;
-    PrimaryItemBox      primary_resource;   // optional
-    DataInformationBox  file_locations;     // optional
-    ItemLocationBox     item_locations;     // optional
-    ItemProtectionBox   protections;        // optional
-    ItemInfoBox         item_infos;         // optional
-    IPMPControlBox      ipmp_control;       // optional
+    FullBox             box;
+    HandlerBox          *handler;
+    PrimaryItemBox      *primary_resource;   // optional
+    DataInformationBox  *file_locations;     // optional
+    ItemLocationBox     *item_locations;     // optional
+    ItemProtectionBox   *protections;        // optional
+    ItemInfoBox         *item_infos;         // optional
+    IPMPControlBox      *ipmp_control;       // optional
     Box                 *other_boxes;       // optional
     size_t              other_boxes_len;
 } MetaBox;

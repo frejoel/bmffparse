@@ -19,6 +19,7 @@ void test_parse_box_scheme_type(void);
 void test_parse_box_scheme_info(void);
 void test_parse_box_protection_scheme_info(void);
 void test_parse_box_item_protection(void);
+void test_parse_box_meta(void);
 
 int main(int argc, char** argv)
 {
@@ -38,6 +39,7 @@ int main(int argc, char** argv)
     test_parse_box_scheme_info();
     test_parse_box_protection_scheme_info();
     test_parse_box_item_protection();
+    test_parse_box_meta();
     return 0;
 }
 
@@ -240,7 +242,7 @@ void test_parse_box_handler(void)
     test_assert_equal(strncmp(box->box.type, "hdlr", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xFFFFFA, "flags");
-    test_assert_equal(box->handler_type, 0xEEE14509, "flags");
+    test_assert_equal(box->handler_type, 0xEEE14509, "handler type");
     test_assert_equal(strcmp(box->name, "handler box name"), 0, "name");
 
     bmff_context_destroy(&ctx);
@@ -845,6 +847,200 @@ void test_parse_box_item_protection(void)
     test_assert_equal(strncmp("schi", schm_info->box.type, 4), 0, "Scheme Info type");
     test_assert_equal(schm_info->box.size, 0x17, "Scheme Info size");
     test_assert_equal(schm_info->scheme_specific_data_count, 1, "Scheme Info scheme specific count");
+    Box *ssd = &schm_info->scheme_specific_data[0];
+    test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
+    test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_meta(void)
+{
+    test_start("test_parse_box_meta");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x30,
+        'm', 'e', 't', 'a',
+        0x00, // version
+        0x00, 0x00, 0x00, // flags
+        // handler
+        0, 0, 0, 0x31,
+        'h', 'd', 'l', 'r',
+        0x00, // version
+        0xFF, 0xFF, 0xFA, // flags
+        0, 0, 0, 0, // pre_defined
+        0xEE, 0xE1, 0x45, 0x09, // handler_type
+        0, 0, 0 ,0, // reserved
+        0, 0, 0 ,0, // reserved
+        0, 0, 0 ,0, // reserved
+        'h','a','n','d','l','e','r',' ','b','o','x',' ','n','a','m','e',0, // name (17)
+        // Primary Item
+        0, 0, 0, 0x0E,
+        'p', 'i', 't', 'm',
+        0x00, // version
+        0xEE, 0xCC, 0xBB, // flags
+        0x01, 0x05, // item id
+        // Data Information
+        0, 0, 0, 20,
+        'd','i','n','f',
+        // random box within Data Information
+        0, 0, 0, 12,
+        'x','x','x','x',
+        'd','a','t','a',
+        // Item Location Box
+        0, 0, 0, 0x34,
+        'i', 'l', 'o', 'c',
+        0x00, // version
+        0x00, 0x11, 0x00, // flags
+        0x44, // offset size (4), length size (4) one of {0,4,8}
+        0x40, // base offset size (4) one of {0,4,8}, reserved (4)
+        0x00, 0x02, // item count
+            // item [0]
+            0x00, 0x01, // item id
+            0x00, 0x00, // data reference index
+            0xE1, 0xE1, 0xC2, 0xC2, // base offset (4*8)
+            0x00, 0x02, // extent count
+                // extend[0]
+                0x10, 0x20, 0x30, 0x40, // offset
+                0x50, 0x60, 0x70, 0x80, // size
+                // extend[1]
+                0xA1, 0xB2, 0xC3, 0xD4, // offset
+                0xA9, 0xB8, 0xC7, 0xD6, // size
+            // item [1]
+            0xFE, 0xDC, // item id
+            0x00, 0x01, // data reference index
+            0x12, 0x34, 0x56, 0x78, // base offset (4*8)
+            0x00, 0x00, // extent count
+        // Item Protection
+        0, 0, 0, 0x5D,
+        'i', 'p', 'r', 'o',
+        0x00, // version
+        0x00, 0x00, 0x00, // flags
+        0x00, 0x01, // protection count
+        ////////
+        // Protection Scheme Info Box
+        ///////
+        0, 0, 0, 0x4F,
+        's', 'i', 'n', 'f',
+        'm','p','4','v', // data format
+        // IPMP Info Box
+        0, 0, 0, 0x18,
+        'i', 'm', 'i', 'f',
+        0x00, // version
+        0x00, 0x00, 0x00, // flags
+        'd','e','s','c','r','i','p','t','o','r','s',0, // IPMP descriptors
+        // Scheme Type Box
+        0, 0, 0, 0x14,
+        's', 'c', 'h', 'm',
+        0x00, // version
+        0x00, 0x00, 0x00, // flags
+        'a','b','c','d',    // 4CC scheme id
+        0xAB, 0xCD, 0xEF, 0x98, // scheme version
+        // Scheme Information Box
+        0, 0, 0, 0x17, //(23)
+        's', 'c', 'h', 'i',
+            // scheme specific Boxes
+        0, 0, 0, 0x0F,
+        'a','b','c','d',
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    };
+
+    BMFFCode res;
+    MetaBox *box = NULL;
+    res = _bmff_parse_box_meta(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    //test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "meta", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0x000000, "flags");
+
+    // Handler Box
+    HandlerBox *hdlr = box->handler;
+    test_assert_equal(hdlr->box.size, 0x31, "handler box size");
+    test_assert_equal(strncmp(hdlr->box.type, "hdlr", 4), 0, "handler box type");
+    test_assert_equal(hdlr->box.version, 0x00, "handler box version");
+    test_assert_equal(hdlr->box.flags, 0xFFFFFA, "handler box flags");
+    test_assert_equal(hdlr->handler_type, 0xEEE14509, "handler box handler type");
+    test_assert_equal(strcmp(hdlr->name, "handler box name"), 0, "handler box name");
+
+    // Primary Item
+    PrimaryItemBox *pitem = box->primary_resource;
+    test_assert_equal(pitem->box.size, 0x0E, "primary item size");
+    test_assert_equal(strncmp(pitem->box.type, "pitm", 4), 0, "primary item type");
+    test_assert_equal(pitem->box.version, 0x00, "primary item version");
+    test_assert_equal(pitem->box.flags, 0xEECCBB, "primary item flags");
+    test_assert_equal(pitem->item_id, 0x0105, "primary item item id");
+
+    // Data Information box
+    DataInformationBox *dinf = box->file_locations;
+    test_assert_equal(dinf->box.size, 20, "dinf size");
+    test_assert_equal(strncmp(dinf->box.type, "dinf", 4), 0, "dinf type");
+
+    // Item Location
+    ItemLocationBox *iloc = box->item_locations;
+    test_assert_equal(iloc->box.size, 0x34, "iloc size");
+    test_assert_equal(strncmp(iloc->box.type, "iloc", 4), 0, "iloc type");
+    test_assert_equal(iloc->box.version, 0x00, "iloc version");
+    test_assert_equal(iloc->box.flags, 0x001100, "iloc flags");
+    test_assert_equal(iloc->offset_size, 4, "iloc offset size");
+    test_assert_equal(iloc->length_size, 4, "iloc length size");
+    test_assert_equal(iloc->base_offset_size, 4, "iloc base offset size");
+    test_assert_equal(iloc->item_count, 2, "iloc item count");
+    test_assert_equal(iloc->items[0].item_id, 1, "iloc item[0] item id");
+    test_assert_equal(iloc->items[0].data_reference_index, 0, "iloc item[0] data reference index");
+    test_assert_equal(iloc->items[0].base_offset, 0xE1E1C2C2, "iloc item[0] base offset");
+    test_assert_equal(iloc->items[0].extent_count, 2, "iloc item[0] extent count");
+    test_assert_equal(iloc->items[0].extents[0].offset, 0x10203040, "iloc item[0].extent[0] offset");
+    test_assert_equal(iloc->items[0].extents[0].length, 0x50607080, "iloc item[0].extent[0] length");
+    test_assert_equal(iloc->items[0].extents[1].offset, 0xA1B2C3D4, "iloc item[0].extent[1] offset");
+    test_assert_equal(iloc->items[0].extents[1].length, 0xA9B8C7D6, "iloc item[0].extent[1] length");
+    test_assert_equal(iloc->items[1].item_id, 0xFEDC, "iloc item[1] item id");
+    test_assert_equal(iloc->items[1].data_reference_index, 1, "iloc item[1] data reference index");
+    test_assert_equal(iloc->items[1].base_offset, 0x12345678, "iloc item[1] base offset");
+    test_assert_equal(iloc->items[1].extent_count, 0, "iloc item[1] extent count");
+
+    ItemProtectionBox *ipro = box->protections;
+    test_assert_equal(ipro->box.size, 0x5D, "ipro size");
+    test_assert_equal(strncmp(ipro->box.type, "ipro", 4), 0, "ipro type");
+    test_assert_equal(ipro->box.version, 0x00, "ipro version");
+    test_assert_equal(ipro->box.flags, 0x000000, "ipro flags");
+    test_assert_equal(ipro->protection_count, 1, "ipro protection count");
+    test_assert(ipro->protection_info != NULL, "ipro protection info");
+
+    ProtectionSchemeInfoBox *info = ipro->protection_info[0];
+    test_assert_equal(info->box.box.size, 0x4F, "sinf size");
+    test_assert_equal(strncmp(info->box.box.type, "sinf", 4), 0, "sinf type");
+    test_assert_equal(strncmp(info->box.data_format, "mp4v", 4), 0, "sinf data format");
+    test_assert(info->ipmp_descriptors != NULL, "NULL IPMP box descriptors");
+
+    IPMPInfoBox *ipmp = info->ipmp_descriptors;
+    test_assert_equal(strncmp("imif", ipmp->box.type, 4), 0, "IPMP Info type");
+    test_assert_equal(ipmp->box.size, 0x18, "IPMP Info size");
+    test_assert_equal(ipmp->box.version, 0x00, "IPMP Info version");
+    test_assert_equal(ipmp->box.flags, 0x000000, "IPMP Info flags");
+    // TODO: IPMP Descriptors
+    test_assert(info->scheme_type != NULL, "NULL Scheme Type box");
+
+    SchemeTypeBox *schm_type = info->scheme_type;
+    test_assert_equal(strncmp("schm", schm_type->box.type, 4), 0, "Scheme Type type");
+    test_assert_equal(schm_type->box.size, 0x14, "Scheme Type size");
+    test_assert_equal(schm_type->box.version, 0x00, "Scheme Type version");
+    test_assert_equal(schm_type->box.flags, 0x000000, "Scheme Type flags");
+    test_assert_equal(strncmp("abcd", schm_type->scheme_type, 4), 0, "Scheme Type's scheme_type");
+    test_assert_equal(schm_type->scheme_version, 0xABCDEF98, "Scheme Type scheme_version");
+    test_assert(info->scheme_info != NULL, "NULL Scheme Info box");
+
+    SchemeInformationBox *schm_info = info->scheme_info;
+    test_assert_equal(strncmp("schi", schm_info->box.type, 4), 0, "Scheme Info type");
+    test_assert_equal(schm_info->box.size, 0x17, "Scheme Info size");
+    test_assert_equal(schm_info->scheme_specific_data_count, 1, "Scheme Info scheme specific count");
+
     Box *ssd = &schm_info->scheme_specific_data[0];
     test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
