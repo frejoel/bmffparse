@@ -392,7 +392,7 @@ void test_parse_box_item_info(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x4E,
+        0, 0, 0, 0x4F,
         'i', 'i', 'n', 'f',
         0x00, // version
         0x11, 0x11, 0x11, // flags
@@ -424,7 +424,7 @@ void test_parse_box_item_info(void)
     res = _bmff_parse_box_item_info(&ctx, data, sizeof(data), (Box**)&box);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
-    test_assert_equal(box->box.size, 0x4E, "size");
+    test_assert_equal(box->box.size, sizeof(data), "size");
     test_assert_equal(strncmp(box->box.type, "iinf", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0x111111, "flags");
@@ -864,10 +864,11 @@ void test_parse_box_meta(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x30,
+        0, 0, 0x01, 0xD4,
         'm', 'e', 't', 'a',
         0x00, // version
         0x00, 0x00, 0x00, // flags
+
         // handler
         0, 0, 0, 0x31,
         'h', 'd', 'l', 'r',
@@ -879,12 +880,14 @@ void test_parse_box_meta(void)
         0, 0, 0 ,0, // reserved
         0, 0, 0 ,0, // reserved
         'h','a','n','d','l','e','r',' ','b','o','x',' ','n','a','m','e',0, // name (17)
+
         // Primary Item
         0, 0, 0, 0x0E,
         'p', 'i', 't', 'm',
         0x00, // version
         0xEE, 0xCC, 0xBB, // flags
         0x01, 0x05, // item id
+
         // Data Information
         0, 0, 0, 20,
         'd','i','n','f',
@@ -892,6 +895,7 @@ void test_parse_box_meta(void)
         0, 0, 0, 12,
         'x','x','x','x',
         'd','a','t','a',
+
         // Item Location Box
         0, 0, 0, 0x34,
         'i', 'l', 'o', 'c',
@@ -900,31 +904,30 @@ void test_parse_box_meta(void)
         0x44, // offset size (4), length size (4) one of {0,4,8}
         0x40, // base offset size (4) one of {0,4,8}, reserved (4)
         0x00, 0x02, // item count
-            // item [0]
-            0x00, 0x01, // item id
-            0x00, 0x00, // data reference index
-            0xE1, 0xE1, 0xC2, 0xC2, // base offset (4*8)
-            0x00, 0x02, // extent count
-                // extend[0]
-                0x10, 0x20, 0x30, 0x40, // offset
-                0x50, 0x60, 0x70, 0x80, // size
-                // extend[1]
-                0xA1, 0xB2, 0xC3, 0xD4, // offset
-                0xA9, 0xB8, 0xC7, 0xD6, // size
-            // item [1]
-            0xFE, 0xDC, // item id
-            0x00, 0x01, // data reference index
-            0x12, 0x34, 0x56, 0x78, // base offset (4*8)
-            0x00, 0x00, // extent count
+        // item [0]
+        0x00, 0x01, // item id
+        0x00, 0x00, // data reference index
+        0xE1, 0xE1, 0xC2, 0xC2, // base offset (4*8)
+        0x00, 0x02, // extent count
+        // extend[0]
+        0x10, 0x20, 0x30, 0x40, // offset
+        0x50, 0x60, 0x70, 0x80, // size
+        // extend[1]
+        0xA1, 0xB2, 0xC3, 0xD4, // offset
+        0xA9, 0xB8, 0xC7, 0xD6, // size
+        // item [1]
+        0xFE, 0xDC, // item id
+        0x00, 0x01, // data reference index
+        0x12, 0x34, 0x56, 0x78, // base offset (4*8)
+        0x00, 0x00, // extent count
+
         // Item Protection
         0, 0, 0, 0x5D,
         'i', 'p', 'r', 'o',
         0x00, // version
         0x00, 0x00, 0x00, // flags
         0x00, 0x01, // protection count
-        ////////
         // Protection Scheme Info Box
-        ///////
         0, 0, 0, 0x4F,
         's', 'i', 'n', 'f',
         'm','p','4','v', // data format
@@ -948,6 +951,64 @@ void test_parse_box_meta(void)
         0, 0, 0, 0x0F,
         'a','b','c','d',
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+
+        // Item Information (iinf)
+        0, 0, 0, 0x4F,
+        'i', 'i', 'n', 'f',
+        0x00, // version
+        0x11, 0x11, 0x11, // flags
+        0x00, 0x02, // entry count
+        // 1st
+        0, 0, 0, 0x1B,
+        'i', 'n', 'f', 'e',
+        0x00, // version
+        0x22, 0x22, 0x22, // flags
+        0x88, 0x77, // item id
+        0x35, 0x79, // item protection index
+        'n','a','m','e',0,
+        't','y','p','e',0,
+        0, // encoding (27)
+        // 2nd
+        0, 0, 0, 0x26,
+        'i', 'n', 'f', 'e',
+        0x00, // version
+        0x33, 0x33, 0x33, // flags
+        0x34, 0x56, // item id
+        0x98, 0x76, // item protection index
+        'n','a','m','e','2',0,
+        't','y','p','e','2',0,
+        'e','n','c','o','d','i','n','g','2',0, // 38
+
+        // IPMP Control (ipmc)
+        0, 0, 0, 0x95,
+        'i', 'p', 'm', 'c',
+        0x00, // version
+        0xFE, 0xDC, 0xBA, // flags
+        // IPMP descriptor List
+        0x60, // Tool list descriptor tag
+        0x02, // num of tools
+        // IPMP Tool 1
+        0xF2, 0xD5, 0x0A, 0x49, 0x3C, 0xBB, 0x0E, 0x31, // IPMP Tool Id (64)
+        0x4C, 0x32, 0xBC, 0x00, 0x8F, 0x10, 0x43, 0xFE, // IPMP Tool Id (128)
+        0xC0, // iaAltGroup (1), isParametric (1)
+        0x40, // numAlternates
+        0x01, 0x23, 0x45, 0x67, 0x89, 0x9A, 0xBC, 0xDE, // specific tool ID (64)
+        0xF0, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, // specific tool ID (64)
+        0x00, 0x00, 0x00, 0x0F, 't','o','o','l',' ','p','a','r','a','m',' ','d','e','s','c',0x00, // ByteArray toolPatamDesc
+        0x03, // num urls
+        0x00, 0x00, 0x00, 0x05, 'u','r','l',' ','1', 0x00, // toolUrl 1
+        0x00, 0x00, 0x00, 0x05, 'u','r','l',' ','2', 0x00, // toolUrl 2
+        0x00, 0x00, 0x00, 0x05, 'u','r','l',' ','3', 0x00, // toolUrl 3
+        // IPMP Tool 2
+        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, // IPMP Tool Id (64)
+        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, // IPMP Tool Id (128)
+        0x40, // iaAltGroup (1), isParametric (1)
+        0x00, 0x00, 0x00, 0x0A, 't','o','o','l',' ','p','a','r','a','m',0x00, // ByteArray toolPatamDesc
+        0x01, // num urls
+        0x00, 0x00, 0x00, 0x03, 'u','r','l', 0x00, // toolUrl 1
+        // IPMP Control Box Continued
+        0x02, // no of IPMPDesctriptors
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
     };
 
     BMFFCode res;
@@ -1005,6 +1066,7 @@ void test_parse_box_meta(void)
     test_assert_equal(iloc->items[1].base_offset, 0x12345678, "iloc item[1] base offset");
     test_assert_equal(iloc->items[1].extent_count, 0, "iloc item[1] extent count");
 
+    // Item Protection
     ItemProtectionBox *ipro = box->protections;
     test_assert_equal(ipro->box.size, 0x5D, "ipro size");
     test_assert_equal(strncmp(ipro->box.type, "ipro", 4), 0, "ipro type");
@@ -1044,6 +1106,86 @@ void test_parse_box_meta(void)
     Box *ssd = &schm_info->scheme_specific_data[0];
     test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
+
+    ItemInfoBox *iinf = box->item_infos;
+    test_assert_equal(iinf->box.size, 0x4F, "iinf size");
+    test_assert_equal(strncmp(iinf->box.type, "iinf", 4), 0, "iinf type");
+    test_assert_equal(iinf->box.version, 0x00, "iinf version");
+    test_assert_equal(iinf->box.flags, 0x111111, "iinf flags");
+    test_assert_equal(iinf->entry_count, 2, "iinf flags");
+
+    ItemInfoEntry *item = iinf->entries[0];
+    test_assert_equal(item->box.size, 0x1B, "iinf item[0] size");
+    test_assert_equal(strncmp(item->box.type, "infe", 4), 0, "iinf item[0] type");
+    test_assert_equal(item->box.version, 0x00, "iinf item[0] version");
+    test_assert_equal(item->box.flags, 0x222222, "iinf item[0] flags");
+    test_assert_equal(item->item_id, 0x8877, "iinf item[0] item id");
+    test_assert_equal(item->item_protection_index, 0x3579, "iinf item[0] item protection index");
+    test_assert_equal(strcmp(item->item_name, "name"), 0, "iinf item[0] item name");
+    test_assert_equal(strcmp(item->content_type, "type"), 0, "iinf item[0] content type");
+    test_assert_equal(item->content_encoding[0], 0, "iinf item[0] content encoding");
+
+    item = iinf->entries[1];
+    test_assert_equal(item->box.size, 0x26, "iinf item[1] size");
+    test_assert_equal(strncmp(item->box.type, "infe", 4), 0, "iinf item[1] type");
+    test_assert_equal(item->box.version, 0x00, "iinf item[1] version");
+    test_assert_equal(item->box.flags, 0x333333, "iinf item[1] flags");
+    test_assert_equal(item->item_id, 0x3456, "iinf item[1] item id");
+    test_assert_equal(item->item_protection_index, 0x9876, "iinf item[1] item protection index");
+    test_assert_equal(strcmp(item->item_name, "name2"), 0, "iinf item[1] item name");
+    test_assert_equal(strcmp(item->content_type, "type2"), 0, "iinf item[1] content type");
+    test_assert_equal(strcmp(item->content_encoding, "encoding2"), 0, "iinf item[1] content encoding");
+
+    IPMPControlBox *ipmc = box->ipmp_control;
+    test_assert_equal(ipmc->box.size, 0x95, "size");
+    test_assert_equal(strncmp(ipmc->box.type, "ipmc", 4), 0, "type");
+    test_assert_equal(ipmc->box.version, 0x00, "version");
+    test_assert_equal(ipmc->box.flags, 0xFEDCBA, "flags");
+
+    test_assert_equal(ipmc->tool_list.tag, 0x60, "tool list descriptor tag");
+    test_assert_equal(ipmc->tool_list.num_tools, 2, "num of tool");
+
+    IPMPTool *tool = &ipmc->tool_list.ipmp_tools[0];
+    uint8_t tool_id_0[] = {
+        0xF2, 0xD5, 0x0A, 0x49, 0x3C, 0xBB, 0x0E, 0x31,
+        0x4C, 0x32, 0xBC, 0x00, 0x8F, 0x10, 0x43, 0xFE,
+    };
+    test_assert_equal(memcmp(tool->tool_id, tool_id_0, 16), 0, "tool 0 tool id");
+    test_assert_equal(tool->is_alt_group, 1, "tool 0 is alt group");
+    test_assert_equal(tool->is_parametric, 1, "tool 0 is parametric");
+    test_assert_equal(tool->num_alternates, 0x40, "tool 0 num alternates");
+    uint8_t specific_tool_id_0[] = {
+        0x01, 0x23, 0x45, 0x67, 0x89, 0x9A, 0xBC, 0xDE, // specific tool ID (64)
+        0xF0, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, // specific tool ID (64)
+    };
+    test_assert_equal(memcmp(tool->specific_tool_id, specific_tool_id_0, 16), 0, "tool 0 specific tool id");
+    test_assert_equal(strcmp(tool->tool_param_desc, "tool param desc"), 0, "tool 0 tool param description");
+    test_assert_equal(tool->num_urls, 3, "tool 0 urls");
+    test_assert_equal(strcmp(tool->tool_urls[0], "url 1"), 0, "tool 0 url 0");
+    test_assert_equal(strcmp(tool->tool_urls[1], "url 2"), 0, "tool 0 url 1");
+    test_assert_equal(strcmp(tool->tool_urls[2], "url 3"), 0, "tool 0 url 2");
+
+    tool = &ipmc->tool_list.ipmp_tools[1];
+    uint8_t tool_id_1[] = {
+        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, // IPMP Tool Id (64)
+        0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, // IPMP Tool Id (128)
+    };
+    test_assert_equal(memcmp(tool->tool_id, tool_id_1, 16), 0, "tool 1 tool id");
+    test_assert_equal(tool->is_alt_group, 0, "tool 1 is alt group");
+    test_assert_equal(tool->is_parametric, 1, "tool 1 is parametric");
+    test_assert_equal(tool->num_alternates, 0x00, "tool 1 num alternates");
+    uint8_t specific_tool_id_1[] = {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    };
+    test_assert_equal(memcmp(tool->specific_tool_id, specific_tool_id_1, 16), 0, "tool 1 specific tool id");
+    test_assert_equal(strcmp(tool->tool_param_desc, "tool param"), 0, "tool 1 tool param description");
+    test_assert_equal(tool->num_urls, 1, "tool 1 urls");
+    test_assert_equal(strcmp(tool->tool_urls[0], "url"), 0, "tool 1 url 0");
+
+    test_assert_equal(ipmc->ipmp_descriptors_len, 0x02, "descriptors length");
+    uint8_t descriptors[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, };
+    test_assert_equal(memcmp(ipmc->ipmp_descriptors, descriptors, 8), 0, "descriptor data");
 
     bmff_context_destroy(&ctx);
 

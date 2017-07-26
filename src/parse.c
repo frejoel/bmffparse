@@ -42,7 +42,7 @@ const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
 void print_box(const uint8_t *data, size_t size)
 {
     const uint8_t *ptr = data;
-    const uint8_t *end = &data[size];
+    const uint8_t *end = data + size;
     printf("uint8_t data[] = {\n");
     while(ptr < end) {
         printf("    %02X (%c), %02X (%c), %02X (%c), %02X (%c),\n", ptr[0], ptr[0], ptr[1], ptr[1], ptr[2], ptr[2], ptr[3], ptr[3]);
@@ -178,8 +178,9 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
     ContainerBox *box = (ContainerBox*) ctx->malloc(sizeof(ContainerBox));
 
     const uint8_t *ptr = data;
-    const uint8_t *end = data + size;
-    ptr += parse_box(ptr, size, &box->box);
+    ptr += parse_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
 
     // count how many children Boxes there are.
     box->child_count = 0;
@@ -662,8 +663,9 @@ BMFFCode _bmff_parse_box_scheme_info(BMFFContext *ctx, const uint8_t *data, size
     SchemeInformationBox *box = (SchemeInformationBox*) ctx->malloc(sizeof(SchemeInformationBox));
 
     const uint8_t *ptr = data;
-    const uint8_t *end = &data[size];
     ptr += parse_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
 
     // count the number of boxes
     const uint8_t *ptr2 = ptr;
@@ -701,9 +703,9 @@ BMFFCode _bmff_parse_box_protection_scheme_info(BMFFContext *ctx, const uint8_t 
     memset(box, 0, sizeof(ProtectionSchemeInfoBox));
 
     const uint8_t *ptr = data;
-    const uint8_t *end = &data[size];
-
     ptr += parse_original_format_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.box.size;
 
     // parse the optional boxes
     if(ptr < end && strncmp(ptr+4, "imif", 4) == 0) {
@@ -747,8 +749,9 @@ BMFFCode _bmff_parse_box_item_protection(BMFFContext *ctx, const uint8_t *data, 
     ItemProtectionBox *box = (ItemProtectionBox*) ctx->malloc(sizeof(ItemProtectionBox));
 
     const uint8_t *ptr = data;
-    const uint8_t *end = &data[size];
     ptr += parse_full_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
 
     box->protection_count = parse_u16(ptr);
     ptr += 2;
@@ -782,8 +785,9 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
     memset(box, 0, sizeof(MetaBox));
 
     const uint8_t *ptr = data;
-    const uint8_t *end = &data[size];
     ptr += parse_full_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
 
     BMFFCode res = _bmff_parse_box_handler(ctx, ptr, end-ptr, (Box**)&box->handler);
     if(res != BMFF_OK) {
@@ -813,14 +817,17 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
     // Parse optional Boxes
     while(ptr < end) {
         int i=0;
-        // find the parser for the next box
+        // find the parser for the next box keeping track of whether we found a parser.
         int found=0;
+        const char *_t = &ptr[4];
+        int _s = parse_u32(ptr);
         for(; i<map_count; ++i) {
             if(memcmp(&ptr[4], map[i].type, 4) == 0) {
                 found=1;
                 res = map[i].func(ctx, ptr, end-ptr, (Box**)map[i].box_ptr);
                 if(res != BMFF_OK) return res;
                 ptr += (*(map[i].box_ptr))->box.size;
+                break;
             }
         }
 
@@ -832,9 +839,8 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
           if(!box->other_boxes) {
             box->other_boxes = (Box*)ptr;
           }
+          ptr += parse_u32(ptr);
         }
-
-        ptr += parse_u32(ptr);
     }
     // Item Protection Box
     // Item Info Box
