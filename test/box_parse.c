@@ -864,7 +864,7 @@ void test_parse_box_meta(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0x01, 0xD4,
+        0, 0, 0x01, 0xEE,
         'm', 'e', 't', 'a',
         0x00, // version
         0x00, 0x00, 0x00, // flags
@@ -1009,6 +1009,14 @@ void test_parse_box_meta(void)
         // IPMP Control Box Continued
         0x02, // no of IPMPDesctriptors
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+
+        // "Other" Boxes
+        0x00, 0x00, 0x00, 0x0C,
+        'a', 'b', 'c', 'd',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        0x00, 0x00, 0x00, 0x0E,
+        'e', 'f', 'g', 'h',
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
     };
 
     BMFFCode res;
@@ -1137,55 +1145,58 @@ void test_parse_box_meta(void)
     test_assert_equal(strcmp(item->content_encoding, "encoding2"), 0, "iinf item[1] content encoding");
 
     IPMPControlBox *ipmc = box->ipmp_control;
-    test_assert_equal(ipmc->box.size, 0x95, "size");
-    test_assert_equal(strncmp(ipmc->box.type, "ipmc", 4), 0, "type");
-    test_assert_equal(ipmc->box.version, 0x00, "version");
-    test_assert_equal(ipmc->box.flags, 0xFEDCBA, "flags");
+    test_assert_equal(ipmc->box.size, 0x95, "ipmc size");
+    test_assert_equal(strncmp(ipmc->box.type, "ipmc", 4), 0, "ipmc type");
+    test_assert_equal(ipmc->box.version, 0x00, "ipmc version");
+    test_assert_equal(ipmc->box.flags, 0xFEDCBA, "ipmc flags");
 
-    test_assert_equal(ipmc->tool_list.tag, 0x60, "tool list descriptor tag");
-    test_assert_equal(ipmc->tool_list.num_tools, 2, "num of tool");
+    test_assert_equal(ipmc->tool_list.tag, 0x60, "ipmc tool list descriptor tag");
+    test_assert_equal(ipmc->tool_list.num_tools, 2, "ipmc num of tool");
 
     IPMPTool *tool = &ipmc->tool_list.ipmp_tools[0];
     uint8_t tool_id_0[] = {
         0xF2, 0xD5, 0x0A, 0x49, 0x3C, 0xBB, 0x0E, 0x31,
         0x4C, 0x32, 0xBC, 0x00, 0x8F, 0x10, 0x43, 0xFE,
     };
-    test_assert_equal(memcmp(tool->tool_id, tool_id_0, 16), 0, "tool 0 tool id");
-    test_assert_equal(tool->is_alt_group, 1, "tool 0 is alt group");
-    test_assert_equal(tool->is_parametric, 1, "tool 0 is parametric");
-    test_assert_equal(tool->num_alternates, 0x40, "tool 0 num alternates");
+    test_assert_equal(memcmp(tool->tool_id, tool_id_0, 16), 0, "ipmc tool 0 tool id");
+    test_assert_equal(tool->is_alt_group, 1, "ipmc tool 0 is alt group");
+    test_assert_equal(tool->is_parametric, 1, "ipmc tool 0 is parametric");
+    test_assert_equal(tool->num_alternates, 0x40, "ipmc tool 0 num alternates");
     uint8_t specific_tool_id_0[] = {
         0x01, 0x23, 0x45, 0x67, 0x89, 0x9A, 0xBC, 0xDE, // specific tool ID (64)
         0xF0, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, // specific tool ID (64)
     };
-    test_assert_equal(memcmp(tool->specific_tool_id, specific_tool_id_0, 16), 0, "tool 0 specific tool id");
-    test_assert_equal(strcmp(tool->tool_param_desc, "tool param desc"), 0, "tool 0 tool param description");
-    test_assert_equal(tool->num_urls, 3, "tool 0 urls");
-    test_assert_equal(strcmp(tool->tool_urls[0], "url 1"), 0, "tool 0 url 0");
-    test_assert_equal(strcmp(tool->tool_urls[1], "url 2"), 0, "tool 0 url 1");
-    test_assert_equal(strcmp(tool->tool_urls[2], "url 3"), 0, "tool 0 url 2");
+    test_assert_equal(memcmp(tool->specific_tool_id, specific_tool_id_0, 16), 0, "ipmc tool 0 specific tool id");
+    test_assert_equal(strcmp(tool->tool_param_desc, "tool param desc"), 0, "ipmc tool 0 tool param description");
+    test_assert_equal(tool->num_urls, 3, "ipmc tool 0 urls");
+    test_assert_equal(strcmp(tool->tool_urls[0], "url 1"), 0, "ipmc tool 0 url 0");
+    test_assert_equal(strcmp(tool->tool_urls[1], "url 2"), 0, "ipmc tool 0 url 1");
+    test_assert_equal(strcmp(tool->tool_urls[2], "url 3"), 0, "ipmc tool 0 url 2");
 
     tool = &ipmc->tool_list.ipmp_tools[1];
     uint8_t tool_id_1[] = {
         0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, // IPMP Tool Id (64)
         0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, // IPMP Tool Id (128)
     };
-    test_assert_equal(memcmp(tool->tool_id, tool_id_1, 16), 0, "tool 1 tool id");
-    test_assert_equal(tool->is_alt_group, 0, "tool 1 is alt group");
-    test_assert_equal(tool->is_parametric, 1, "tool 1 is parametric");
-    test_assert_equal(tool->num_alternates, 0x00, "tool 1 num alternates");
+    test_assert_equal(memcmp(tool->tool_id, tool_id_1, 16), 0, "ipmc tool 1 tool id");
+    test_assert_equal(tool->is_alt_group, 0, "ipmc tool 1 is alt group");
+    test_assert_equal(tool->is_parametric, 1, "ipmc tool 1 is parametric");
+    test_assert_equal(tool->num_alternates, 0x00, "ipmc tool 1 num alternates");
     uint8_t specific_tool_id_1[] = {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
-    test_assert_equal(memcmp(tool->specific_tool_id, specific_tool_id_1, 16), 0, "tool 1 specific tool id");
-    test_assert_equal(strcmp(tool->tool_param_desc, "tool param"), 0, "tool 1 tool param description");
-    test_assert_equal(tool->num_urls, 1, "tool 1 urls");
-    test_assert_equal(strcmp(tool->tool_urls[0], "url"), 0, "tool 1 url 0");
+    test_assert_equal(memcmp(tool->specific_tool_id, specific_tool_id_1, 16), 0, "ipmc ool 1 specific tool id");
+    test_assert_equal(strcmp(tool->tool_param_desc, "tool param"), 0, "ipmc tool 1 tool param description");
+    test_assert_equal(tool->num_urls, 1, "ipmc tool 1 urls");
+    test_assert_equal(strcmp(tool->tool_urls[0], "url"), 0, "ipmc tool 1 url 0");
 
-    test_assert_equal(ipmc->ipmp_descriptors_len, 0x02, "descriptors length");
+    test_assert_equal(ipmc->ipmp_descriptors_len, 0x02, "ipmc descriptors length");
     uint8_t descriptors[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, };
-    test_assert_equal(memcmp(ipmc->ipmp_descriptors, descriptors, 8), 0, "descriptor data");
+    test_assert_equal(memcmp(ipmc->ipmp_descriptors, descriptors, 8), 0, "ipmc descriptor data");
+
+    test_assert_equal(box->other_boxes_len, 2, "ipmc other boxes length");
+    test_assert(NULL != box->other_boxes, "ipmc other boxes length");
 
     bmff_context_destroy(&ctx);
 
