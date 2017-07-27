@@ -21,6 +21,7 @@ void test_parse_box_protection_scheme_info(void);
 void test_parse_box_item_protection(void);
 void test_parse_box_meta(void);
 void test_parse_box_movie_header(void);
+void test_parse_box_movie_fragment_header(void);
 
 int main(int argc, char** argv)
 {
@@ -42,6 +43,7 @@ int main(int argc, char** argv)
     test_parse_box_item_protection();
     test_parse_box_meta();
     test_parse_box_movie_header();
+    test_parse_box_movie_fragment_header();
     return 0;
 }
 
@@ -1270,6 +1272,38 @@ void test_parse_box_movie_header(void)
 
     test_end();
 }
+
+void test_parse_box_movie_fragment_header(void)
+{
+    test_start("test_parse_box_movie_fragment_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        'm', 'f', 'h', 'd',
+        0x00, // version
+        0x3F, 0x11, 0xF3, // flags
+        0x10, 0x10, 0x10, 0x2F, // sequence number
+    };
+
+    BMFFCode res;
+    MovieFragmentHeaderBox *box = NULL;
+    res = _bmff_parse_box_movie_fragment_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "mfhd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0x3F11F3, "flags");
+    test_assert_equal(box->sequence_number, 0x1010102F, "sequence number");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {

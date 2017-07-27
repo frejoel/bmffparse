@@ -36,6 +36,7 @@ const MapItem parse_map[] = {
     {"ipro", 0, _bmff_parse_box_item_protection},
     {"meta", 0, _bmff_parse_box_meta},
     {"mvhd", 0, _bmff_parse_box_movie_header},
+    {"mfhd", 0, _bmff_parse_box_movie_fragment_header},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -904,6 +905,24 @@ BMFFCode _bmff_parse_box_movie_header(BMFFContext *ctx, const uint8_t *data, siz
     // pre defined 32[6]
     ptr += 24; // 32 / 8 * 6
     box->next_track_id = parse_u32(ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_movie_fragment_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    MovieFragmentHeaderBox *box = (MovieFragmentHeaderBox*) ctx->malloc(sizeof(MovieFragmentHeaderBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    box->sequence_number = parse_u32(ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
