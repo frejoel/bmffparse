@@ -35,6 +35,7 @@ const MapItem parse_map[] = {
     {"sinf", 0, _bmff_parse_box_protection_scheme_info},
     {"ipro", 0, _bmff_parse_box_item_protection},
     {"meta", 0, _bmff_parse_box_meta},
+    {"mvhd", 0, _bmff_parse_box_movie_header},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -89,6 +90,18 @@ uint64_t parse_u64(const uint8_t *bytes)
            ((val << 40) & 0x00FF000000000000L) |
            ((val << 56) & 0xFF00000000000000L) ;
 #endif
+}
+
+fxpt16_t parse_fp16(const uint8_t *bytes)
+{
+    float val = (float) parse_u32(bytes);
+    return val / 65536.f;
+}
+
+fxpt8_t parse_fp8(const uint8_t *bytes)
+{
+    float val = (float) parse_u16(bytes);
+    return val / 256.f;
 }
 
 int parse_box(const uint8_t *data, size_t size, Box *box)
@@ -845,6 +858,52 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
     // Item Protection Box
     // Item Info Box
     // IPMP Control Box
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_movie_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 32)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    MovieHeaderBox *box = (MovieHeaderBox*) ctx->malloc(sizeof(MovieHeaderBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 1) {
+      box->creation_time = parse_u64(ptr);
+      box->modification_time = parse_u64(ptr + 8);
+      box->timescale = parse_u64(ptr + 16);
+      box->duration = parse_u64(ptr + 24);
+      ptr += 32;
+    }else{
+      box->creation_time = parse_u32(ptr);
+      box->modification_time = parse_u32(ptr + 4);
+      box->timescale = parse_u32(ptr + 8);
+      box->duration = parse_u32(ptr + 12);
+      ptr += 16;
+    }
+
+    box->rate = parse_fp16(ptr);
+    ptr += 4;
+    box->volume = parse_fp8(ptr);
+    ptr += 2;
+    // reserved 16, 32[2]
+    ptr += 10; // (16 + 32 + 32) / 8
+    // parse the matrix
+    int i=0;
+    for(; i<9; ++i) {
+      box->matrix[i] = (int32_t) parse_u32(ptr);
+      ptr += 4;
+    }
+    // pre defined 32[6]
+    ptr += 24; // 32 / 8 * 6
+    box->next_track_id = parse_u32(ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

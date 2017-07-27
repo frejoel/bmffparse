@@ -30,6 +30,11 @@ void test_assert_equal(int val1, int val2, const char *msg)
     test_assert(val1 == val2, msg);
 }
 
+void test_assert_equal_f32(float val1, float val2, const char *msg)
+{
+    test_assert(val1 >= val2 - 0.00000001 && val1 <= val2 + 0.00000001, msg);
+}
+
 void test_assert_equal_uint64(uint64_t val1, uint64_t val2, const char *msg)
 {
     test_assert(val1 == val2, msg);

@@ -27,8 +27,8 @@
 
 #include <stdint.h>
 
-typedef uint32_t fxpt16_t;  // Fixed Point 16.16
-typedef uint16_t fxpt8_t;   // Fixed Point 8.8
+typedef float fxpt16_t;  // Fixed Point 16.16
+typedef float fxpt8_t;   // Fixed Point 8.8
 
 typedef uint8_t IPMPDescriptor;           // TODO: see 14496-1 for definition.
 
