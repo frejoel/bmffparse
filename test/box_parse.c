@@ -22,6 +22,7 @@ void test_parse_box_item_protection(void);
 void test_parse_box_meta(void);
 void test_parse_box_movie_header(void);
 void test_parse_box_movie_fragment_header(void);
+void test_parse_box_track_fragment_random_access(void);
 
 int main(int argc, char** argv)
 {
@@ -44,6 +45,7 @@ int main(int argc, char** argv)
     test_parse_box_meta();
     test_parse_box_movie_header();
     test_parse_box_movie_fragment_header();
+    test_parse_box_track_fragment_random_access();
     return 0;
 }
 
@@ -1298,6 +1300,66 @@ void test_parse_box_movie_fragment_header(void)
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0x3F11F3, "flags");
     test_assert_equal(box->sequence_number, 0x1010102F, "sequence number");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_track_fragment_random_access(void)
+{
+    test_start("test_parse_box_track_fragment_random_access");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x48,
+        't', 'f', 'r', 'a',
+        0x01, // version
+        0xFE, 0xDC, 0xBA, // flags
+        0x01, 0x02, 0x03, 0x04, // track id
+        0x00, 0x00, 0x00, // reserver (24)
+        0b00111000, // reserved (2), lengths of trak, trun, sample (2,2,2)
+        0x00, 0x00, 0x00, 0x02, // num of entries
+        // entry 1
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // time
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x1F, // moof offset
+        0xFE, 0xDC, 0xBA, 0x98, // traf number
+        0x12, 0x23, 0x45, // trun number
+        0x91, // sample number
+        // entry 2
+        0x19, 0x21, 0x32, 0x43, 0x54, 0x65, 0x76, 0x87, // time
+        0x92, 0x83, 0x74, 0x65, 0x56, 0x47, 0x38, 0x29, // moof offset
+        0xCD, 0xEF, 0xAB, 0x35, // traf number
+        0x62, 0xC7, 0xDE, // trun number
+        0xE5, // sample number
+    };
+
+    BMFFCode res;
+    TrackFragmentRandomAccessBox *box = NULL;
+    res = _bmff_parse_box_track_fragment_random_access(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "tfra", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xFEDCBA, "flags");
+    test_assert_equal(box->track_id, 0x01020304, "track id");
+    test_assert_equal(box->length_size_of_traf_num, 3, "length of traf");
+    test_assert_equal(box->length_size_of_trun_num, 2, "length of trun");
+    test_assert_equal(box->length_size_of_sample_num, 0, "length of sample");
+    test_assert_equal(box->number_of_entry, 2, "number of entries");
+    test_assert_equal_uint64(box->entries[0].entry_time, 0x0102030405060708ULL, "entry 0 time");
+    test_assert_equal_uint64(box->entries[0].moof_offset, 0x090A0B0C0D0E0F1FULL, "entry 0 moof offset");
+    test_assert_equal(box->entries[0].traf_number, 0xFEDCBA98, "entry 0 traf number");
+    test_assert_equal(box->entries[0].trun_number, 0x122345, "entry 0 trun number");
+    test_assert_equal(box->entries[0].sample_number, 0x91, "entry 0 sample number");
+    test_assert_equal_uint64(box->entries[1].entry_time, 0x1921324354657687ULL, "entry 1 time");
+    test_assert_equal_uint64(box->entries[1].moof_offset, 0x9283746556473829ULL, "entry 1 moof offset");
+    test_assert_equal(box->entries[1].traf_number, 0xCDEFAB35, "entry 1 traf number");
+    test_assert_equal(box->entries[1].trun_number, 0x62C7DE, "entry 1 trun number");
+    test_assert_equal(box->entries[1].sample_number, 0xE5, "entry 1 sample number");
 
     bmff_context_destroy(&ctx);
 

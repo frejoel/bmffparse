@@ -250,9 +250,9 @@ typedef struct MovieFragmentHeaderBox { // mfhd
 typedef struct Entry {
     uint64_t    entry_time;
     uint64_t    moof_offset;
-    uint64_t    traf_number;
-    uint64_t    trun_number;
-    uint64_t    sample_number;
+    uint32_t    traf_number;
+    uint32_t    trun_number;
+    uint32_t    sample_number;
 } Entry;
 
 typedef struct TrackFragmentRandomAccessBox { // tfra
@@ -263,7 +263,6 @@ typedef struct TrackFragmentRandomAccessBox { // tfra
     uint8_t     length_size_of_sample_num;
     uint32_t    number_of_entry;
     Entry       *entries;
-
 } TrackFragmentRandomAccessBox;
 
 typedef struct MovieFragmentRandomAccessOffsetBox { // mfro

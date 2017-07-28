@@ -37,6 +37,7 @@ const MapItem parse_map[] = {
     {"meta", 0, _bmff_parse_box_meta},
     {"mvhd", 0, _bmff_parse_box_movie_header},
     {"mfhd", 0, _bmff_parse_box_movie_fragment_header},
+    {"tfra", 0, _bmff_parse_box_track_fragment_random_access},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -103,6 +104,20 @@ fxpt8_t parse_fp8(const uint8_t *bytes)
 {
     float val = (float) parse_u16(bytes);
     return val / 256.f;
+}
+
+uint32_t parse_var_length(const uint8_t *bytes, uint8_t length)
+{
+    uint32_t val = 0;
+
+    switch(length) {
+        case 1: val = bytes[0]; break;
+        case 2: val = (uint32_t) parse_u16(bytes); break;
+        case 3: val = (parse_u32(bytes) >> 8) & 0xFFFFFF; break;
+        case 4: val = parse_u32(bytes); break;
+    }
+
+    return val;
 }
 
 int parse_box(const uint8_t *data, size_t size, Box *box)
@@ -923,6 +938,58 @@ BMFFCode _bmff_parse_box_movie_fragment_header(BMFFContext *ctx, const uint8_t *
     ptr += parse_full_box(data, size, &box->box);
 
     box->sequence_number = parse_u32(ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_fragment_random_access(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 24)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    TrackFragmentRandomAccessBox *box = (TrackFragmentRandomAccessBox*) ctx->malloc(sizeof(TrackFragmentRandomAccessBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    box->track_id = parse_u32(ptr);
+    ptr += 4;
+    ptr += 3; // reserved
+    uint8_t value = ptr[0];
+    box->length_size_of_traf_num = (value >> 4) & 0x03;
+    box->length_size_of_trun_num = (value >> 2) & 0x03;
+    box->length_size_of_sample_num = value & 0x03;
+    ptr++;
+    box->number_of_entry = parse_u32(ptr);
+    ptr += 4;
+
+    box->entries = (Entry*) ctx->malloc(sizeof(Entry) * box->number_of_entry);
+
+    uint32_t i=0;
+    for(; i<box->number_of_entry; ++i) {
+        Entry *entry = &box->entries[i];
+        if(box->box.version == 1) {
+            entry->entry_time = parse_u64(ptr);
+            ptr += 8;
+            entry->moof_offset = parse_u64(ptr);
+            ptr += 8;
+        }else{
+            entry->entry_time = parse_u32(ptr);
+            ptr += 4;
+            entry->moof_offset = parse_u32(ptr);
+            ptr += 4;
+        }
+
+        entry->traf_number = parse_var_length(ptr, box->length_size_of_traf_num + 1);
+        ptr += box->length_size_of_traf_num + 1;
+        entry->trun_number = parse_var_length(ptr, box->length_size_of_trun_num + 1);
+        ptr += box->length_size_of_trun_num + 1;
+        entry->sample_number = parse_var_length(ptr, box->length_size_of_sample_num + 1);
+        ptr += box->length_size_of_sample_num + 1;
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
