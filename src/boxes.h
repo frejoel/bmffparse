@@ -270,16 +270,11 @@ typedef struct MovieFragmentRandomAccessOffsetBox { // mfro
     uint32_t    size;
 } MovieFragmentRandomAccessOffsetBox;
 
-typedef struct XMLBox { // xml
-    FullBox     box;
-    char        *xml;
+typedef struct XMLBox { // xml and bxml
+    FullBox         box;
+    const uint8_t   *data;
+    size_t          data_len;
 } XMLBox;
-
-typedef struct BinaryXMLBox { // bxml
-    FullBox     box;
-    uint8_t     *data;
-    size_t      data_len;
-} BinaryXMLBox;
 
 // third tier
 

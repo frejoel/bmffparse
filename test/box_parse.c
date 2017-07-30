@@ -24,6 +24,7 @@ void test_parse_box_movie_header(void);
 void test_parse_box_movie_fragment_header(void);
 void test_parse_box_track_fragment_random_access(void);
 void test_parse_box_movie_fragment_random_access_offset(void);
+void test_parse_box_xml(void);
 
 int main(int argc, char** argv)
 {
@@ -48,6 +49,7 @@ int main(int argc, char** argv)
     test_parse_box_movie_fragment_header();
     test_parse_box_track_fragment_random_access();
     test_parse_box_movie_fragment_random_access_offset();
+    test_parse_box_xml();
     return 0;
 }
 
@@ -1399,6 +1401,56 @@ void test_parse_box_movie_fragment_random_access_offset(void)
     test_end();
 }
 
+void test_parse_box_xml(void)
+{
+    test_start("test_parse_box_xml");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1C,
+        'x', 'm', 'l', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        '<','x','m','l','>','d','a','t','a','<','/','x','m','l','>',0x00,
+    };
+
+    BMFFCode res;
+    XMLBox *box = NULL;
+    res = _bmff_parse_box_xml(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "xml ", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->data, "<xml>data</xml>"), 0, "xml data");
+    test_assert_equal(box->data_len, 16, "data length");
+
+    uint8_t data2[] = {
+        0, 0, 0, 0x1C,
+        'b', 'x', 'm', 'l',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        '<','x','m','l','>','d','a','t','a','<','/','x','m','l','>',0x00,
+    };
+
+    box = NULL;
+    res = _bmff_parse_box_xml(&ctx, data2, sizeof(data2), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "bxml success");
+    test_assert(box != NULL, "bxml NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data2), "bxml size");
+    test_assert_equal(strncmp(box->box.type, "bxml ", 4), 0, "bxml type");
+    test_assert_equal(box->box.version, 0x00, "bxml version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "bxml flags");
+    test_assert_equal(strcmp(box->data, "<xml>data</xml>"), 0, "bxml xml data");
+    test_assert_equal(box->data_len, 16, "bxml data length");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

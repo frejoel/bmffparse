@@ -40,6 +40,8 @@ const MapItem parse_map[] = {
     {"mfhd", 0, _bmff_parse_box_movie_fragment_header},
     {"tfra", 0, _bmff_parse_box_track_fragment_random_access},
     {"mfro", 0, _bmff_parse_box_movie_fragment_random_access_offset},
+    {"xml ", 0, _bmff_parse_box_xml},
+    {"bxml", 0, _bmff_parse_box_xml},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1010,6 +1012,25 @@ BMFFCode _bmff_parse_box_movie_fragment_random_access_offset(BMFFContext *ctx, c
     ptr += parse_full_box(data, size, &box->box);
 
     box->size = parse_u32(ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_xml(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 13)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    XMLBox *box = (XMLBox*) ctx->malloc(sizeof(XMLBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    box->data = ptr;
+    box->data_len = &data[size] - ptr;
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
