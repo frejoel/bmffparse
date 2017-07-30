@@ -23,6 +23,7 @@ void test_parse_box_meta(void);
 void test_parse_box_movie_header(void);
 void test_parse_box_movie_fragment_header(void);
 void test_parse_box_track_fragment_random_access(void);
+void test_parse_box_movie_fragment_random_access_offset(void);
 
 int main(int argc, char** argv)
 {
@@ -46,6 +47,7 @@ int main(int argc, char** argv)
     test_parse_box_movie_header();
     test_parse_box_movie_fragment_header();
     test_parse_box_track_fragment_random_access();
+    test_parse_box_movie_fragment_random_access_offset();
     return 0;
 }
 
@@ -1360,6 +1362,37 @@ void test_parse_box_track_fragment_random_access(void)
     test_assert_equal(box->entries[1].traf_number, 0xCDEFAB35, "entry 1 traf number");
     test_assert_equal(box->entries[1].trun_number, 0x62C7DE, "entry 1 trun number");
     test_assert_equal(box->entries[1].sample_number, 0xE5, "entry 1 sample number");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_movie_fragment_random_access_offset(void)
+{
+    test_start("test_parse_box_movie_fragment_random_access_offset");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        'm', 'f', 'r', 'o',
+        0xE3, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x5B, 0x32, 0xE1, 0x0A,
+    };
+
+    BMFFCode res;
+    MovieFragmentRandomAccessOffsetBox *box = NULL;
+    res = _bmff_parse_box_movie_fragment_random_access_offset(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "mfro", 4), 0, "type");
+    test_assert_equal(box->box.version, 0xE3, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->size, 0x5B32E10A, "size");
 
     bmff_context_destroy(&ctx);
 
