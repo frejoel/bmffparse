@@ -26,6 +26,7 @@ void test_parse_box_track_fragment_random_access(void);
 void test_parse_box_movie_fragment_random_access_offset(void);
 void test_parse_box_xml(void);
 void test_parse_box_track_header(void);
+void test_parse_box_movie_extends_header(void);
 
 int main(int argc, char** argv)
 {
@@ -52,6 +53,7 @@ int main(int argc, char** argv)
     test_parse_box_movie_fragment_random_access_offset();
     test_parse_box_xml();
     test_parse_box_track_header();
+    test_parse_box_movie_extends_header();
     return 0;
 }
 
@@ -1517,6 +1519,37 @@ void test_parse_box_track_header(void)
     test_assert_equal(box->matrix[8], 0x40000009, "matrix 8");
     test_assert_equal(box->width, 0x11223344, "width");
     test_assert_equal(box->height, 0x55667788, "height");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_movie_extends_header(void)
+{
+    test_start("test_parse_box_movie_extends_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x14,
+        'm', 'e', 'h', 'd',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x8, // fragment duration
+    };
+
+    BMFFCode res;
+    MovieExtendsHeaderBox *box = NULL;
+    res = _bmff_parse_box_movie_extends_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "mehd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal_uint64(box->fragment_duration, 0x0102030405060708ULL, "fragment duration");
 
     bmff_context_destroy(&ctx);
 

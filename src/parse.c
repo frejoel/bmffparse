@@ -43,6 +43,7 @@ const MapItem parse_map[] = {
     {"xml ", 0, _bmff_parse_box_xml},
     {"bxml", 0, _bmff_parse_box_xml},
     {"tkhd", 0, _bmff_parse_box_track_header},
+    {"mehd", 0, _bmff_parse_box_movie_extends_header},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1081,6 +1082,28 @@ BMFFCode _bmff_parse_box_track_header(BMFFContext *ctx, const uint8_t *data, siz
 
     box->width = parse_u32(ptr);
     box->height = parse_u32(ptr + 4);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_movie_extends_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    MovieExtendsHeaderBox *box = (MovieExtendsHeaderBox*) ctx->malloc(sizeof(MovieExtendsHeaderBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 1) {
+        box->fragment_duration = parse_u64(ptr);
+    }else{
+        box->fragment_duration = parse_u32(ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
