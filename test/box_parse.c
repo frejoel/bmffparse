@@ -25,6 +25,7 @@ void test_parse_box_movie_fragment_header(void);
 void test_parse_box_track_fragment_random_access(void);
 void test_parse_box_movie_fragment_random_access_offset(void);
 void test_parse_box_xml(void);
+void test_parse_box_track_header(void);
 
 int main(int argc, char** argv)
 {
@@ -50,6 +51,7 @@ int main(int argc, char** argv)
     test_parse_box_track_fragment_random_access();
     test_parse_box_movie_fragment_random_access_offset();
     test_parse_box_xml();
+    test_parse_box_track_header();
     return 0;
 }
 
@@ -1451,6 +1453,76 @@ void test_parse_box_xml(void)
 
     test_end();
 }
+
+void test_parse_box_track_header(void)
+{
+    test_start("test_parse_box_track_hedaer");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x68,
+        't', 'k', 'h', 'd',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, // creation time
+        0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, // modification time
+        0xA1, 0xB2, 0xC3, 0xD4, // track Id
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x1A, 0x2B, 0x3C, 0x4D, 0x5E, 0x6F, 0x7A, 0x8B, // duration
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0xAA, 0xBB, // layer
+        0xCC, 0xDD, // alternate group
+        0x01, 0x00, // volume
+        0x00, 0x00, // resered
+        0x00, 0x01, 0x00, 0x01, // matrix 0
+        0x00, 0x00, 0x00, 0x02, // matrix 1
+        0x00, 0x00, 0x00, 0x03, // matrix 2
+        0x00, 0x00, 0x00, 0x04, // matrix 3
+        0x00, 0x01, 0x00, 0x05, // matrix 4
+        0x00, 0x00, 0x00, 0x06, // matrix 5
+        0x00, 0x00, 0x00, 0x07, // matrix 6
+        0x00, 0x00, 0x00, 0x08, // matrix 7
+        0x40, 0x00, 0x00, 0x09, // matrix 8
+        0x11, 0x22, 0x33, 0x44, // width
+        0x55, 0x66, 0x77, 0x88, // height
+    };
+
+    BMFFCode res;
+    TrackHeaderBox *box = NULL;
+    res = _bmff_parse_box_track_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "tkhd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal_uint64(box->creation_time, 0x1020304050607080ULL, "creation time");
+    test_assert_equal_uint64(box->modification_time, 0xF1F2F3F4F5F6F7F8ULL, "modification time");
+    test_assert_equal(box->track_id, 0xA1B2C3D4, "track id");
+    test_assert_equal_uint64(box->duration, 0x1A2B3C4D5E6F7A8B, "duration");
+    test_assert_equal(box->layer, (int16_t)0xAABB, "layer");
+    test_assert_equal(box->alternate_group, (int16_t)0xCCDD, "alternate group");
+    test_assert_equal_f32(box->volume, 1.f, "volume");
+    test_assert_equal(box->matrix[0], 0x00010001, "matrix 0");
+    test_assert_equal(box->matrix[1], 0x00000002, "matrix 1");
+    test_assert_equal(box->matrix[2], 0x00000003, "matrix 2");
+    test_assert_equal(box->matrix[3], 0x00000004, "matrix 3");
+    test_assert_equal(box->matrix[4], 0x00010005, "matrix 4");
+    test_assert_equal(box->matrix[5], 0x00000006, "matrix 5");
+    test_assert_equal(box->matrix[6], 0x00000007, "matrix 6");
+    test_assert_equal(box->matrix[7], 0x00000008, "matrix 7");
+    test_assert_equal(box->matrix[8], 0x40000009, "matrix 8");
+    test_assert_equal(box->width, 0x11223344, "width");
+    test_assert_equal(box->height, 0x55667788, "height");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {

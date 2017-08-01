@@ -42,6 +42,7 @@ const MapItem parse_map[] = {
     {"mfro", 0, _bmff_parse_box_movie_fragment_random_access_offset},
     {"xml ", 0, _bmff_parse_box_xml},
     {"bxml", 0, _bmff_parse_box_xml},
+    {"tkhd", 0, _bmff_parse_box_track_header},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1031,6 +1032,55 @@ BMFFCode _bmff_parse_box_xml(BMFFContext *ctx, const uint8_t *data, size_t size,
 
     box->data = ptr;
     box->data_len = &data[size] - ptr;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    TrackHeaderBox *box = (TrackHeaderBox*) ctx->malloc(sizeof(TrackHeaderBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 1) {
+        box->creation_time = parse_u64(ptr);
+        box->modification_time = parse_u64(ptr + 8);
+        box->track_id = parse_u32(ptr + 16);
+        // reserved (32)
+        box->duration = parse_u64(ptr + 24);
+        ptr += 32;
+    }else{
+        box->creation_time = parse_u32(ptr);
+        box->modification_time = parse_u32(ptr + 4);
+        box->track_id = parse_u32(ptr + 8);
+        // reserved (32)
+        box->duration = parse_u32(ptr + 16);
+        ptr += 20;
+    }
+
+    // reserved (32 * 2)
+    ptr += 8;
+    box->layer = (int16_t)parse_u16(ptr);
+    box->alternate_group = (int16_t)parse_u16(ptr + 2);
+    box->volume = parse_fp8(ptr + 4);
+    // reserved (16)
+    ptr += 8;
+    
+    int i=0;
+    for(; i<9; ++i) {
+        box->matrix[i] = (int32_t) parse_u32(ptr);
+        ptr += 4;
+    }
+
+    box->width = parse_u32(ptr);
+    box->height = parse_u32(ptr + 4);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
