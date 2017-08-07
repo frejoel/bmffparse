@@ -27,6 +27,7 @@ void test_parse_box_movie_fragment_random_access_offset(void);
 void test_parse_box_xml(void);
 void test_parse_box_track_header(void);
 void test_parse_box_movie_extends_header(void);
+void test_parse_box_track_extends(void);
 
 int main(int argc, char** argv)
 {
@@ -54,6 +55,7 @@ int main(int argc, char** argv)
     test_parse_box_xml();
     test_parse_box_track_header();
     test_parse_box_movie_extends_header();
+    test_parse_box_track_extends();
     return 0;
 }
 
@@ -1556,6 +1558,48 @@ void test_parse_box_movie_extends_header(void)
     test_end();
 }
 
+void test_parse_box_track_extends(void)
+{
+    test_start("test_parse_box_track_extends");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x20,
+        't', 'r', 'e', 'x',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x01, 0x02, 0x03, 0x04, // track ID
+        0xFF, 0xEE, 0xDD, 0xCC, // default sample description index
+        0x10, 0x20, 0x30, 0x40, // default sample duration
+        0x1A, 0x2B, 0x3C, 0x4D, // default sample size
+        // flags
+        0b00000001, // reserved (6), sample depends on (2)
+        0b10001011, // sample is depended on (2), sample has redundancy (2), sample padding (3), sample is difference sample (1) 
+        0xF3, 0xF4, // sample degradation priority
+    };
+
+    BMFFCode res;
+    TrackExtendsBox *box = NULL;
+    res = _bmff_parse_box_track_extends(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "trex", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->default_sample_depends_on, eBooleanTrue, "sample depends on");
+    test_assert_equal(box->default_sample_is_depended_on, eBooleanFalse, "sample is depended on");
+    test_assert_equal(box->default_sample_has_redundancy, eBooleanUnknown, "sample has redundancy");
+    test_assert_equal(box->default_sample_padding_value, 5, "sample padding value");
+    test_assert_equal(box->default_sample_is_difference_sample, eBooleanTrue, "sample is difference sample");
+    test_assert_equal(box->default_sample_degradation_priority, 0xF3F4, "sample degradation priority");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

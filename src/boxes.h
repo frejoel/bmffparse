@@ -27,6 +27,12 @@
 
 #include <stdint.h>
 
+typedef enum {
+    eBooleanUnknown    = 0,
+    eBooleanTrue       = 1,
+    eBooleanFalse      = 2,
+} eBoolean;
+
 typedef float fxpt16_t;  // Fixed Point 16.16
 typedef float fxpt8_t;   // Fixed Point 8.8
 
@@ -309,7 +315,13 @@ typedef struct TrackExtendsBox { // trex
     uint32_t    default_sample_description_index;
     uint32_t    default_sample_duration;
     uint32_t    default_sample_size;
-    uint32_t    default_sample_flags;
+    // defaut sample flags
+    eBoolean   default_sample_depends_on;
+    eBoolean   default_sample_is_depended_on;
+    eBoolean   default_sample_has_redundancy;
+    uint8_t     default_sample_padding_value;
+    eBoolean   default_sample_is_difference_sample;
+    uint16_t    default_sample_degradation_priority;
 } TrackExtendsBox;
 
 typedef struct TrackFragmentHeaderBox { // tfhd

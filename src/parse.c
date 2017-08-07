@@ -44,6 +44,7 @@ const MapItem parse_map[] = {
     {"bxml", 0, _bmff_parse_box_xml},
     {"tkhd", 0, _bmff_parse_box_track_header},
     {"mehd", 0, _bmff_parse_box_movie_extends_header},
+    {"trex", 0, _bmff_parse_box_track_extends},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1104,6 +1105,37 @@ BMFFCode _bmff_parse_box_movie_extends_header(BMFFContext *ctx, const uint8_t *d
     }else{
         box->fragment_duration = parse_u32(ptr);
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_extends(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 32)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    TrackExtendsBox *box = (TrackExtendsBox*) ctx->malloc(sizeof(TrackExtendsBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    box->track_id = parse_u32(ptr);
+    box->default_sample_description_index = parse_u32(ptr + 4);
+    box->default_sample_duration = parse_u32(ptr + 8);
+    box->default_sample_size = parse_u32(ptr + 12);
+    ptr += 16;
+
+    // default sample flags
+    // (6) reserved
+    box->default_sample_depends_on = ptr[0] & 0x03; // (2) sample depends on
+    box->default_sample_is_depended_on = (eBoolean)((ptr[1] >> 6) & 0x03); // (2) sample is depended on
+    box->default_sample_has_redundancy = (eBoolean)((ptr[1] >> 4) & 0x03); // (2) sample has redundency
+    box->default_sample_padding_value = (ptr[1] >> 1) & 0x07; // (3) sample padding value
+    box->default_sample_is_difference_sample = (ptr[1] & 0x01) == 1 ? eBooleanTrue : eBooleanFalse; // (1) sample is difference sample
+    box->default_sample_degradation_priority = parse_u16(ptr + 2); // (16) sample degradation priority
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
