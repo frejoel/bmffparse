@@ -33,6 +33,15 @@ typedef enum {
     eBooleanFalse      = 2,
 } eBoolean;
 
+typedef enum {
+    eTfhdBaseDataOffsetPresent          = 0x000001,
+    eTfhdSampleDescIdxPresent           = 0x000002,
+    eTfhdDefaultSampleDurationPresent   = 0x000008,
+    eTfhdDefaultSampleSizePresent       = 0x000010,
+    eTfhdDefaultSampleFlagsPresent      = 0x000020,
+    eTfhdDurationIsEmpty                = 0x010000
+} eTrackHeaderBoxFlags;
+
 typedef float fxpt16_t;  // Fixed Point 16.16
 typedef float fxpt8_t;   // Fixed Point 8.8
 

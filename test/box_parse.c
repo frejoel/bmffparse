@@ -28,6 +28,7 @@ void test_parse_box_xml(void);
 void test_parse_box_track_header(void);
 void test_parse_box_movie_extends_header(void);
 void test_parse_box_track_extends(void);
+void test_parse_box_track_fragment_header(void);
 
 int main(int argc, char** argv)
 {
@@ -56,6 +57,7 @@ int main(int argc, char** argv)
     test_parse_box_track_header();
     test_parse_box_movie_extends_header();
     test_parse_box_track_extends();
+    test_parse_box_track_fragment_header();
     return 0;
 }
 
@@ -1600,6 +1602,55 @@ void test_parse_box_track_extends(void)
 
     test_end();
 }
+
+void test_parse_box_track_fragment_header(void)
+{
+    test_start("test_parse_box_track_fragment_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        't', 'f', 'h', 'd',
+        0x00, // version
+        0x01, 0x00, 0x3B, // flags (all of the below)
+        0xA1, 0xB2, 0xC3, 0xD4, // track id
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // base data offset
+        0xFF, 0xEE, 0xDD, 0xCC, // sample description index
+        0xAA, 0xBB, 0xCC, 0xDD, // default sample duration
+        0x12, 0x34, 0x56, 0x78, // default sample size
+        0x11, 0x22, 0x33, 0x44, // default sample flags
+    };
+
+    BMFFCode res;
+    TrackFragmentHeaderBox *box = NULL;
+    res = _bmff_parse_box_track_fragment_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "tfhd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0x01003B, "flags value");
+    eTrackHeaderBoxFlags flags = eTfhdBaseDataOffsetPresent;
+    flags |= eTfhdDefaultSampleDurationPresent;
+    flags |= eTfhdDefaultSampleFlagsPresent;
+    flags |= eTfhdDefaultSampleSizePresent;
+    flags |= eTfhdSampleDescIdxPresent;
+    flags |= eTfhdDurationIsEmpty;
+    test_assert_equal(box->box.flags, (uint32_t)flags, "flags");
+    test_assert_equal(box->track_id, 0xA1B2C3D4, "track id");
+    test_assert_equal_uint64(box->base_data_offset, 0x0102030405060708ULL, "base data offset");
+    test_assert_equal(box->sample_description_index, 0xFFEEDDCC, "sample description index");
+    test_assert_equal(box->default_sample_duration, 0xAABBCCDD, "default sample duration");
+    test_assert_equal(box->default_sample_size, 0x12345678, "defaut sample size");
+    test_assert_equal(box->default_sample_flags, 0x11223344, "default sample flags");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {

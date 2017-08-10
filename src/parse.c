@@ -45,6 +45,7 @@ const MapItem parse_map[] = {
     {"tkhd", 0, _bmff_parse_box_track_header},
     {"mehd", 0, _bmff_parse_box_movie_extends_header},
     {"trex", 0, _bmff_parse_box_track_extends},
+    {"tfhd", 0, _bmff_parse_box_track_fragment_header},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1141,6 +1142,50 @@ BMFFCode _bmff_parse_box_track_extends(BMFFContext *ctx, const uint8_t *data, si
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_track_fragment_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    TrackFragmentHeaderBox *box = (TrackFragmentHeaderBox*) ctx->malloc(sizeof(TrackFragmentHeaderBox));
+    memset(box, 0, sizeof(TrackFragmentHeaderBox));
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    box->track_id = parse_u32(ptr);
+    ptr += 4;
+
+    if(box->box.flags & eTfhdBaseDataOffsetPresent == eTfhdBaseDataOffsetPresent) {
+        box->base_data_offset = parse_u64(ptr);
+        ptr+= 8;
+    }
+
+    if(box->box.flags & eTfhdSampleDescIdxPresent == eTfhdSampleDescIdxPresent) {
+        box->sample_description_index = parse_u32(ptr);
+        ptr += 4;   
+    }
+
+    if(box->box.flags & eTfhdDefaultSampleDurationPresent == eTfhdDefaultSampleDurationPresent) {
+        box->default_sample_duration = parse_u32(ptr);
+        ptr += 4;
+    }
+
+    if(box->box.flags & eTfhdDefaultSampleSizePresent == eTfhdDefaultSampleSizePresent) {
+        box->default_sample_size = parse_u32(ptr);
+        ptr += 4;
+    }
+
+    if(box->box.flags & eTfhdDefaultSampleFlagsPresent == eTfhdDefaultSampleFlagsPresent) {
+        box->default_sample_flags = parse_u32(ptr);
+        ptr += 4;
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
