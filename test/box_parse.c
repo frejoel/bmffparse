@@ -30,6 +30,7 @@ void test_parse_box_movie_extends_header(void);
 void test_parse_box_track_extends(void);
 void test_parse_box_track_fragment_header(void);
 void test_parse_box_track_run(void);
+void test_parse_box_sample_dependency_type(void);
 
 int main(int argc, char** argv)
 {
@@ -60,6 +61,7 @@ int main(int argc, char** argv)
     test_parse_box_track_extends();
     test_parse_box_track_fragment_header();
     test_parse_box_track_run();
+    test_parse_box_sample_dependency_type();
     return 0;
 }
 
@@ -1722,6 +1724,60 @@ void test_parse_box_track_run(void)
 
     test_end();
 }
+
+void test_parse_box_sample_dependency_type(void)
+{
+    test_start("test_parse_box_sample_dependency_type");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        's', 'd', 't', 'p',
+        0x00, // version
+        0xB0, 0xC0, 0xD0, // flags
+        // samples 1-4
+        0x00, 0x15, 0x2A, 0x06,
+    };
+
+    ctx.sample_count = 4;
+
+    BMFFCode res;
+    SampleDependencyTypeBox *box = NULL;
+    res = _bmff_parse_box_sample_dependency_type(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "sdtp", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xB0C0D0, "flags");
+
+    SampleDependencyType *sample = &box->samples[0];
+    test_assert_equal(sample->depends_on, eBooleanUnknown, "sample 0 depends on");
+    test_assert_equal(sample->is_depended_on, eBooleanUnknown, "sample 0 is depended on");
+    test_assert_equal(sample->has_redundancy, eBooleanUnknown, "sample 0 has redundancy");
+
+    sample = &box->samples[1];
+    test_assert_equal(sample->depends_on, eBooleanTrue, "sample 1 depends on");
+    test_assert_equal(sample->is_depended_on, eBooleanTrue, "sample 1 is depended on");
+    test_assert_equal(sample->has_redundancy, eBooleanTrue, "sample 1 has redundancy");
+
+    sample = &box->samples[2];
+    test_assert_equal(sample->depends_on, eBooleanFalse, "sample 2 depends on");
+    test_assert_equal(sample->is_depended_on, eBooleanFalse, "sample 2 is depended on");
+    test_assert_equal(sample->has_redundancy, eBooleanFalse, "sample 2 has redundancy");
+
+    sample = &box->samples[3];
+    test_assert_equal(sample->depends_on, eBooleanUnknown, "sample 3 depends on");
+    test_assert_equal(sample->is_depended_on, eBooleanTrue, "sample 3 is depended on");
+    test_assert_equal(sample->has_redundancy, eBooleanFalse, "sample 3 has redundancy");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 
 /*
 void test_parse_box_(void)

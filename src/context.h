@@ -93,6 +93,7 @@ typedef struct BMFFContext {
     bmff_realloc realloc;
     bmff_calloc calloc;
     bmff_free free;
+    uint32_t sample_count;      // sample count set by the stsz or stz2 parser and used by the sdtp parser.
 } BMFFContext;
 
 #endif // CONTEXT_H

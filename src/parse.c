@@ -61,6 +61,7 @@ const MapItem parse_map[] = {
     {"trex", 0, _bmff_parse_box_track_extends},
     {"tfhd", 0, _bmff_parse_box_track_fragment_header},
     {"trun", 0, _bmff_parse_box_track_run},
+    {"sdtp", 0, _bmff_parse_box_sample_dependency_type},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1093,7 +1094,7 @@ BMFFCode _bmff_parse_box_track_extends(BMFFContext *ctx, const uint8_t *data, si
 
     // default sample flags
     // (6) reserved
-    box->default_sample_depends_on = ptr[0] & 0x03; // (2) sample depends on
+    box->default_sample_depends_on = (eBoolean)(ptr[0] & 0x03); // (2) sample depends on
     box->default_sample_is_depended_on = (eBoolean)((ptr[1] >> 6) & 0x03); // (2) sample is depended on
     box->default_sample_has_redundancy = (eBoolean)((ptr[1] >> 4) & 0x03); // (2) sample has redundency
     box->default_sample_padding_value = (ptr[1] >> 1) & 0x07; // (3) sample padding value
@@ -1147,7 +1148,7 @@ BMFFCode _bmff_parse_box_track_run(BMFFContext *ctx, const uint8_t *data, size_t
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, TrackRunBox);
@@ -1193,6 +1194,37 @@ BMFFCode _bmff_parse_box_track_run(BMFFContext *ctx, const uint8_t *data, size_t
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_sample_dependency_type(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleDependencyTypeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(ctx->sample_count > 0) {
+        BOX_MALLOCN(box->samples, SampleDependencyType, ctx->sample_count);
+    }
+
+    // use the sample count set in the context.
+    // this is set by the stsz or stz2 parser.
+    uint32_t i=0;
+    for(; i < ctx->sample_count; ++i) {
+        SampleDependencyType *sample = &box->samples[i];
+        // reserved (2)
+        sample->depends_on = (eBoolean)((ptr[0] >> 4) & 0x03); // (2) sample depends on
+        sample->is_depended_on = (eBoolean)((ptr[0] >> 2) & 0x03); // (2) sample is depended on
+        sample->has_redundancy = (eBoolean)(ptr[0] & 0x03); // (2) sample has redundency
+        ptr++;
+    };
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
