@@ -62,6 +62,7 @@ const MapItem parse_map[] = {
     {"tfhd", 0, _bmff_parse_box_track_fragment_header},
     {"trun", 0, _bmff_parse_box_track_run},
     {"sdtp", 0, _bmff_parse_box_sample_dependency_type},
+    {"sbgp", 0, _bmff_parse_box_sample_to_group},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1198,7 +1199,7 @@ BMFFCode _bmff_parse_box_sample_dependency_type(BMFFContext *ctx, const uint8_t 
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, SampleDependencyTypeBox);
@@ -1225,6 +1226,37 @@ BMFFCode _bmff_parse_box_sample_dependency_type(BMFFContext *ctx, const uint8_t 
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
+
+BMFFCode _bmff_parse_box_sample_to_group(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleToGroupBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->grouping_type, ptr);
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, SampleToGroupEntry, box->entry_count);
+    }
+
+    uint32_t i=0;
+    for(; i < box->entry_count; ++i) {
+        SampleToGroupEntry *entry = &box->entries[i];
+        ADV_PARSE_U32(entry->sample_count, ptr);
+        ADV_PARSE_U32(entry->group_description_index, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {

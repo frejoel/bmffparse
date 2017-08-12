@@ -31,6 +31,7 @@ void test_parse_box_track_extends(void);
 void test_parse_box_track_fragment_header(void);
 void test_parse_box_track_run(void);
 void test_parse_box_sample_dependency_type(void);
+void test_parse_box_sample_to_group(void);
 
 int main(int argc, char** argv)
 {
@@ -62,6 +63,7 @@ int main(int argc, char** argv)
     test_parse_box_track_fragment_header();
     test_parse_box_track_run();
     test_parse_box_sample_dependency_type();
+    test_parse_box_sample_to_group();
     return 0;
 }
 
@@ -1778,6 +1780,59 @@ void test_parse_box_sample_dependency_type(void)
     test_end();
 }
 
+void test_parse_box_sample_to_group(void)
+{
+    test_start("test_parse_box_sample_to_group");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x2C,
+        's', 'b', 'g', 'p',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, // grouping type
+        0x00, 0x00, 0x00, 0x03, // entry count
+        // entry 0
+        0x01, 0x02, 0x03, 0x04, // sample count
+        0x05, 0x06, 0x07, 0x08, // group description index
+        // entry 1  
+        0x11, 0x12, 0x13, 0x14, // sample count
+        0x15, 0x16, 0x17, 0x18, // group description index
+        // entry 2
+        0x21, 0x22, 0x23, 0x24, // sample count
+        0x25, 0x26, 0x27, 0x28, // group description index
+    };
+
+    BMFFCode res;
+    SampleToGroupBox *box = NULL;
+    res = _bmff_parse_box_sample_to_group(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "sbgp", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->grouping_type, 0x12345678, "grouping type");
+    test_assert_equal(box->entry_count, 0x03, "entry count");
+
+    SampleToGroupEntry *entry = &box->entries[0];
+    test_assert_equal(entry->sample_count, 0x01020304, "entry 0 sample count");
+    test_assert_equal(entry->group_description_index, 0x05060708, "entry 0 description index");
+
+    entry = &box->entries[1];
+    test_assert_equal(entry->sample_count, 0x11121314, "entry 1 sample count");
+    test_assert_equal(entry->group_description_index, 0x15161718, "entry 1 description index");
+
+    entry = &box->entries[2];
+    test_assert_equal(entry->sample_count, 0x21222324, "entry 2 sample count");
+    test_assert_equal(entry->group_description_index, 0x25262728, "entry 2 description index");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 
 /*
 void test_parse_box_(void)
