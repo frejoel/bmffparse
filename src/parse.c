@@ -3,9 +3,19 @@
 #include <memory.h>
 #include <stdio.h>
 
-#define ADV_PARSE_U32(a,p)      ((a) = parse_u32(p)); ((p)+=4);
-#define BOX_MALLOC(t)           ((t*) ctx->malloc(sizeof(t)))  
-#define BOX_MALLOCN(t,n)        ((t*) ctx->malloc(sizeof(t)*(n)))  
+#define ADV_PARSE_U16(A,P)      ((A) = parse_u16(P)); ((P)+=2);
+#define ADV_PARSE_S16(A,P)      ((A) = (int16_t)parse_u16(P)); ((P)+=2);
+#define ADV_PARSE_U32(A,P)      ((A) = parse_u32(P)); ((P)+=4);
+#define ADV_PARSE_S32(A,P)      ((A) = (int32_t)parse_u32(P)); ((P)+=4);
+#define ADV_PARSE_U64(A,P)      ((A) = parse_u64(P)); ((P)+=8);
+#define ADV_PARSE_S64(A,P)      ((A) = (int64_t)parse_u64(P)); ((P)+=8);
+#define ADV_PARSE_FP16(A,P)     ((A) = parse_fp16(P)); ((P)+=4);
+#define ADV_PARSE_FP8(A,P)      ((A) = parse_fp8(P)); ((P)+=2);
+#define ADV_PARSE_STR(A,P)      ((A) = (P)); while(*(P) != '\0'){(P)++;}; (P)++;
+#define ADV_PARSE_MATRIX(A,P)   int i=0; for(;i<9;++i){(A)[i] = (int32_t)parse_u32(P);(P)+=4;}; 
+
+#define BOX_MALLOC(M, T)        T *M = ctx->malloc(sizeof(T)); memset(M, 0, sizeof(T));
+#define BOX_MALLOCN(M, T, N)    M = ctx->malloc(sizeof(T)*(N)); memset(M, 0, sizeof(T)*(N));      
 
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},
@@ -136,14 +146,13 @@ uint32_t parse_var_length(const uint8_t *bytes, uint8_t length)
 int parse_box(const uint8_t *data, size_t size, Box *box)
 {
     const uint8_t *ptr = data;
-    box->size = parse_u32(ptr);
-    ptr += 4;
+    ADV_PARSE_U32(box->size, ptr);
+    
     memcpy(&box->type, ptr, 4); // hint or cdsc
     ptr += 4;
 
     if(box->size == 1) {
-        box->large_size = parse_u64(ptr);
-        ptr += 8;
+        ADV_PARSE_U64(box->large_size, ptr);
     }else{
         box->large_size = 0;
     }
@@ -164,8 +173,7 @@ int parse_full_box(const uint8_t *data, size_t size, FullBox *box)
     ptr += parse_box(data, size, (Box*)box);
 
     if(box->size == 1) {
-        box->large_size = parse_u64(ptr);
-        ptr += 8;
+        ADV_PARSE_U64(box->large_size, ptr);
     }
 
     box->version = *ptr;
@@ -194,15 +202,14 @@ BMFFCode _bmff_parse_box_file_type(BMFFContext *ctx, const uint8_t *data, size_t
     if(size < 20)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    FileTypeBox *box = (FileTypeBox*) ctx->malloc(sizeof(FileTypeBox));
+    BOX_MALLOC(box, FileTypeBox);
 
     const uint8_t *ptr = data;
     ptr += parse_box(ptr, size, &box->box);
 
     memcpy(&box->major_brand, ptr, 4);
     ptr += 4;
-    box->minor_version = parse_u32(ptr);
-    ptr += 4;
+    ADV_PARSE_U32(box->minor_version, ptr);
     box->nb_compatible_brands = (size-16) / 4;
     box->compatible_brands = ptr;
 
@@ -217,7 +224,7 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
     if(size <= 8)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    ContainerBox *box = (ContainerBox*) ctx->malloc(sizeof(ContainerBox));
+    BOX_MALLOC(box, ContainerBox);
 
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, &box->box);
@@ -237,8 +244,7 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
 
     // allocate room for the children
     if(box->child_count > 0) {
-        box->children = (Box**) ctx->malloc(sizeof(Box*) * box->child_count);
-        memset(box->children, 0, sizeof(Box*) * box->child_count);
+        BOX_MALLOCN(box->children, Box*, box->child_count);
     }
 
     // parse all the Boxes.
@@ -293,7 +299,7 @@ BMFFCode _bmff_parse_box_track_reference(BMFFContext *ctx, const uint8_t *data, 
     if(size < 8)    return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    TrackReferenceTypeBox *box = (TrackReferenceTypeBox*) ctx->malloc(sizeof(TrackReferenceTypeBox));
+    BOX_MALLOC(box, TrackReferenceTypeBox);
 
     print_box(data, size);
 
@@ -301,12 +307,11 @@ BMFFCode _bmff_parse_box_track_reference(BMFFContext *ctx, const uint8_t *data, 
     ptr += parse_box(ptr, size, &box->box); // hint or cdsc
 
     box->nb_track_ids = (box->box.size - 8) / 4;
-    box->track_ids = (uint32_t*) ctx->malloc(sizeof(uint32_t) * box->nb_track_ids);
+    BOX_MALLOCN(box->track_ids, uint32_t, box->nb_track_ids);
 
     int i = 0;
     for(; i < box->nb_track_ids; ++i) {
-        box->track_ids[i] = parse_u32(ptr);
-        ptr += 4;
+        ADV_PARSE_U32(box->track_ids[i], ptr);
     }
 
     *box_ptr = (Box*)box;
@@ -321,7 +326,7 @@ BMFFCode _bmff_parse_box_full(BMFFContext *ctx, const uint8_t *data, size_t size
     if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    FullBox *box = (FullBox*) ctx->malloc(sizeof(FullBox));
+    BOX_MALLOC(box, FullBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, box);
@@ -337,20 +342,18 @@ BMFFCode _bmff_parse_box_progressive_download_info(BMFFContext *ctx, const uint8
     if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    ProgressiveDownloadBox *box = (ProgressiveDownloadBox*) ctx->malloc(sizeof(ProgressiveDownloadBox));
+    BOX_MALLOC(box, ProgressiveDownloadBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
     box->nb_bitrates = (size - (ptr - data)) / 8;
-    box->bitrates = (ProgressiveDownloadBitrate*) ctx->malloc(sizeof(ProgressiveDownloadBitrate) * box->nb_bitrates);
+    BOX_MALLOCN(box->bitrates, ProgressiveDownloadBitrate, box->nb_bitrates);
 
     int i=0;
     for(; i<box->nb_bitrates; ++i) {
-        box->bitrates[i].rate = parse_u32(ptr);
-        ptr += 4;
-        box->bitrates[i].initial_delay = parse_u32(ptr);
-        ptr += 4;
+        ADV_PARSE_U32(box->bitrates[i].rate, ptr);
+        ADV_PARSE_U32(box->bitrates[i].initial_delay, ptr);
     }
 
     *box_ptr = (Box*)box;
@@ -364,7 +367,7 @@ BMFFCode _bmff_parse_box_media_data(BMFFContext *ctx, const uint8_t *data, size_
     if(size < 8)    return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    MediaDataBox *box = (MediaDataBox*) ctx->malloc(sizeof(MediaDataBox));
+    BOX_MALLOC(box, MediaDataBox);
 
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, &box->box);
@@ -383,14 +386,14 @@ BMFFCode _bmff_parse_box_handler(BMFFContext *ctx, const uint8_t *data, size_t s
     if(size < 22)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    HandlerBox *box = (HandlerBox*) ctx->malloc(sizeof(HandlerBox));
+    BOX_MALLOC(box, HandlerBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
     ptr += 4; // pre-defined (0).
-    box->handler_type = parse_u32(ptr);
-    ptr += 16; // handler type (4) and uint32_t x 3 (12) reserved.
+    ADV_PARSE_U32(box->handler_type, ptr);
+    ptr += 12; // uint32_t x 3 (12) reserved.
     box->name = ptr; // NULL terminated string.
 
     *box_ptr = (Box*)box;
@@ -404,12 +407,12 @@ BMFFCode _bmff_parse_box_primary_item(BMFFContext *ctx, const uint8_t *data, siz
     if(size < 14)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    PrimaryItemBox *box = (PrimaryItemBox*) ctx->malloc(sizeof(PrimaryItemBox));
+    BOX_MALLOC(box, PrimaryItemBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->item_id = parse_u16(ptr);
+    ADV_PARSE_U16(box->item_id, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -422,7 +425,7 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
     if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    ItemLocationBox *box = (ItemLocationBox*) ctx->malloc(sizeof(ItemLocationBox));
+    BOX_MALLOC(box, ItemLocationBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
@@ -434,11 +437,10 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
     box->base_offset_size = ((*ptr) >> 4) & 0x0F;
     ptr++;
 
-    box->item_count = parse_u16(ptr);
-    ptr += 2;
+    ADV_PARSE_U16(box->item_count, ptr);
 
     if(box->item_count > 0) {
-        box->items = (ItemLocation*) ctx->malloc(sizeof(ItemLocation) * box->item_count);
+        BOX_MALLOCN(box->items, ItemLocation, box->item_count);
 
         int offset_shift = 64 - (((int)box->offset_size) * 8);
         int length_shift = 64 - (((int)box->length_size) * 8);
@@ -446,45 +448,39 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
         int i=0;
         for(; i < box->item_count; ++i) {
             ItemLocation *item = &box->items[i];
-            item->item_id = parse_u16(ptr);
-            ptr += 2;
-            item->data_reference_index = parse_u16(ptr);
-            ptr += 2;
+            ADV_PARSE_U16(item->item_id, ptr);
+            ADV_PARSE_U16(item->data_reference_index, ptr);
             if(box->base_offset_size == 4) {
                 uint32_t val = parse_u32(ptr);
                 item->base_offset = (uint64_t)val;
                 ptr += 4;
             }else if(box->base_offset_size == 8) {
-                item->base_offset = parse_u64(ptr);
-                ptr += 8;
+                ADV_PARSE_U64(item->base_offset, ptr);
             }else{
                 item->base_offset = 0;
             }
-            item->extent_count = parse_u16(ptr);
-            ptr += 2;
+            ADV_PARSE_U16(item->extent_count, ptr);
 
             if(item->extent_count > 0) {
-                item->extents = (Extent*) ctx->malloc(sizeof(Extent) * item->extent_count);
+                BOX_MALLOCN(item->extents, Extent, item->extent_count);
                 int j=0;
                 for(; j<item->extent_count; ++j) {
                     Extent *extent = &item->extents[j];
                     if(box->offset_size == 4) {
                         uint32_t val = parse_u32(ptr);
-                        extent->offset = val;
+                        extent->offset = (uint64_t)val;
                         ptr += 4;
                     }else if(box->offset_size == 8) {
-                        extent->offset = parse_u64(ptr);
-                        ptr += 8;
+                        ADV_PARSE_U64(extent->offset, ptr);
                     }else{
                         extent->offset = 0;
                     }
                     if(box->length_size == 4) {
                         uint32_t val = parse_u32(ptr);
-                        extent->length = val;
+                        extent->length = (uint64_t)val;
                         ptr += 4;
                     }else if(box->length_size == 8) {
-                        extent->length = parse_u64(ptr);
-                        ptr += 8;
+                        ADV_PARSE_U64(extent->length, ptr);
                     }else{
                         extent->length = 0;
                     }
@@ -504,25 +500,15 @@ BMFFCode _bmff_parse_box_item_info_entry(BMFFContext *ctx, const uint8_t *data, 
     if(size < 19)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    ItemInfoEntry *box = (ItemInfoEntry*) ctx->malloc(sizeof(ItemInfoEntry));
+    BOX_MALLOC(box, ItemInfoEntry);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->item_id = parse_u16(ptr);
-    ptr += 2;
-    box->item_protection_index = parse_u16(ptr);
-    ptr += 2;
-    box->item_name = ptr;
-    while(*ptr != '\0') {
-        ptr++;
-    }
-    ptr++;
-    box->content_type = ptr;
-    while(*ptr != '\0') {
-        ptr++;
-    }
-    ptr++;
+    ADV_PARSE_U16(box->item_id, ptr);
+    ADV_PARSE_U16(box->item_protection_index, ptr);
+    ADV_PARSE_STR(box->item_name, ptr);
+    ADV_PARSE_STR(box->content_type, ptr);
     box->content_encoding = ptr;
 
     *box_ptr = (Box*)box;
@@ -536,15 +522,14 @@ BMFFCode _bmff_parse_box_item_info(BMFFContext *ctx, const uint8_t *data, size_t
     if(size < 14)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    ItemInfoBox *box = (ItemInfoBox*) ctx->malloc(sizeof(ItemInfoBox));
+    BOX_MALLOC(box, ItemInfoBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->entry_count = parse_u16(ptr);
-    ptr += 2;
+    ADV_PARSE_U16(box->entry_count, ptr);
 
-    box->entries = (ItemInfoEntry**) ctx->malloc(sizeof(size_t) * box->entry_count);
+    BOX_MALLOCN(box->entries, ItemInfoEntry*, box->entry_count);
     int i=0;
     for(; i < box->entry_count; ++i) {
         BMFFCode res = _bmff_parse_box_item_info_entry(ctx, ptr, size-(ptr-data), (Box**)&box->entries[i]);
@@ -567,7 +552,7 @@ BMFFCode _bmff_parse_box_ipmp_control(BMFFContext *ctx, const uint8_t *data, siz
 
     const uint8_t *ptr = data;
 
-    IPMPControlBox *box = (IPMPControlBox*) ctx->malloc(sizeof(IPMPControlBox));
+    BOX_MALLOC(box, IPMPControlBox);
     ptr += parse_full_box(data, size, &box->box);
 
     box->tool_list.tag = ptr[0];
@@ -576,9 +561,7 @@ BMFFCode _bmff_parse_box_ipmp_control(BMFFContext *ctx, const uint8_t *data, siz
 
     if(box->tool_list.num_tools > 0)
     {
-        size_t tool_size = sizeof(IPMPTool) * box->tool_list.num_tools;
-        box->tool_list.ipmp_tools = (IPMPTool*) ctx->malloc(tool_size);
-        memset(box->tool_list.ipmp_tools, 0, tool_size);
+        BOX_MALLOCN(box->tool_list.ipmp_tools, IPMPTool, box->tool_list.num_tools);
 
         int i = 0;
         for(; i < box->tool_list.num_tools; ++i) {
@@ -608,7 +591,7 @@ BMFFCode _bmff_parse_box_ipmp_control(BMFFContext *ctx, const uint8_t *data, siz
 
             if(tool->num_urls > 0)
             {
-                tool->tool_urls = (uint8_t**) ctx->malloc(sizeof(size_t) * tool->num_urls);
+                BOX_MALLOCN(tool->tool_urls, uint8_t*, tool->num_urls);
 
                 int j=0;
                 for(; j < tool->num_urls; ++j) {
@@ -638,7 +621,7 @@ BMFFCode _bmff_parse_box_original_format(BMFFContext *ctx, const uint8_t *data, 
     if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    OriginalFormatBox *box = (OriginalFormatBox*) ctx->malloc(sizeof(OriginalFormatBox));
+    BOX_MALLOC(box, OriginalFormatBox);
 
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, &box->box);
@@ -656,7 +639,7 @@ BMFFCode _bmff_parse_box_ipmp_info(BMFFContext *ctx, const uint8_t *data, size_t
     if(size < 13)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    IPMPInfoBox *box = (IPMPInfoBox*) ctx->malloc(sizeof(IPMPInfoBox));
+    BOX_MALLOC(box, IPMPInfoBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
@@ -676,16 +659,14 @@ BMFFCode _bmff_parse_box_scheme_type(BMFFContext *ctx, const uint8_t *data, size
     if(size < 20)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    SchemeTypeBox *box = (SchemeTypeBox*) ctx->malloc(sizeof(SchemeTypeBox));
-    memset(box, 0, sizeof(box));
+    BOX_MALLOC(box, SchemeTypeBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
     memcpy(box->scheme_type, ptr, 4);
     ptr += 4;
-    box->scheme_version = parse_u32(ptr);
-    ptr += 4;
+    ADV_PARSE_U32(box->scheme_version, ptr);
 
     if(box->box.flags && 0x000001) {
         box->scheme_uri = ptr;
@@ -702,7 +683,7 @@ BMFFCode _bmff_parse_box_scheme_info(BMFFContext *ctx, const uint8_t *data, size
     if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    SchemeInformationBox *box = (SchemeInformationBox*) ctx->malloc(sizeof(SchemeInformationBox));
+    BOX_MALLOC(box, SchemeInformationBox);
 
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, &box->box);
@@ -720,7 +701,7 @@ BMFFCode _bmff_parse_box_scheme_info(BMFFContext *ctx, const uint8_t *data, size
     }
 
     // allocate Box array
-    box->scheme_specific_data = (Box*)ctx->malloc(sizeof(Box) * count);
+    BOX_MALLOCN(box->scheme_specific_data, Box, count);
     box->scheme_specific_data_count = count;
 
     // parse Boxes
@@ -741,8 +722,7 @@ BMFFCode _bmff_parse_box_protection_scheme_info(BMFFContext *ctx, const uint8_t 
     if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    ProtectionSchemeInfoBox *box = (ProtectionSchemeInfoBox*) ctx->malloc(sizeof(ProtectionSchemeInfoBox));
-    memset(box, 0, sizeof(ProtectionSchemeInfoBox));
+    BOX_MALLOC(box, ProtectionSchemeInfoBox);
 
     const uint8_t *ptr = data;
     ptr += parse_original_format_box(data, size, &box->box);
@@ -788,18 +768,17 @@ BMFFCode _bmff_parse_box_item_protection(BMFFContext *ctx, const uint8_t *data, 
     if(size < 14)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    ItemProtectionBox *box = (ItemProtectionBox*) ctx->malloc(sizeof(ItemProtectionBox));
+    BOX_MALLOC(box, ItemProtectionBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
     const uint8_t *end = data + box->box.size;
 
-    box->protection_count = parse_u16(ptr);
-    ptr += 2;
+    ADV_PARSE_U16(box->protection_count, ptr);
 
     if(box->protection_count > 0) {
-        box->protection_info = (ProtectionSchemeInfoBox **) ctx->malloc(sizeof(size_t) * box->protection_count);
+        BOX_MALLOCN(box->protection_info, ProtectionSchemeInfoBox*, box->protection_count)
 
         int i=0;
         for(; i<box->protection_count; ++i) {
@@ -823,8 +802,7 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
     if(size < 34)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    MetaBox *box = (MetaBox*) ctx->malloc(sizeof(MetaBox));
-    memset(box, 0, sizeof(MetaBox));
+    BOX_MALLOC(box, MetaBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
@@ -899,40 +877,32 @@ BMFFCode _bmff_parse_box_movie_header(BMFFContext *ctx, const uint8_t *data, siz
     if(size < 32)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    MovieHeaderBox *box = (MovieHeaderBox*) ctx->malloc(sizeof(MovieHeaderBox));
+    BOX_MALLOC(box, MovieHeaderBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
     if(box->box.version == 1) {
-      box->creation_time = parse_u64(ptr);
-      box->modification_time = parse_u64(ptr + 8);
-      box->timescale = parse_u64(ptr + 16);
-      box->duration = parse_u64(ptr + 24);
-      ptr += 32;
+      ADV_PARSE_U64(box->creation_time, ptr);
+      ADV_PARSE_U64(box->modification_time, ptr);
+      ADV_PARSE_U64(box->timescale, ptr);
+      ADV_PARSE_U64(box->duration, ptr);
     }else{
-      box->creation_time = parse_u32(ptr);
-      box->modification_time = parse_u32(ptr + 4);
-      box->timescale = parse_u32(ptr + 8);
-      box->duration = parse_u32(ptr + 12);
-      ptr += 16;
+      ADV_PARSE_U32(box->creation_time, ptr);
+      ADV_PARSE_U32(box->modification_time, ptr);
+      ADV_PARSE_U32(box->timescale, ptr);
+      ADV_PARSE_U32(box->duration, ptr);
     }
 
-    box->rate = parse_fp16(ptr);
-    ptr += 4;
-    box->volume = parse_fp8(ptr);
-    ptr += 2;
+    ADV_PARSE_FP16(box->rate, ptr);
+    ADV_PARSE_FP8(box->volume, ptr);
     // reserved 16, 32[2]
     ptr += 10; // (16 + 32 + 32) / 8
     // parse the matrix
-    int i=0;
-    for(; i<9; ++i) {
-      box->matrix[i] = (int32_t) parse_u32(ptr);
-      ptr += 4;
-    }
+    ADV_PARSE_MATRIX(box->matrix, ptr);
     // pre defined 32[6]
     ptr += 24; // 32 / 8 * 6
-    box->next_track_id = parse_u32(ptr);
+    ADV_PARSE_U32(box->next_track_id, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -945,12 +915,12 @@ BMFFCode _bmff_parse_box_movie_fragment_header(BMFFContext *ctx, const uint8_t *
     if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    MovieFragmentHeaderBox *box = (MovieFragmentHeaderBox*) ctx->malloc(sizeof(MovieFragmentHeaderBox));
+    BOX_MALLOC(box, MovieFragmentHeaderBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->sequence_number = parse_u32(ptr);
+    ADV_PARSE_U32(box->sequence_number, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -963,37 +933,31 @@ BMFFCode _bmff_parse_box_track_fragment_random_access(BMFFContext *ctx, const ui
     if(size < 24)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    TrackFragmentRandomAccessBox *box = (TrackFragmentRandomAccessBox*) ctx->malloc(sizeof(TrackFragmentRandomAccessBox));
+    BOX_MALLOC(box, TrackFragmentRandomAccessBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->track_id = parse_u32(ptr);
-    ptr += 4;
+    ADV_PARSE_U32(box->track_id, ptr);
     ptr += 3; // reserved
     uint8_t value = ptr[0];
     box->length_size_of_traf_num = (value >> 4) & 0x03;
     box->length_size_of_trun_num = (value >> 2) & 0x03;
     box->length_size_of_sample_num = value & 0x03;
     ptr++;
-    box->number_of_entry = parse_u32(ptr);
-    ptr += 4;
+    ADV_PARSE_U32(box->number_of_entry, ptr);
 
-    box->entries = (Entry*) ctx->malloc(sizeof(Entry) * box->number_of_entry);
+    BOX_MALLOCN(box->entries, Entry, box->number_of_entry);
 
     uint32_t i=0;
     for(; i<box->number_of_entry; ++i) {
         Entry *entry = &box->entries[i];
         if(box->box.version == 1) {
-            entry->entry_time = parse_u64(ptr);
-            ptr += 8;
-            entry->moof_offset = parse_u64(ptr);
-            ptr += 8;
+            ADV_PARSE_U64(entry->entry_time, ptr);
+            ADV_PARSE_U64(entry->moof_offset, ptr);
         }else{
-            entry->entry_time = parse_u32(ptr);
-            ptr += 4;
-            entry->moof_offset = parse_u32(ptr);
-            ptr += 4;
+            ADV_PARSE_U32(entry->entry_time, ptr);
+            ADV_PARSE_U32(entry->moof_offset, ptr);
         }
 
         entry->traf_number = parse_var_length(ptr, box->length_size_of_traf_num + 1);
@@ -1015,12 +979,12 @@ BMFFCode _bmff_parse_box_movie_fragment_random_access_offset(BMFFContext *ctx, c
     if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    MovieFragmentRandomAccessOffsetBox *box = (MovieFragmentRandomAccessOffsetBox*) ctx->malloc(sizeof(MovieFragmentRandomAccessOffsetBox));
+    BOX_MALLOC(box, MovieFragmentRandomAccessOffsetBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->size = parse_u32(ptr);
+    ADV_PARSE_U32(box->size, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -1033,7 +997,7 @@ BMFFCode _bmff_parse_box_xml(BMFFContext *ctx, const uint8_t *data, size_t size,
     if(size < 13)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    XMLBox *box = (XMLBox*) ctx->malloc(sizeof(XMLBox));
+    BOX_MALLOC(box, XMLBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
@@ -1052,43 +1016,37 @@ BMFFCode _bmff_parse_box_track_header(BMFFContext *ctx, const uint8_t *data, siz
     if(size < 012)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    TrackHeaderBox *box = (TrackHeaderBox*) ctx->malloc(sizeof(TrackHeaderBox));
+    BOX_MALLOC(box, TrackHeaderBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
     if(box->box.version == 1) {
-        box->creation_time = parse_u64(ptr);
-        box->modification_time = parse_u64(ptr + 8);
-        box->track_id = parse_u32(ptr + 16);
+        ADV_PARSE_U64(box->creation_time, ptr);
+        ADV_PARSE_U64(box->modification_time, ptr);
+        ADV_PARSE_U32(box->track_id, ptr);
         // reserved (32)
-        box->duration = parse_u64(ptr + 24);
-        ptr += 32;
+        ptr += 4;
+        ADV_PARSE_U64(box->duration, ptr);
     }else{
-        box->creation_time = parse_u32(ptr);
-        box->modification_time = parse_u32(ptr + 4);
-        box->track_id = parse_u32(ptr + 8);
+        ADV_PARSE_U32(box->creation_time, ptr);
+        ADV_PARSE_U32(box->modification_time, ptr);
+        ADV_PARSE_U32(box->track_id, ptr);
         // reserved (32)
-        box->duration = parse_u32(ptr + 16);
-        ptr += 20;
+        ptr += 4;
+        ADV_PARSE_U32(box->duration, ptr);
     }
 
     // reserved (32 * 2)
     ptr += 8;
-    box->layer = (int16_t)parse_u16(ptr);
-    box->alternate_group = (int16_t)parse_u16(ptr + 2);
-    box->volume = parse_fp8(ptr + 4);
+    ADV_PARSE_S16(box->layer, ptr);
+    ADV_PARSE_S16(box->alternate_group, ptr);
+    ADV_PARSE_FP8(box->volume, ptr);
     // reserved (16)
-    ptr += 8;
-    
-    int i=0;
-    for(; i<9; ++i) {
-        box->matrix[i] = (int32_t) parse_u32(ptr);
-        ptr += 4;
-    }
-
-    box->width = parse_u32(ptr);
-    box->height = parse_u32(ptr + 4);
+    ptr += 2;
+    ADV_PARSE_MATRIX(box->matrix, ptr);
+    ADV_PARSE_U32(box->width, ptr);
+    ADV_PARSE_U32(box->height, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -1101,15 +1059,15 @@ BMFFCode _bmff_parse_box_movie_extends_header(BMFFContext *ctx, const uint8_t *d
     if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    MovieExtendsHeaderBox *box = (MovieExtendsHeaderBox*) ctx->malloc(sizeof(MovieExtendsHeaderBox));
+    BOX_MALLOC(box, MovieExtendsHeaderBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
     if(box->box.version == 1) {
-        box->fragment_duration = parse_u64(ptr);
+        ADV_PARSE_U64(box->fragment_duration, ptr);
     }else{
-        box->fragment_duration = parse_u32(ptr);
+        ADV_PARSE_U32(box->fragment_duration, ptr);
     }
 
     *box_ptr = (Box*)box;
@@ -1123,16 +1081,15 @@ BMFFCode _bmff_parse_box_track_extends(BMFFContext *ctx, const uint8_t *data, si
     if(size < 32)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    TrackExtendsBox *box = (TrackExtendsBox*) ctx->malloc(sizeof(TrackExtendsBox));
+    BOX_MALLOC(box, TrackExtendsBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->track_id = parse_u32(ptr);
-    box->default_sample_description_index = parse_u32(ptr + 4);
-    box->default_sample_duration = parse_u32(ptr + 8);
-    box->default_sample_size = parse_u32(ptr + 12);
-    ptr += 16;
+    ADV_PARSE_U32(box->track_id, ptr);
+    ADV_PARSE_U32(box->default_sample_description_index, ptr);
+    ADV_PARSE_U32(box->default_sample_duration, ptr);
+    ADV_PARSE_U32(box->default_sample_size, ptr);
 
     // default sample flags
     // (6) reserved
@@ -1141,7 +1098,8 @@ BMFFCode _bmff_parse_box_track_extends(BMFFContext *ctx, const uint8_t *data, si
     box->default_sample_has_redundancy = (eBoolean)((ptr[1] >> 4) & 0x03); // (2) sample has redundency
     box->default_sample_padding_value = (ptr[1] >> 1) & 0x07; // (3) sample padding value
     box->default_sample_is_difference_sample = (ptr[1] & 0x01) == 1 ? eBooleanTrue : eBooleanFalse; // (1) sample is difference sample
-    box->default_sample_degradation_priority = parse_u16(ptr + 2); // (16) sample degradation priority
+    ptr += 2;
+    ADV_PARSE_U16(box->default_sample_degradation_priority, ptr); // (16) sample degradation priority
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -1154,38 +1112,31 @@ BMFFCode _bmff_parse_box_track_fragment_header(BMFFContext *ctx, const uint8_t *
     if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    TrackFragmentHeaderBox *box = (TrackFragmentHeaderBox*) ctx->malloc(sizeof(TrackFragmentHeaderBox));
-    memset(box, 0, sizeof(TrackFragmentHeaderBox));
+    BOX_MALLOC(box, TrackFragmentHeaderBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    box->track_id = parse_u32(ptr);
-    ptr += 4;
+    ADV_PARSE_U32(box->track_id, ptr);
 
     if(box->box.flags & eTfhdBaseDataOffsetPresent == eTfhdBaseDataOffsetPresent) {
-        box->base_data_offset = parse_u64(ptr);
-        ptr+= 8;
+        ADV_PARSE_U64(box->base_data_offset, ptr);
     }
 
     if(box->box.flags & eTfhdSampleDescIdxPresent == eTfhdSampleDescIdxPresent) {
-        box->sample_description_index = parse_u32(ptr);
-        ptr += 4;   
+        ADV_PARSE_U32(box->sample_description_index, ptr);
     }
 
     if(box->box.flags & eTfhdDefaultSampleDurationPresent == eTfhdDefaultSampleDurationPresent) {
-        box->default_sample_duration = parse_u32(ptr);
-        ptr += 4;
+        ADV_PARSE_U32(box->default_sample_duration, ptr);
     }
 
     if(box->box.flags & eTfhdDefaultSampleSizePresent == eTfhdDefaultSampleSizePresent) {
-        box->default_sample_size = parse_u32(ptr);
-        ptr += 4;
+        ADV_PARSE_U32(box->default_sample_size, ptr);
     }
 
     if(box->box.flags & eTfhdDefaultSampleFlagsPresent == eTfhdDefaultSampleFlagsPresent) {
-        box->default_sample_flags = parse_u32(ptr);
-        ptr += 4;
+        ADV_PARSE_U32(box->default_sample_flags, ptr);
     }
 
     *box_ptr = (Box*)box;
@@ -1199,7 +1150,7 @@ BMFFCode _bmff_parse_box_track_run(BMFFContext *ctx, const uint8_t *data, size_t
     if(size < 012)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    TrackRunBox *box = BOX_MALLOC(TrackRunBox);
+    BOX_MALLOC(box, TrackRunBox);
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
@@ -1207,7 +1158,7 @@ BMFFCode _bmff_parse_box_track_run(BMFFContext *ctx, const uint8_t *data, size_t
     ADV_PARSE_U32(box->sample_count, ptr);
 
     if(box->sample_count > 0) {
-        box->samples = BOX_MALLOCN(TrackRunSample, box->sample_count);
+        BOX_MALLOCN(box->samples, TrackRunSample, box->sample_count);
     }
 
     eTrackRunFlags flags = box->box.flags;
@@ -1250,7 +1201,7 @@ BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Bo
     if(size < 012)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    Box *box = MALLOC_BOX();
+    BOX_MALLOC(box, );
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
