@@ -1632,12 +1632,14 @@ void test_parse_box_track_fragment_header(void)
     test_assert_equal(strncmp(box->box.type, "tfhd", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0x01003B, "flags value");
+    
     eTrackHeaderBoxFlags flags = eTfhdBaseDataOffsetPresent;
     flags |= eTfhdDefaultSampleDurationPresent;
     flags |= eTfhdDefaultSampleFlagsPresent;
     flags |= eTfhdDefaultSampleSizePresent;
     flags |= eTfhdSampleDescIdxPresent;
     flags |= eTfhdDurationIsEmpty;
+
     test_assert_equal(box->box.flags, (uint32_t)flags, "flags");
     test_assert_equal(box->track_id, 0xA1B2C3D4, "track id");
     test_assert_equal_uint64(box->base_data_offset, 0x0102030405060708ULL, "base data offset");

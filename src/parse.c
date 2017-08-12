@@ -1186,6 +1186,7 @@ BMFFCode _bmff_parse_box_track_fragment_header(BMFFContext *ctx, const uint8_t *
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
+
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
