@@ -3,6 +3,10 @@
 #include <memory.h>
 #include <stdio.h>
 
+#define ADV_PARSE_U32(a,p)      ((a) = parse_u32(p)); ((p)+=4);
+#define BOX_MALLOC(t)           ((t*) ctx->malloc(sizeof(t)))  
+#define BOX_MALLOCN(t,n)        ((t*) ctx->malloc(sizeof(t)*(n)))  
+
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},
     {"moov", 1, _bmff_parse_box_generic_container},
@@ -46,6 +50,7 @@ const MapItem parse_map[] = {
     {"mehd", 0, _bmff_parse_box_movie_extends_header},
     {"trex", 0, _bmff_parse_box_track_extends},
     {"tfhd", 0, _bmff_parse_box_track_fragment_header},
+    {"trun", 0, _bmff_parse_box_track_run},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1187,6 +1192,56 @@ BMFFCode _bmff_parse_box_track_fragment_header(BMFFContext *ctx, const uint8_t *
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_track_run(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    TrackRunBox *box = BOX_MALLOC(TrackRunBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sample_count, ptr);
+
+    if(box->sample_count > 0) {
+        box->samples = BOX_MALLOCN(TrackRunSample, box->sample_count);
+    }
+
+    eTrackRunFlags flags = box->box.flags;
+
+    if(flags & eTrunDataOffsetPresent == eTrunDataOffsetPresent) {
+        ADV_PARSE_U32(box->data_offset, ptr);
+    }
+
+    if(flags & eTrunFirstSampleFlagsPresent == eTrunFirstSampleFlagsPresent) {
+        ADV_PARSE_U32(box->first_sample_flags, ptr);
+    }
+
+    uint32_t i=0;
+    for(;i < box->sample_count; ++i) {
+        TrackRunSample *sample = &box->samples[i];
+
+        if(flags & eTrunSampleDurationPresent == eTrunSampleDurationPresent) {
+            ADV_PARSE_U32(sample->duration, ptr);
+        }
+        if(flags & eTrunSampleSizePresent == eTrunSampleSizePresent) {
+            ADV_PARSE_U32(sample->size, ptr);
+        }
+        if(flags & eTrunSampleFlagsPresent == eTrunSampleFlagsPresent) {
+            ADV_PARSE_U32(sample->flags, ptr);
+        }
+        if(flags & eTrunSampleCompTimeOffsetsPresent == eTrunSampleCompTimeOffsetsPresent) {
+            ADV_PARSE_U32(sample->composition_time_offset, ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
@@ -1195,7 +1250,7 @@ BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Bo
     if(size < 012)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    Box *box = (Box*) ctx->malloc(sizeof(Box));
+    Box *box = MALLOC_BOX();
 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);

@@ -29,6 +29,7 @@ void test_parse_box_track_header(void);
 void test_parse_box_movie_extends_header(void);
 void test_parse_box_track_extends(void);
 void test_parse_box_track_fragment_header(void);
+void test_parse_box_track_run(void);
 
 int main(int argc, char** argv)
 {
@@ -58,6 +59,7 @@ int main(int argc, char** argv)
     test_parse_box_movie_extends_header();
     test_parse_box_track_extends();
     test_parse_box_track_fragment_header();
+    test_parse_box_track_run();
     return 0;
 }
 
@@ -1632,7 +1634,7 @@ void test_parse_box_track_fragment_header(void)
     test_assert_equal(strncmp(box->box.type, "tfhd", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0x01003B, "flags value");
-    
+
     eTrackHeaderBoxFlags flags = eTfhdBaseDataOffsetPresent;
     flags |= eTfhdDefaultSampleDurationPresent;
     flags |= eTfhdDefaultSampleFlagsPresent;
@@ -1647,6 +1649,74 @@ void test_parse_box_track_fragment_header(void)
     test_assert_equal(box->default_sample_duration, 0xAABBCCDD, "default sample duration");
     test_assert_equal(box->default_sample_size, 0x12345678, "defaut sample size");
     test_assert_equal(box->default_sample_flags, 0x11223344, "default sample flags");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_track_run(void)
+{
+    test_start("test_parse_box_track_run");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x48,
+        't', 'r', 'u', 'n',
+        0x00, // version
+        0x00, 0x0F, 0x05, // flags
+        0x00, 0x00, 0x00, 0x03, // sample count
+        0x12, 0x34, 0x56, 0x78, // data offset
+        0xA1, 0xB2, 0xC3, 0xD4, // first sample flags
+        // sample 0
+        0x01, 0x02, 0x03, 0x04, // duration
+        0x05, 0x06, 0x07, 0x08, // size
+        0x09, 0x0A, 0x0B, 0x0C, // flags
+        0x0D, 0x0E, 0x0F, 0x00, // composition time offset
+        // sample 1
+        0x11, 0x12, 0x13, 0x14, // duration
+        0x15, 0x16, 0x17, 0x18, // size
+        0x19, 0x1A, 0x1B, 0x1C, // flags
+        0x1D, 0x1E, 0x1F, 0x10, // composition time offset
+        // sample 2
+        0x21, 0x22, 0x23, 0x24, // duration
+        0x25, 0x26, 0x27, 0x28, // size
+        0x29, 0x2A, 0x2B, 0x2C, // flags
+        0x2D, 0x2E, 0x2F, 0x20, // composition time offset
+    };
+
+    BMFFCode res;
+    TrackRunBox *box = NULL;
+    res = _bmff_parse_box_track_run(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "trun", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0x000F05, "flags");
+    test_assert_equal(box->sample_count, 0x03, "sample count");
+    test_assert_equal(box->data_offset, 0x12345678, "data offset");
+    test_assert_equal(box->first_sample_flags, 0xA1B2C3D4, "first sample flags");
+
+    TrackRunSample *sample = &box->samples[0];
+    test_assert_equal(sample->duration, 0x01020304, "sample 0 duration");
+    test_assert_equal(sample->size, 0x05060708, "sample 0 size");
+    test_assert_equal(sample->flags, 0x090A0B0C, "sample 0 flags");
+    test_assert_equal(sample->composition_time_offset, 0x0D0E0F00, "sample 0 composition time offset");
+
+    sample = &box->samples[1];
+    test_assert_equal(sample->duration, 0x11121314, "sample 1 duration");
+    test_assert_equal(sample->size, 0x15161718, "sample 1 size");
+    test_assert_equal(sample->flags, 0x191A1B1C, "sample 1 flags");
+    test_assert_equal(sample->composition_time_offset, 0x1D1E1F10, "sample 1 composition time offset");
+
+    sample = &box->samples[2];
+    test_assert_equal(sample->duration, 0x21222324, "sample 2 duration");
+    test_assert_equal(sample->size, 0x25262728, "sample 2 size");
+    test_assert_equal(sample->flags, 0x292A2B2C, "sample 2 flags");
+    test_assert_equal(sample->composition_time_offset, 0x2D2E2F20, "sample 2 composition time offset");
 
     bmff_context_destroy(&ctx);
 

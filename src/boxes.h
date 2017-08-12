@@ -42,6 +42,15 @@ typedef enum {
     eTfhdDurationIsEmpty                = 0x010000
 } eTrackHeaderBoxFlags;
 
+typedef enum {
+    eTrunDataOffsetPresent              = 0x000001,
+    eTrunFirstSampleFlagsPresent        = 0x000004,
+    eTrunSampleDurationPresent          = 0x000100,
+    eTrunSampleSizePresent              = 0x000200,
+    eTrunSampleFlagsPresent             = 0x000400,
+    eTrunSampleCompTimeOffsetsPresent   = 0x000800,
+} eTrackRunFlags;
+
 typedef float fxpt16_t;  // Fixed Point 16.16
 typedef float fxpt8_t;   // Fixed Point 8.8
 
