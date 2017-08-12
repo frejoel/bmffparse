@@ -403,11 +403,11 @@ typedef struct SubSampleInformationEntry {
     SubSampleInformation    *subsamples;
 } SubSampleInformationEntry;
 
-typedef struct SubSampleInforamtionBox { // subs
+typedef struct SubSampleInformationBox { // subs
     FullBox                     box;
     uint32_t                    entry_count;
     SubSampleInformationEntry   *entries;
-} SubSampleInforamtionBox;
+} SubSampleInformationBox;
 
 typedef struct CopyrightBox { // cprt
     FullBox     box;

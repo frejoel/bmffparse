@@ -32,6 +32,7 @@ void test_parse_box_track_fragment_header(void);
 void test_parse_box_track_run(void);
 void test_parse_box_sample_dependency_type(void);
 void test_parse_box_sample_to_group(void);
+void test_parse_box_sub_sample_information(void);
 
 int main(int argc, char** argv)
 {
@@ -64,6 +65,7 @@ int main(int argc, char** argv)
     test_parse_box_track_run();
     test_parse_box_sample_dependency_type();
     test_parse_box_sample_to_group();
+    test_parse_box_sub_sample_information();
     return 0;
 }
 
@@ -1834,6 +1836,94 @@ void test_parse_box_sample_to_group(void)
     test_end();
 }
 
+void test_parse_box_sub_sample_information(void)
+{
+    test_start("test_parse_box_sub_sample_information");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x42,
+        's', 'u', 'b', 's',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x03, // entry count
+        // entry 0
+        0x01, 0x02, 0x03, 0x04, // sample delta
+        0x00, 0x03, // sub sample count
+        // entry 0 - subsample 0
+        0x0A, 0x0B, // subsample size
+        0x0C, // subsample priority
+        0x01, // discardable
+        0x00, 0x00, 0x00, 0x00, // reserved
+        // entry 0 - subsample 1
+        0x1A, 0x1B, // subsample size
+        0x1C, // subsample priority
+        0x00, // discardable
+        0x00, 0x00, 0x00, 0x00, // reserved
+        // entry 0 - subsample 2
+        0x2A, 0x2B, // subsample size
+        0x2C, // subsample priority
+        0x01, // discardable
+        0x00, 0x00, 0x00, 0x00, // reserved
+        // entry 1
+        0x11, 0x12, 0x13, 0x14, // sample delta
+        0x00, 0x00, // sub sample count
+        // entry 2
+        0x21, 0x22, 0x23, 0x24, // sample delta
+        0x00, 0x01, // sub sample count
+        // entry 2 - subsample 0
+        0x21, 0x22, // subsample size
+        0x23, // subsample priority
+        0x01, // discardable
+        0x00, 0x00, 0x00, 0x00, // reserved
+    };
+
+    BMFFCode res;
+    SubSampleInformationBox *box = NULL;
+    res = _bmff_parse_box_sub_sample_information(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "subs", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 0x03, "entry count");
+
+    SubSampleInformationEntry *entry = &box->entries[0];
+    test_assert_equal(entry->sample_delta, 0x01020304, "entry 0 sample delta");
+    test_assert_equal(entry->subsample_count, 0x03, "entry 0 subsample count");
+    SubSampleInformation *info = &entry->subsamples[0];
+    test_assert_equal(info->size, 0x0A0B, "entry 0 subsample 0 - size");
+    test_assert_equal(info->priority, 0x0C, "entry 0 subsample 0 - priority");
+    test_assert_equal(info->discardable, 0x01, "entry 0 subsample 0 - discardable");
+    info = &entry->subsamples[1];
+    test_assert_equal(info->size, 0x1A1B, "entry 0 subsample 1 - size");
+    test_assert_equal(info->priority, 0x1C, "entry 0 subsample 1 - priority");
+    test_assert_equal(info->discardable, 0x00, "entry 0 subsample 1 - discardable");
+    info = &entry->subsamples[2];
+    test_assert_equal(info->size, 0x2A2B, "entry 0 subsample 2 - size");
+    test_assert_equal(info->priority, 0x2C, "entry 0 subsample 2 - priority");
+    test_assert_equal(info->discardable, 0x01, "entry 0 subsample 2 - discardable");
+
+    entry = &box->entries[1];
+    test_assert_equal(entry->sample_delta, 0x11121314, "entry 1 sample delta");
+    test_assert_equal(entry->subsample_count, 0x00, "entry 1 subsample count");
+    test_assert_equal_ptr((size_t)entry->subsamples, (size_t)NULL, "entry 1 subsamples");
+
+    entry = &box->entries[2];
+    test_assert_equal(entry->sample_delta, 0x21222324, "entry 2 sample delta");
+    test_assert_equal(entry->subsample_count, 0x01, "entry 2 subsample count");
+    info = &entry->subsamples[0];
+    test_assert_equal(info->size, 0x2122, "entry 2 subsample 0 - size");
+    test_assert_equal(info->priority, 0x23, "entry 2 subsample 0 - priority");
+    test_assert_equal(info->discardable, 0x01, "entry 2 subsample 0 - discardable");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

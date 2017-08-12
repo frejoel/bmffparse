@@ -3,6 +3,8 @@
 #include <memory.h>
 #include <stdio.h>
 
+#define ADV_PARSE_U8(A,P)      ((A) = (P)[0]); ((P)++)
+#define ADV_PARSE_S8(A,P)      ((A) = (P)[0]); ((P)++);
 #define ADV_PARSE_U16(A,P)      ((A) = parse_u16(P)); ((P)+=2);
 #define ADV_PARSE_S16(A,P)      ((A) = (int16_t)parse_u16(P)); ((P)+=2);
 #define ADV_PARSE_U32(A,P)      ((A) = parse_u32(P)); ((P)+=4);
@@ -63,6 +65,7 @@ const MapItem parse_map[] = {
     {"trun", 0, _bmff_parse_box_track_run},
     {"sdtp", 0, _bmff_parse_box_sample_dependency_type},
     {"sbgp", 0, _bmff_parse_box_sample_to_group},
+    {"subs", 0, _bmff_parse_box_sub_sample_information},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1251,6 +1254,52 @@ BMFFCode _bmff_parse_box_sample_to_group(BMFFContext *ctx, const uint8_t *data, 
         SampleToGroupEntry *entry = &box->entries[i];
         ADV_PARSE_U32(entry->sample_count, ptr);
         ADV_PARSE_U32(entry->group_description_index, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sub_sample_information(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubSampleInformationBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, SubSampleInformationEntry, box->entry_count);
+    }
+
+    uint32_t i=0;
+    for(; i<box->entry_count; ++i) {
+        SubSampleInformationEntry *entry = &box->entries[i]; 
+        ADV_PARSE_U32(entry->sample_delta, ptr);
+        ADV_PARSE_U16(entry->subsample_count, ptr);
+
+        if(entry->subsample_count > 0) {
+            BOX_MALLOCN(entry->subsamples, SubSampleInformation, entry->subsample_count);
+
+            uint32_t j=0;
+            for(; j<entry->subsample_count; ++j) {
+                SubSampleInformation *info = &entry->subsamples[j];
+                if(box->box.version == 1) {
+                    ADV_PARSE_U32(info->size, ptr);
+                }else{
+                    ADV_PARSE_U16(info->size, ptr);
+                }
+                ADV_PARSE_U8(info->priority, ptr);
+                ADV_PARSE_U8(info->discardable, ptr);
+                ptr += 4; // reserved (32)
+            }
+        }
     }
 
     *box_ptr = (Box*)box;
