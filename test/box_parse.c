@@ -34,6 +34,9 @@ void test_parse_box_sample_dependency_type(void);
 void test_parse_box_sample_to_group(void);
 void test_parse_box_sub_sample_information(void);
 void test_parse_box_copyright(void);
+void test_parse_box_data_entry_urn(void);
+void test_parse_box_data_entry_url(void);
+void test_parse_box_data_reference(void);
 
 int main(int argc, char** argv)
 {
@@ -68,6 +71,9 @@ int main(int argc, char** argv)
     test_parse_box_sample_to_group();
     test_parse_box_sub_sample_information();
     test_parse_box_copyright();
+    test_parse_box_data_entry_url();
+    test_parse_box_data_entry_urn();
+    test_parse_box_data_reference();
     return 0;
 }
 
@@ -1954,6 +1960,148 @@ void test_parse_box_copyright(void)
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
     test_assert_equal(strncmp(box->language, "eng", 3), 0, "language");
     test_assert_equal(strcmp(box->notice, "notice"), 0, "notice");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_data_entry_url(void)
+{
+    test_start("test_parse_box_data_entry_url");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x23,
+        'u', 'r', 'l', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'h','t','t','p',':','/','/','w','w','w','.','e','x','a','m','p','l','e','.','c','o','m','\0',
+    };
+
+    BMFFCode res;
+    DataEntryBox *box = NULL;
+    res = _bmff_parse_box_data_entry_url(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "url ", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->location, "http://www.example.com"), 0, "location");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_data_entry_urn(void)
+{
+    test_start("test_parse_box_data_entry_urn");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        'u', 'r', 'n', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'n','a','m','e','\0',
+        'h','t','t','p',':','/','/','w','w','w','.','e','x','a','m','p','l','e','.','c','o','m','\0',
+    };
+
+    BMFFCode res;
+    DataEntryBox *box = NULL;
+    res = _bmff_parse_box_data_entry_urn(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "urn ", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->name, "name"), 0, "name");
+    test_assert_equal(strcmp(box->location, "http://www.example.com"), 0, "location");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_data_reference(void)
+{
+    test_start("test_parse_box_data_reference");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x7B,
+        'd', 'r', 'e', 'f',
+        0x01, // version
+        0xAB, 0xCD, 0xEF, // flags
+        0x00, 0x00, 0x00, 0x03, // entry count
+
+        0, 0, 0, 0x24,
+        'u', 'r', 'n', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        '\0', // name
+        'h','t','t','p',':','/','/','w','w','w','.','e','x','a','m','p','l','e','.','c','o','m','\0',
+
+        0, 0, 0, 0x1F,
+        'u', 'r', 'l', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'h','t','t','p',':','/','/','w','w','w','.','u','r','l','.','c','o','m','\0',
+
+        0, 0, 0, 0x28,
+        'u', 'r', 'n', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'u','r','n',' ','n','a','m','e','\0', // name
+        'h','t','t','p',':','/','/','w','w','w','.','u','r','n','.','c','o','m','\0',
+    };
+
+    BMFFCode res;
+    DataReferenceBox *box = NULL;
+    res = _bmff_parse_box_data_reference(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "dref", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xABCDEF, "flags");
+    test_assert_equal(box->entry_count, 0x03, "entry count");
+
+    DataEntryBox *entry = box->data_entries[0];
+    test_assert(entry != NULL, "data entry 0 NULL box reference");
+    test_assert_equal(entry->box.size, 0x24, "data entry 0 size");
+    test_assert_equal(strncmp(entry->box.type, "urn ", 4), 0, "data entry 0 type");
+    test_assert_equal(entry->box.version, 0x01, "data entry 0 version");
+    test_assert_equal(entry->box.flags, 0xABCDEF, "data entry 0 flags");
+    test_assert_equal(entry->name[0], 0, "data entry 0 name");
+    test_assert_equal(strcmp(entry->location, "http://www.example.com"), 0, "data entry 0 location");
+
+    entry = box->data_entries[1];
+    test_assert(entry != NULL, "data entry 1 NULL box reference");
+    test_assert_equal(entry->box.size, 0x1F, "data entry 1 size");
+    test_assert_equal(strncmp(entry->box.type, "url ", 4), 0, "data entry 1 type");
+    test_assert_equal(entry->box.version, 0x01, "data entry 1 version");
+    test_assert_equal(entry->box.flags, 0xABCDEF, "data entry 1 flags");
+    test_assert(entry->name == NULL, "data entry 1 name");
+    test_assert_equal(strcmp(entry->location, "http://www.url.com"), 0, "data entry 1 location");
+
+    entry = box->data_entries[2];
+    test_assert(entry != NULL, "data entry 2 NULL box reference");
+    test_assert_equal(entry->box.size, 0x28, "data entry 2 size");
+    test_assert_equal(strncmp(entry->box.type, "urn ", 4), 0, "data entry 2 type");
+    test_assert_equal(entry->box.version, 0x01, "data entry 2 version");
+    test_assert_equal(entry->box.flags, 0xABCDEF, "data entry 2 flags");
+    test_assert_equal(strcmp(entry->name, "urn name"), 0, "data entry 2 name");
+    test_assert_equal(strcmp(entry->location, "http://www.urn.com"), 0, "data entry 2 location");
 
     bmff_context_destroy(&ctx);
 

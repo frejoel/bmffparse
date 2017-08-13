@@ -67,6 +67,9 @@ const MapItem parse_map[] = {
     {"sbgp", 0, _bmff_parse_box_sample_to_group},
     {"subs", 0, _bmff_parse_box_sub_sample_information},
     {"cprt", 0, _bmff_parse_box_copyright},
+    {"url ", 0, _bmff_parse_box_data_entry_url},
+    {"urn ", 0, _bmff_parse_box_data_entry_urn},
+    {"dref", 0, _bmff_parse_box_data_reference},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1333,6 +1336,83 @@ BMFFCode _bmff_parse_box_copyright(BMFFContext *ctx, const uint8_t *data, size_t
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_data_entry_url(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 13)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, DataEntryBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_STR(box->location, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_data_entry_urn(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, DataEntryBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_STR(box->name, ptr);
+    ADV_PARSE_STR(box->location, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_data_reference(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, DataReferenceBox);
+
+    const uint8_t *ptr = data;
+    const uint8_t *end = data + size;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->data_entries, DataEntryBox*, box->entry_count);
+
+        uint32_t i=0;
+        for(; i < box->entry_count; ++i) {
+            // this can contain either url or urn boxes, so we just need to check for the
+            // 'l' vs 'n' in to the type of the next box to identify them correctly.
+            DataEntryBox **dataEntry = &box->data_entries[i];
+            if(ptr[6] == 'n') {
+                _bmff_parse_box_data_entry_urn(ctx, ptr, end-ptr, (Box**)dataEntry);
+            }else{
+                _bmff_parse_box_data_entry_url(ctx, ptr, end-ptr, (Box**)dataEntry);
+            }
+            // the version and flags are copied from the Data Reference Box
+            (*dataEntry)->box.version = box->box.version;
+            (*dataEntry)->box.flags = box->box.flags;
+            // move ptr to the start of the next Data Entry box.
+            uint32_t size = parse_u32(ptr);
+            ptr += size;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {

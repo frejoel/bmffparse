@@ -415,7 +415,7 @@ typedef struct CopyrightBox { // cprt
     const char  *notice;
 } CopyrightBox;
 
-typedef struct DataEntryBox { // urn_ and url_
+typedef struct DataEntryBox { // url_ and urn_
     FullBox     box;
     const char  *name;
     const char  *location;
@@ -424,7 +424,7 @@ typedef struct DataEntryBox { // urn_ and url_
 typedef struct DataReferenceBox { // dref
     FullBox         box;
     uint32_t        entry_count;
-    DataEntryBox    *data_entries;
+    DataEntryBox    **data_entries;
 } DataReferenceBox;
 
 // fourth Tier
