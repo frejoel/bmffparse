@@ -66,6 +66,7 @@ const MapItem parse_map[] = {
     {"sdtp", 0, _bmff_parse_box_sample_dependency_type},
     {"sbgp", 0, _bmff_parse_box_sample_to_group},
     {"subs", 0, _bmff_parse_box_sub_sample_information},
+    {"cprt", 0, _bmff_parse_box_copyright},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1300,6 +1301,32 @@ BMFFCode _bmff_parse_box_sub_sample_information(BMFFContext *ctx, const uint8_t 
                 ptr += 4; // reserved (32)
             }
         }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_copyright(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CopyrightBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    uint16_t val = parse_u16(ptr);
+    box->language[0] = (uint8_t)(0x0060 + ((val >> 10) & 0x001F));
+    box->language[1] = (uint8_t)(0x0060 + ((val >> 5) & 0x001F));
+    box->language[2] = (uint8_t)(0x0060 + (val & 0x001F));
+    ptr += 2;
+
+    if(ptr < &data[size]) {
+        box->notice = ptr;
     }
 
     *box_ptr = (Box*)box;

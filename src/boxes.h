@@ -412,7 +412,7 @@ typedef struct SubSampleInformationBox { // subs
 typedef struct CopyrightBox { // cprt
     FullBox     box;
     uint8_t     language[3];
-    char        *notice;
+    const char  *notice;
 } CopyrightBox;
 
 typedef struct DataEntryBox { // urn_ and url_

@@ -33,6 +33,7 @@ void test_parse_box_track_run(void);
 void test_parse_box_sample_dependency_type(void);
 void test_parse_box_sample_to_group(void);
 void test_parse_box_sub_sample_information(void);
+void test_parse_box_copyright(void);
 
 int main(int argc, char** argv)
 {
@@ -66,6 +67,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_dependency_type();
     test_parse_box_sample_to_group();
     test_parse_box_sub_sample_information();
+    test_parse_box_copyright();
     return 0;
 }
 
@@ -1924,6 +1926,40 @@ void test_parse_box_sub_sample_information(void)
 
     test_end();
 }
+
+void test_parse_box_copyright(void)
+{
+    test_start("test_parse_box_copyright");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x15,
+        'c', 'p', 'r', 't',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x15, 0xC7, // ISO 639-2/T Language code diff (5)[3]. Add 0x60 to get each character.
+        'n','o','t','i','c','e','\0', 
+    };
+
+    BMFFCode res;
+    CopyrightBox *box = NULL;
+    res = _bmff_parse_box_copyright(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "cprt", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strncmp(box->language, "eng", 3), 0, "language");
+    test_assert_equal(strcmp(box->notice, "notice"), 0, "notice");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {
