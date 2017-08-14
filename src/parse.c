@@ -70,6 +70,7 @@ const MapItem parse_map[] = {
     {"url ", 0, _bmff_parse_box_data_entry_url},
     {"urn ", 0, _bmff_parse_box_data_entry_urn},
     {"dref", 0, _bmff_parse_box_data_reference},
+    {"elst", 0, _bmff_parse_box_edit_list},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1413,6 +1414,43 @@ BMFFCode _bmff_parse_box_data_reference(BMFFContext *ctx, const uint8_t *data, s
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
+
+BMFFCode _bmff_parse_box_edit_list(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, EditListBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, EditEntry, box->entry_count);
+
+        uint32_t i=0;
+        for(; i < box->entry_count; ++i) {
+            EditEntry *entry = &box->entries[i];
+            if(box->box.version == 1) {
+                ADV_PARSE_U64(entry->segment_duration, ptr);
+                ADV_PARSE_S64(entry->media_time, ptr);
+            }else{
+                ADV_PARSE_U32(entry->segment_duration, ptr);
+                ADV_PARSE_S32(entry->media_time, ptr);
+            }
+            ADV_PARSE_S16(entry->media_rate_integer, ptr);
+            ADV_PARSE_S16(entry->media_rate_fraction, ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {

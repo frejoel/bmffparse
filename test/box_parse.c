@@ -37,6 +37,7 @@ void test_parse_box_copyright(void);
 void test_parse_box_data_entry_urn(void);
 void test_parse_box_data_entry_url(void);
 void test_parse_box_data_reference(void);
+void test_parse_box_edit_list(void);
 
 int main(int argc, char** argv)
 {
@@ -74,6 +75,7 @@ int main(int argc, char** argv)
     test_parse_box_data_entry_url();
     test_parse_box_data_entry_urn();
     test_parse_box_data_reference();
+    test_parse_box_edit_list();
     return 0;
 }
 
@@ -2102,6 +2104,59 @@ void test_parse_box_data_reference(void)
     test_assert_equal(entry->box.flags, 0xABCDEF, "data entry 2 flags");
     test_assert_equal(strcmp(entry->name, "urn name"), 0, "data entry 2 name");
     test_assert_equal(strcmp(entry->location, "http://www.urn.com"), 0, "data entry 2 location");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_edit_list(void)
+{
+    test_start("test_parse_box_edit_list");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        'e', 'l', 's', 't',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // entry count
+
+        0x11, 0x22, 0x33, 0x44, // segment duration
+        0x55, 0x66, 0x77, 0x88, // media time
+        0xAA, 0xBB, // media rate integer
+        0xCC, 0xDD, // media rate fraction
+        
+        0x41, 0x32, 0x23, 0x14, // segment duration
+        0x85, 0x76, 0x67, 0x58, // media time
+        0xA1, 0xB2, // media rate integer
+        0xC3, 0xD4, // media rate fraction
+    };
+
+    BMFFCode res;
+    EditListBox *box = NULL;
+    res = _bmff_parse_box_edit_list(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "elst", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 2, "entry count");
+
+    EditEntry *entry = &box->entries[0];
+    test_assert_equal(entry->segment_duration, 0x11223344, "entry 0 segment duration");
+    test_assert_equal(entry->media_time, 0x55667788, "entry 0 media time");
+    test_assert_equal(entry->media_rate_integer, (int16_t)0xAABB, "entry 0 media rate integer");
+    test_assert_equal(entry->media_rate_fraction, (int16_t)0xCCDD, "entry 0 media rate fraction");
+
+    entry = &box->entries[1];
+    test_assert_equal(entry->segment_duration, 0x41322314, "entry 1 segment duration");
+    test_assert_equal(entry->media_time, 0x85766758, "entry 1 media time");
+    test_assert_equal(entry->media_rate_integer, (int16_t)0xA1B2, "entry 1 media rate integer");
+    test_assert_equal(entry->media_rate_fraction, (int16_t)0xC3D4, "entry 1 media rate fraction");
 
     bmff_context_destroy(&ctx);
 
