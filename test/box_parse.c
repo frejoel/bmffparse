@@ -38,6 +38,7 @@ void test_parse_box_data_entry_urn(void);
 void test_parse_box_data_entry_url(void);
 void test_parse_box_data_reference(void);
 void test_parse_box_edit_list(void);
+void test_parse_box_media_header(void);
 
 int main(int argc, char** argv)
 {
@@ -76,6 +77,7 @@ int main(int argc, char** argv)
     test_parse_box_data_entry_urn();
     test_parse_box_data_reference();
     test_parse_box_edit_list();
+    test_parse_box_media_header();
     return 0;
 }
 
@@ -2163,6 +2165,45 @@ void test_parse_box_edit_list(void)
     test_end();
 }
 
+void test_parse_box_media_header(void)
+{
+    test_start("test_parse_box_media_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x2C,
+        'm', 'd', 'h', 'd',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, // creation time
+        0x0F, 0xED, 0xCB, 0xA9, 0x87, 0x65, 0x43, 0x21, // modification time
+        0x11, 0x22, 0x33, 0x44, // timescale
+        0xAA, 0xBB, 0xCC, 0xDD, 0x55, 0x66, 0x77, 0x88, // duration
+        0x15, 0xC7, // ISO 639-2/T Language code diff (5)[3]. Add 0x60 to get each character.
+        0x00, 0x00, // predefined
+    };
+
+    BMFFCode res;
+    MediaHeaderBox *box = NULL;
+    res = _bmff_parse_box_media_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "mdhd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal_uint64(box->creation_time, 0x123456789ABCDEF0ULL, "creation time");
+    test_assert_equal_uint64(box->modification_time, 0x0FEDCBA987654321ULL, "modification time");
+    test_assert_equal(box->timescale, 0x11223344, "timescale");
+    test_assert_equal_uint64(box->duration, 0xAABBCCDD55667788ULL, "duration");
+    test_assert_equal(strncmp(box->language, "eng", 3), 0, "language");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

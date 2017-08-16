@@ -71,6 +71,7 @@ const MapItem parse_map[] = {
     {"urn ", 0, _bmff_parse_box_data_entry_urn},
     {"dref", 0, _bmff_parse_box_data_reference},
     {"elst", 0, _bmff_parse_box_edit_list},
+    {"mdhd", 0, _bmff_parse_box_media_header},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1446,6 +1447,40 @@ BMFFCode _bmff_parse_box_edit_list(BMFFContext *ctx, const uint8_t *data, size_t
             ADV_PARSE_S16(entry->media_rate_fraction, ptr);
         }
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_media_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 32)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, MediaHeaderBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 1) {
+        ADV_PARSE_U64(box->creation_time, ptr);
+        ADV_PARSE_U64(box->modification_time, ptr);
+        ADV_PARSE_U32(box->timescale, ptr);
+        ADV_PARSE_U64(box->duration, ptr);
+    }else{
+        ADV_PARSE_U32(box->creation_time, ptr);
+        ADV_PARSE_U32(box->modification_time, ptr);
+        ADV_PARSE_U32(box->timescale, ptr);
+        ADV_PARSE_U32(box->duration, ptr);
+    }
+
+    uint16_t val = parse_u16(ptr);
+    box->language[0] = (uint8_t)(0x0060 + ((val >> 10) & 0x001F));
+    box->language[1] = (uint8_t)(0x0060 + ((val >> 5) & 0x001F));
+    box->language[2] = (uint8_t)(0x0060 + (val & 0x001F));
+    ptr += 2;
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
