@@ -39,6 +39,9 @@ void test_parse_box_data_entry_url(void);
 void test_parse_box_data_reference(void);
 void test_parse_box_edit_list(void);
 void test_parse_box_media_header(void);
+void test_parse_box_video_media_header(void);
+void test_parse_box_sound_media_header(void);
+void test_parse_box_hint_media_header(void);
 
 int main(int argc, char** argv)
 {
@@ -78,6 +81,9 @@ int main(int argc, char** argv)
     test_parse_box_data_reference();
     test_parse_box_edit_list();
     test_parse_box_media_header();
+    test_parse_box_video_media_header();
+    test_parse_box_sound_media_header();
+    test_parse_box_hint_media_header();
     return 0;
 }
 
@@ -2204,6 +2210,111 @@ void test_parse_box_media_header(void)
 
     test_end();
 }
+
+void test_parse_box_video_media_header(void)
+{
+    test_start("test_parse_box_video_media_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x14,
+        'v', 'm', 'h', 'd',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, // graphics mode
+        0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, // op color
+    };
+
+    BMFFCode res;
+    VideoMediaHeaderBox *box = NULL;
+    res = _bmff_parse_box_video_media_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "vmhd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->graphics_mode, 0x1234, "graphics mode");
+    test_assert_equal(box->op_color[0], 0xFEDC, "op color[0]");
+    test_assert_equal(box->op_color[1], 0xBA98, "op color[1]");
+    test_assert_equal(box->op_color[2], 0x7654, "op color[2]");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_sound_media_header(void)
+{
+    test_start("test_parse_box_sound_media_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x0E,
+        's', 'm', 'h', 'd',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0xFF, 0x00, // balance
+    };
+
+    BMFFCode res;
+    SoundMediaHeaderBox *box = NULL;
+    res = _bmff_parse_box_sound_media_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "smhd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->balance, -1.f, "balance");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_hint_media_header(void)
+{
+    test_start("test_parse_box_hint_media_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1C,
+        'h', 'm', 'h', 'd',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, // max pdu size
+        0xAB, 0xCD, // avg pdu size
+        0x11, 0x22, 0x33, 0x44, // max bitrate
+        0xAA, 0xBB, 0xCC, 0xDD, // avg bitrate
+        0x00, 0x00, 0x00, 0x00, // reserved
+    };
+
+    BMFFCode res;
+    HintMediaHeaderBox *box = NULL;
+    res = _bmff_parse_box_hint_media_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "hmhd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->max_pdu_size, 0x1234, "max pdu size");
+    test_assert_equal(box->avg_pdu_size, 0xABCD, "avg pdu size");
+    test_assert_equal(box->max_bitrate, 0x11223344, "max bitrate");
+    test_assert_equal(box->avg_bitrate, 0xAABBCCDD, "avg bitrate");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {

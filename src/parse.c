@@ -72,6 +72,9 @@ const MapItem parse_map[] = {
     {"dref", 0, _bmff_parse_box_data_reference},
     {"elst", 0, _bmff_parse_box_edit_list},
     {"mdhd", 0, _bmff_parse_box_media_header},
+    {"vmhd", 0, _bmff_parse_box_video_media_header},
+    {"smhd", 0, _bmff_parse_box_sound_media_header},
+    {"hmhd", 0, _bmff_parse_box_hint_media_header},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -130,13 +133,13 @@ uint64_t parse_u64(const uint8_t *bytes)
 
 fxpt16_t parse_fp16(const uint8_t *bytes)
 {
-    float val = (float) parse_u32(bytes);
+    float val = (float) ((int32_t) parse_u32(bytes));
     return val / 65536.f;
 }
 
 fxpt8_t parse_fp8(const uint8_t *bytes)
 {
-    float val = (float) parse_u16(bytes);
+    float val = (float) ((int16_t) parse_u16(bytes));
     return val / 256.f;
 }
 
@@ -1481,6 +1484,66 @@ BMFFCode _bmff_parse_box_media_header(BMFFContext *ctx, const uint8_t *data, siz
     box->language[1] = (uint8_t)(0x0060 + ((val >> 5) & 0x001F));
     box->language[2] = (uint8_t)(0x0060 + (val & 0x001F));
     ptr += 2;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_video_media_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, VideoMediaHeaderBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->graphics_mode, ptr);
+    ADV_PARSE_U16(box->op_color[0], ptr);
+    ADV_PARSE_U16(box->op_color[1], ptr);
+    ADV_PARSE_U16(box->op_color[2], ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sound_media_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SoundMediaHeaderBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_FP8(box->balance, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_hint_media_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 28)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, HintMediaHeaderBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->max_pdu_size, ptr);
+    ADV_PARSE_U16(box->avg_pdu_size, ptr);
+    ADV_PARSE_U32(box->max_bitrate, ptr);
+    ADV_PARSE_U32(box->avg_bitrate, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
