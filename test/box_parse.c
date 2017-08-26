@@ -42,6 +42,7 @@ void test_parse_box_media_header(void);
 void test_parse_box_video_media_header(void);
 void test_parse_box_sound_media_header(void);
 void test_parse_box_hint_media_header(void);
+void test_parse_box_sample_description(void);
 
 int main(int argc, char** argv)
 {
@@ -84,6 +85,7 @@ int main(int argc, char** argv)
     test_parse_box_video_media_header();
     test_parse_box_sound_media_header();
     test_parse_box_hint_media_header();
+    test_parse_box_sample_description();
     return 0;
 }
 
@@ -2315,6 +2317,77 @@ void test_parse_box_hint_media_header(void)
     test_end();
 }
 
+void test_parse_box_sample_description(void)
+{
+    test_start("test_parse_box_sample_description");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+    uint8_t data[] = {
+        0, 0, 0, 0x58,
+        's', 't', 's', 'd',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // entry count
+        // soun sample entry
+        0x00, 0x00, 0x00, 0x24, // size
+        's','o','u','n', // coding name
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x12, 0x34, // data reference index
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x00, 0x02, // channel count
+        0x00, 0x10, // samplesize
+        0x00, 0x00, // pre defined
+        0x00, 0x00, // reserved
+        0x10, 0x20, 0x30, 0x40, // sample rate
+        // soun sample entry
+        0x00, 0x00, 0x00, 0x24, // size
+        's','o','u','n', // coding name
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0xAB, 0xCD, // data reference index
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x00, 0x06, // channel count
+        0x01, 0x23, // samplesize
+        0x00, 0x00, // pre defined
+        0x00, 0x00, // reserved
+        0xA0, 0xB0, 0xC0, 0xD0, // sample rate
+    };
+
+    memcpy(ctx.track_sample_table_handler_type, "soun", 4);
+
+    BMFFCode res;
+    SampleDescriptionBox *box = NULL;
+    res = _bmff_parse_box_sample_description(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 2, "entry count");
+
+    AudioSampleEntry *entry = (AudioSampleEntry*) box->entries[0];
+    test_assert_equal(entry->box.size, 0x24, "entry 0 size");
+    test_assert_equal(strncmp(entry->box.type, "soun", 4), 0, "entry 0 coding name / type");
+    test_assert_equal(entry->data_reference_index, 0x1234, "entry 0 data reference index");
+    test_assert_equal(entry->channel_count, 2, "entry 0 channel count");
+    test_assert_equal(entry->sample_size, 16, "entry 0 sample size");
+    test_assert_equal(entry->sample_rate, 0x10203040, "entry 0 sample rate");
+
+    entry = (AudioSampleEntry*) box->entries[1];
+    test_assert_equal(entry->box.size, 0x24, "entry 1 size");
+    test_assert_equal(strncmp(entry->box.type, "soun", 4), 0, "entry 1 coding name / type");
+    test_assert_equal(entry->data_reference_index, 0xABCD, "entry 1 data reference index");
+    test_assert_equal(entry->channel_count, 6, "entry 1 channel count");
+    test_assert_equal(entry->sample_size, 0x0123, "entry 1 sample size");
+    test_assert_equal(entry->sample_rate, 0xA0B0C0D0, "entry 1 sample rate");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

@@ -75,6 +75,7 @@ const MapItem parse_map[] = {
     {"vmhd", 0, _bmff_parse_box_video_media_header},
     {"smhd", 0, _bmff_parse_box_sound_media_header},
     {"hmhd", 0, _bmff_parse_box_hint_media_header},
+    {"stsd", 0, _bmff_parse_box_sample_description},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1544,6 +1545,80 @@ BMFFCode _bmff_parse_box_hint_media_header(BMFFContext *ctx, const uint8_t *data
     ADV_PARSE_U16(box->avg_pdu_size, ptr);
     ADV_PARSE_U32(box->max_bitrate, ptr);
     ADV_PARSE_U32(box->avg_bitrate, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleDescriptionBox);
+
+    const uint8_t *ptr = data;
+    const uint8_t *end = ptr + size;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, SampleEntry**, box->entry_count);
+    }
+
+    uint32_t i=0;
+    for(; i<box->entry_count; ++i) {
+        // skip past the SampleEntry info.
+        const uint8_t *entry_ptr = ptr + 16;
+        SampleEntry *entry = NULL;
+
+        if(0 == strncmp(ctx->track_sample_table_handler_type,"soun",4)) {
+            BOX_MALLOC(box_entry, AudioSampleEntry);
+            AudioSampleEntry *audio_entry = (AudioSampleEntry*) box_entry;
+            entry_ptr += 8; // reserved (32)[2]
+            ADV_PARSE_U16(audio_entry->channel_count, entry_ptr);
+            ADV_PARSE_U16(audio_entry->sample_size, entry_ptr);
+            entry_ptr += 2; // predefined
+            entry_ptr += 2; // reserved
+            ADV_PARSE_U32(audio_entry->sample_rate, entry_ptr);
+            entry = (SampleEntry*)audio_entry;
+        }else if(0 == strncmp(ctx->track_sample_table_handler_type,"vide",4)) {
+            BOX_MALLOC(box_entry, VisualSampleEntry);
+            VisualSampleEntry *visual_entry = (VisualSampleEntry*) box_entry;
+            entry_ptr += 2; // predefined
+            entry_ptr += 2; // reserved
+            entry_ptr += 12; // predefined
+            ADV_PARSE_U16(visual_entry->width, entry_ptr);
+            ADV_PARSE_U16(visual_entry->height, entry_ptr);
+            ADV_PARSE_U32(visual_entry->horiz_resolution, entry_ptr);
+            ADV_PARSE_U32(visual_entry->vert_resolution, entry_ptr);
+            entry_ptr += 4; // reserved
+            ADV_PARSE_U16(visual_entry->frame_count, entry_ptr);
+            strncpy(visual_entry->compressor_name, entry_ptr, 32);
+            entry_ptr += 32;
+            ADV_PARSE_U16(visual_entry->depth, entry_ptr);
+            entry_ptr += 2; // predefined
+            entry = (SampleEntry*)visual_entry;
+        }else if(0 == strncmp(ctx->track_sample_table_handler_type,"hint",4)) {
+            BOX_MALLOC(box_entry, HintSampleEntry);
+            HintSampleEntry *hint_entry = (HintSampleEntry*) box_entry;
+            hint_entry->data = entry_ptr;
+            hint_entry->data_size = parse_u32(entry_ptr - 10) - 10; // box size - Sample Entry Box size
+            entry = (SampleEntry*)hint_entry;
+        }
+        
+        // parse the SampleEntry info
+        ptr += parse_box(ptr, end-ptr, &entry->box);
+        ptr += 6; // reserver (8)[6]
+        ADV_PARSE_U16(entry->data_reference_index, ptr);
+
+        box->entries[i] = entry;
+
+        // set the ptr to the end of the current box / start of the next one.
+        ptr = entry_ptr;
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

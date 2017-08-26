@@ -471,17 +471,20 @@ typedef struct HintMediaHeaderBox { // hmhd
 } HintMediaHeaderBox;
 
 typedef struct SampleEntry {
+    Box             box;
     uint16_t        data_reference_index;
 } SampleEntry;
 
 typedef struct HintSampleEntry {
-    SampleEntry     sample_entry;
-    uint8_t         *data;
+    Box             box;
+    uint16_t        data_reference_index;
+    const uint8_t   *data;
     size_t          data_size;
 } HintSampleEntry;
 
 typedef struct VisualSampleEntry {
-    SampleEntry     sample_entry;
+    Box             box;
+    uint16_t        data_reference_index;
     uint16_t        width;
     uint16_t        height;
     fxpt16_t        horiz_resolution;
@@ -493,7 +496,8 @@ typedef struct VisualSampleEntry {
 } VisualSampleEntry;
 
 typedef struct AudioSampleEntry {
-    SampleEntry     sample_entry;
+    Box             box;
+    uint16_t        data_reference_index;
     uint16_t        channel_count;
     uint16_t        sample_size;
     uint32_t        sample_rate;
@@ -502,7 +506,7 @@ typedef struct AudioSampleEntry {
 typedef struct SampleDescriptionBox { // stsd
     FullBox         box;
     uint32_t        entry_count;
-    SampleEntry     *entries;
+    SampleEntry     **entries;
 } SampleDescriptionBox;
 
 typedef struct TimeToSample {
