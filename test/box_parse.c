@@ -49,6 +49,7 @@ void test_parse_box_sample_description_zero(void);
 void test_parse_box_time_to_sample(void);
 void test_parse_box_composition_offset(void);
 void test_parse_box_sample_to_chunk(void);
+void test_parse_box_sample_size(void);
 
 int main(int argc, char** argv)
 {
@@ -98,6 +99,7 @@ int main(int argc, char** argv)
     test_parse_box_time_to_sample();
     test_parse_box_composition_offset();
     test_parse_box_sample_to_chunk();
+    test_parse_box_sample_size();
     return 0;
 }
 
@@ -2747,6 +2749,45 @@ void test_parse_box_sample_to_chunk(void)
     test_assert_equal(entry->first_chunk, 0x99887766, "entry 1 first chunk");
     test_assert_equal(entry->samples_per_chunk, 0x55443322, "entry 1 samples per chunk");
     test_assert_equal(entry->sample_description_index, 0x11FFEEDD, "entry 1 sample description index");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_sample_size(void)
+{
+    test_start("test_parse_box_sample_size");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x20,
+        's', 't', 's', 'z',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x00, // sample size
+        0x00, 0x00, 0x00, 0x03, // sampe count
+        0x00, 0x00, 0x00, 0x10, // entry 0
+        0x00, 0x00, 0x01, 0x00, // entry 1
+        0x00, 0x00, 0x10, 0x00, // entry 2
+    };
+
+    BMFFCode res;
+    SampleSizeBox *box = NULL;
+    res = _bmff_parse_box_sample_size(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsz", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->sample_size, 0, "sample size");
+    test_assert_equal(box->sample_count, 3, "sample count");
+    test_assert_equal(box->entry_sizes[0], 0x10, "entry size 0");
+    test_assert_equal(box->entry_sizes[1], 0x100, "entry size 1");
+    test_assert_equal(box->entry_sizes[2], 0x1000, "entry size 2");
 
     bmff_context_destroy(&ctx);
 
