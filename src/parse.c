@@ -1605,7 +1605,9 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
             BOX_MALLOC(box_entry, HintSampleEntry);
             HintSampleEntry *hint_entry = (HintSampleEntry*) box_entry;
             hint_entry->data = entry_ptr;
-            hint_entry->data_size = parse_u32(entry_ptr - 10) - 10; // box size - Sample Entry Box size
+            const uint8_t *entry_ptr_end = ptr + parse_u32(ptr);
+            hint_entry->data_size = entry_ptr_end - entry_ptr;
+            entry_ptr = entry_ptr_end;
             entry = (SampleEntry*)hint_entry;
         }
         

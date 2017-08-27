@@ -42,7 +42,9 @@ void test_parse_box_media_header(void);
 void test_parse_box_video_media_header(void);
 void test_parse_box_sound_media_header(void);
 void test_parse_box_hint_media_header(void);
-void test_parse_box_sample_description(void);
+void test_parse_box_sample_description_soun(void);
+void test_parse_box_sample_description_hint(void);
+void test_parse_box_sample_description_vide(void);
 
 int main(int argc, char** argv)
 {
@@ -85,7 +87,9 @@ int main(int argc, char** argv)
     test_parse_box_video_media_header();
     test_parse_box_sound_media_header();
     test_parse_box_hint_media_header();
-    test_parse_box_sample_description();
+    test_parse_box_sample_description_soun();
+    test_parse_box_sample_description_hint();
+    test_parse_box_sample_description_vide();
     return 0;
 }
 
@@ -2317,7 +2321,7 @@ void test_parse_box_hint_media_header(void)
     test_end();
 }
 
-void test_parse_box_sample_description(void)
+void test_parse_box_sample_description_soun(void)
 {
     test_start("test_parse_box_sample_description");
 
@@ -2388,6 +2392,125 @@ void test_parse_box_sample_description(void)
 
     test_end();
 }
+
+void test_parse_box_sample_description_hint(void)
+{
+    test_start("test_parse_box_sample_description_hint");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+    uint8_t data[] = {
+        0, 0, 0, 0x5E,
+        's', 't', 's', 'd',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x03, // entry count
+
+        // hint sample entry
+        0x00, 0x00, 0x00, 0x20, // size
+        'h','i','n','t', // format
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, // data reference index
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // data
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, //data
+
+        0x00, 0x00, 0x00, 0x1B, // size
+        'h','i','n','t', // format
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x03, 0x04, // data reference index
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // data
+        0x09, 0x0A, 0x0B, // data
+
+        0x00, 0x00, 0x00, 0x13, // size
+        'h','i','n','t', // format
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x05, 0x06, // data reference index
+        0x01, 0x02, 0x03, // data
+    };
+
+    memcpy(ctx.track_sample_table_handler_type, "hint", 4);
+
+    BMFFCode res;
+    SampleDescriptionBox *box = NULL;
+    res = _bmff_parse_box_sample_description(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 3, "entry count");
+
+    HintSampleEntry *entry = (HintSampleEntry*) box->entries[0];
+    test_assert_equal(entry->box.size, 0x20, "entry 0 size");
+    test_assert_equal(strncmp(entry->box.type, "hint", 4), 0, "entry 0 format / type");
+    test_assert_equal(entry->data_reference_index, 0x0102, "entry 0 data reference index");
+    test_assert_equal(entry->data_size, 16, "entry 0 data_size");
+    test_assert_equal(entry->data[0], 0x01, "entry 0 data start");
+    test_assert_equal(entry->data[15], 0x10, "entry 0 data end");
+
+    entry = (HintSampleEntry*) box->entries[1];
+    test_assert_equal(entry->box.size, 0x1B, "entry 1 size");
+    test_assert_equal(strncmp(entry->box.type, "hint", 4), 0, "entry 1 format / type");
+    test_assert_equal(entry->data_reference_index, 0x0304, "entry 1 data reference index");
+    test_assert_equal(entry->data_size, 11, "entry 1 data_size");
+    test_assert_equal(entry->data[0], 0x01, "entry 1 data start");
+    test_assert_equal(entry->data[10], 0x0B, "entry 1 data end");
+
+    entry = (HintSampleEntry*) box->entries[2];
+    test_assert_equal(entry->box.size, 0x13, "entry 2 size");
+    test_assert_equal(strncmp(entry->box.type, "hint", 4), 0, "entry 2 format / type");
+    test_assert_equal(entry->data_reference_index, 0x0506, "entry 2 data reference index");
+    test_assert_equal(entry->data_size, 3, "entry 2 data_size");
+    test_assert_equal(entry->data[0], 0x01, "entry 2 data start");
+    test_assert_equal(entry->data[2], 0x03, "entry 2 data end");
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_sample_description_vide(void)
+{
+    test_start("test_parse_box_sample_description_vide");
+
+    return;
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+    uint8_t data[] = {
+        0, 0, 0, 0x58,
+        's', 't', 's', 'd',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // entry count
+        // hint sample entry
+        0x00, 0x00, 0x00, 0x24, // size
+        'v','i','d','e', // coding name
+    };
+
+    memcpy(ctx.track_sample_table_handler_type, "vide", 4);
+
+    BMFFCode res;
+    SampleDescriptionBox *box = NULL;
+    res = _bmff_parse_box_sample_description(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 2, "entry count");
+
+    VisualSampleEntry *entry = (VisualSampleEntry*) box->entries[0];
+    test_assert_equal(entry->box.size, 0x24, "entry 0 size");
+    test_assert_equal(strncmp(entry->box.type, "vide", 4), 0, "entry 0 coding name / type");
+    test_assert_equal(entry->data_reference_index, 0x1234, "entry 0 data reference index");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {
