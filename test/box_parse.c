@@ -45,6 +45,7 @@ void test_parse_box_hint_media_header(void);
 void test_parse_box_sample_description_soun(void);
 void test_parse_box_sample_description_hint(void);
 void test_parse_box_sample_description_vide(void);
+void test_parse_box_sample_description_zero(void);
 
 int main(int argc, char** argv)
 {
@@ -90,6 +91,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_description_soun();
     test_parse_box_sample_description_hint();
     test_parse_box_sample_description_vide();
+    test_parse_box_sample_description_zero();
     return 0;
 }
 
@@ -2560,6 +2562,39 @@ void test_parse_box_sample_description_vide(void)
     test_assert_equal(entry->frame_count, 0x1A2B, "entry 1 frame count");
     test_assert_equal(strcmp("compres", entry->compressor_name), 0, "entry 1 compressor name");
     test_assert_equal(entry->depth, 0xEDCB, "entry 1 depth");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_sample_description_zero(void)
+{
+    test_start("test_parse_box_sample_description_zero");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        's', 't', 's', 'd',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x00, // entry count
+    };
+
+    memcpy(ctx.track_sample_table_handler_type, "vide", 4);
+
+    BMFFCode res;
+    SampleDescriptionBox *box = NULL;
+    res = _bmff_parse_box_sample_description(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 0, "entry count");
+    test_assert(box->entries == NULL, "entries");
 
     bmff_context_destroy(&ctx);
 

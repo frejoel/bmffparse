@@ -1575,8 +1575,7 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
         SampleEntry *entry = NULL;
 
         if(0 == strncmp(ctx->track_sample_table_handler_type,"soun",4)) {
-            BOX_MALLOC(box_entry, AudioSampleEntry);
-            AudioSampleEntry *audio_entry = (AudioSampleEntry*) box_entry;
+            BOX_MALLOC(audio_entry, AudioSampleEntry);
             entry_ptr += 8; // reserved (32)[2]
             ADV_PARSE_U16(audio_entry->channel_count, entry_ptr);
             ADV_PARSE_U16(audio_entry->sample_size, entry_ptr);
@@ -1585,8 +1584,7 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
             ADV_PARSE_U32(audio_entry->sample_rate, entry_ptr);
             entry = (SampleEntry*)audio_entry;
         }else if(0 == strncmp(ctx->track_sample_table_handler_type,"vide",4)) {
-            BOX_MALLOC(box_entry, VisualSampleEntry);
-            VisualSampleEntry *visual_entry = (VisualSampleEntry*) box_entry;
+            BOX_MALLOC(visual_entry, VisualSampleEntry);
             entry_ptr += 16; // predefined(2), reserved(2), predefined(12)
             ADV_PARSE_U16(visual_entry->width, entry_ptr);
             ADV_PARSE_U16(visual_entry->height, entry_ptr);
@@ -1607,8 +1605,7 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
             entry_ptr += 2; // predefined
             entry = (SampleEntry*)visual_entry;
         }else if(0 == strncmp(ctx->track_sample_table_handler_type,"hint",4)) {
-            BOX_MALLOC(box_entry, HintSampleEntry);
-            HintSampleEntry *hint_entry = (HintSampleEntry*) box_entry;
+            BOX_MALLOC(hint_entry, HintSampleEntry);
             hint_entry->data = entry_ptr;
             const uint8_t *entry_ptr_end = ptr + parse_u32(ptr);
             hint_entry->data_size = entry_ptr_end - entry_ptr;
