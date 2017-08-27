@@ -76,6 +76,7 @@ const MapItem parse_map[] = {
     {"smhd", 0, _bmff_parse_box_sound_media_header},
     {"hmhd", 0, _bmff_parse_box_hint_media_header},
     {"stsd", 0, _bmff_parse_box_sample_description},
+    {"stts", 0, _bmff_parse_box_time_to_sample},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1554,7 +1555,7 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, SampleDescriptionBox);
@@ -1628,6 +1629,33 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_time_to_sample(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TimeToSampleBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sample_count, ptr);
+    if(box->sample_count > 0) {
+        BOX_MALLOCN(box->samples, TimeToSample, box->sample_count);
+
+        uint32_t i = 0;
+        for(; i < box->sample_count; ++i) {
+            TimeToSample *sample = &box->samples[i];
+            ADV_PARSE_U32(sample->count, ptr);
+            ADV_PARSE_U32(sample->delta, ptr)
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {

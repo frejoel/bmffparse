@@ -46,6 +46,7 @@ void test_parse_box_sample_description_soun(void);
 void test_parse_box_sample_description_hint(void);
 void test_parse_box_sample_description_vide(void);
 void test_parse_box_sample_description_zero(void);
+void test_parse_box_time_to_sample(void);
 
 int main(int argc, char** argv)
 {
@@ -92,6 +93,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_description_hint();
     test_parse_box_sample_description_vide();
     test_parse_box_sample_description_zero();
+    test_parse_box_time_to_sample();
     return 0;
 }
 
@@ -2601,6 +2603,57 @@ void test_parse_box_sample_description_zero(void)
     test_end();
 }
 
+void test_parse_box_time_to_sample(void)
+{
+    test_start("test_parse_box_time_to_sample");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        's', 't', 't', 's',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x03, // sample count
+        // sample 0
+        0x12, 0x34, 0x56, 0x78, // count
+        0x9A, 0xBC, 0xDE, 0xF1, // delta
+        // sample 1
+        0x1A, 0x2B, 0x3C, 0x4D, // count
+        0x5E, 0x6F, 0x71, 0x82, // delta
+        // sample 2
+        0xFF, 0xEE, 0xDD, 0xCC, // count
+        0xBB, 0xAA, 0x99, 0x88, // delta
+    };
+
+    BMFFCode res;
+    TimeToSampleBox *box = NULL;
+    res = _bmff_parse_box_time_to_sample(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stts", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->sample_count, 3, "sample count");
+
+    TimeToSample *sample = &box->samples[0];
+    test_assert_equal(sample->count, 0x12345678, "sample 0 count");
+    test_assert_equal(sample->delta, 0x9ABCDEF1, "sample 0 delta");
+
+    sample = &box->samples[1];
+    test_assert_equal(sample->count, 0x1A2B3C4D, "sample 1 count");
+    test_assert_equal(sample->delta, 0x5E6F7182, "sample 1 delta");
+
+    sample = &box->samples[2];
+    test_assert_equal(sample->count, 0xFFEEDDCC, "sample 2 count");
+    test_assert_equal(sample->delta, 0xBBAA9988, "sample 3 delta");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {
