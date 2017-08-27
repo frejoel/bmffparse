@@ -2473,19 +2473,55 @@ void test_parse_box_sample_description_vide(void)
 {
     test_start("test_parse_box_sample_description_vide");
 
-    return;
-
     BMFFContext ctx;
     bmff_context_init(&ctx);
     uint8_t data[] = {
-        0, 0, 0, 0x58,
+        0, 0, 0, 0xBC,
         's', 't', 's', 'd',
         0x00, // version
         0xF1, 0x0F, 0xBA, // flags
         0x00, 0x00, 0x00, 0x02, // entry count
-        // hint sample entry
-        0x00, 0x00, 0x00, 0x24, // size
+
+        // vide sample entry
+        0x00, 0x00, 0x00, 0x56, // size
         'v','i','d','e', // coding name
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x12, 0x34, // data reference index
+        0x00, 0x00, 0x00, 0x00, // pre-defined[2] and reserved[2]
+        0x00, 0x00, 0x00, 0x00, // predefined (32)[3]
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x56, 0x78, 0x9A, 0xBC, // width(16), height(16)
+        0x00, 0x48, 0x00, 0x00, // horizresolution
+        0x00, 0x60, 0x00, 0x00, // vertresolution
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0xAB, 0xCD, // framecount
+        0x0F, 'c', 'o', 'm', 'p', 'r', 'e', 's', 's', 'o', 'r', ' ', 'n', 'a', 'm', 'e', // [16]
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // padding
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0x00, 0x18, // depth
+        0xFF, 0xFF, // predefined(16) = -1
+
+        // vide entry
+        0x00, 0x00, 0x00, 0x56, // size
+        'v','i','d','e', // coding name
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x56, 0x78, // data reference index
+        0x00, 0x00, 0x00, 0x00, // pre-defined[2] and reserved[2]
+        0x00, 0x00, 0x00, 0x00, // predefined (32)[3]
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0xDE, 0xF1, 0x23, 0x45, // width(16), height(16)
+        0x00, 0x60, 0x00, 0x00, // horizresolution
+        0x00, 0x48, 0x00, 0x00, // vertresolution
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x1A, 0x2B, // framecount
+        0x07, 'c', 'o', 'm', 'p', 'r', 'e', 's', // [8]
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // padding
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xED, 0xCB, // depth
+        0xFF, 0xFF, // predefined(16) = -1
     };
 
     memcpy(ctx.track_sample_table_handler_type, "vide", 4);
@@ -2502,9 +2538,28 @@ void test_parse_box_sample_description_vide(void)
     test_assert_equal(box->entry_count, 2, "entry count");
 
     VisualSampleEntry *entry = (VisualSampleEntry*) box->entries[0];
-    test_assert_equal(entry->box.size, 0x24, "entry 0 size");
+    test_assert_equal(entry->box.size, 0x56, "entry 0 size");
     test_assert_equal(strncmp(entry->box.type, "vide", 4), 0, "entry 0 coding name / type");
     test_assert_equal(entry->data_reference_index, 0x1234, "entry 0 data reference index");
+    test_assert_equal(entry->width, 0x5678, "entry 0 width");
+    test_assert_equal(entry->height, 0x9ABC, "entry 0 height");
+    test_assert_equal(entry->horiz_resolution, 72.f, "entry 0 horizontal resolution");
+    test_assert_equal(entry->vert_resolution, 96.f, "entry 0 vertical resolution");
+    test_assert_equal(entry->frame_count, 0xABCD, "entry 0 frame count");
+    test_assert_equal(strcmp("compressor name", entry->compressor_name), 0, "entry 0 compressor name");
+    test_assert_equal(entry->depth, 0x18, "entry 0 depth");
+
+    entry = (VisualSampleEntry*) box->entries[1];
+    test_assert_equal(entry->box.size, 0x56, "entry 1 size");
+    test_assert_equal(strncmp(entry->box.type, "vide", 4), 0, "entry 1 coding name / type");
+    test_assert_equal(entry->data_reference_index, 0x5678, "entry 1 data reference index");
+    test_assert_equal(entry->width, 0xDEF1, "entry 1 width");
+    test_assert_equal(entry->height, 0x2345, "entry 1 height");
+    test_assert_equal(entry->horiz_resolution, 96.f, "entry 1 horizontal resolution");
+    test_assert_equal(entry->vert_resolution, 72.f, "entry 1 vertical resolution");
+    test_assert_equal(entry->frame_count, 0x1A2B, "entry 1 frame count");
+    test_assert_equal(strcmp("compres", entry->compressor_name), 0, "entry 1 compressor name");
+    test_assert_equal(entry->depth, 0xEDCB, "entry 1 depth");
 
     bmff_context_destroy(&ctx);
 

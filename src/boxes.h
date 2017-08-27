@@ -490,7 +490,7 @@ typedef struct VisualSampleEntry {
     fxpt16_t        horiz_resolution;
     fxpt16_t        vert_resolution;
     uint16_t        frame_count;
-    uint8_t         compressor_name[32];
+    uint8_t         compressor_name[31];
     uint16_t        depth;
 
 } VisualSampleEntry;

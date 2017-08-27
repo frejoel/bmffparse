@@ -1587,17 +1587,22 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
         }else if(0 == strncmp(ctx->track_sample_table_handler_type,"vide",4)) {
             BOX_MALLOC(box_entry, VisualSampleEntry);
             VisualSampleEntry *visual_entry = (VisualSampleEntry*) box_entry;
-            entry_ptr += 2; // predefined
-            entry_ptr += 2; // reserved
-            entry_ptr += 12; // predefined
+            entry_ptr += 16; // predefined(2), reserved(2), predefined(12)
             ADV_PARSE_U16(visual_entry->width, entry_ptr);
             ADV_PARSE_U16(visual_entry->height, entry_ptr);
-            ADV_PARSE_U32(visual_entry->horiz_resolution, entry_ptr);
-            ADV_PARSE_U32(visual_entry->vert_resolution, entry_ptr);
+            ADV_PARSE_FP16(visual_entry->horiz_resolution, entry_ptr);
+            ADV_PARSE_FP16(visual_entry->vert_resolution, entry_ptr);
             entry_ptr += 4; // reserved
             ADV_PARSE_U16(visual_entry->frame_count, entry_ptr);
-            strncpy(visual_entry->compressor_name, entry_ptr, 32);
-            entry_ptr += 32;
+            // the first byte contains the length of the compressor string
+            uint8_t len = *entry_ptr;
+            if(len > 31) len = 31; // make sure the length is valid
+            entry_ptr++;
+            // copy the string
+            strncpy(visual_entry->compressor_name, entry_ptr, len);
+            // null terminate the string at it's length
+            visual_entry->compressor_name[len] = '\0';
+            entry_ptr += 31;
             ADV_PARSE_U16(visual_entry->depth, entry_ptr);
             entry_ptr += 2; // predefined
             entry = (SampleEntry*)visual_entry;
@@ -1613,7 +1618,7 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
         
         // parse the SampleEntry info
         ptr += parse_box(ptr, end-ptr, &entry->box);
-        ptr += 6; // reserver (8)[6]
+        ptr += 6; // reserved (8)[6]
         ADV_PARSE_U16(entry->data_reference_index, ptr);
 
         box->entries[i] = entry;
