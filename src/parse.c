@@ -77,6 +77,7 @@ const MapItem parse_map[] = {
     {"hmhd", 0, _bmff_parse_box_hint_media_header},
     {"stsd", 0, _bmff_parse_box_sample_description},
     {"stts", 0, _bmff_parse_box_time_to_sample},
+    {"ctts", 0, _bmff_parse_box_composition_offset},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1649,7 +1650,35 @@ BMFFCode _bmff_parse_box_time_to_sample(BMFFContext *ctx, const uint8_t *data, s
         for(; i < box->sample_count; ++i) {
             TimeToSample *sample = &box->samples[i];
             ADV_PARSE_U32(sample->count, ptr);
-            ADV_PARSE_U32(sample->delta, ptr)
+            ADV_PARSE_U32(sample->delta, ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_composition_offset(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompositionOffsetBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, CompositionOffset, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            CompositionOffset *entry = &box->entries[i];
+            ADV_PARSE_U32(entry->count, ptr);
+            ADV_PARSE_U32(entry->offset, ptr);
         }
     }
 

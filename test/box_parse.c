@@ -47,6 +47,7 @@ void test_parse_box_sample_description_hint(void);
 void test_parse_box_sample_description_vide(void);
 void test_parse_box_sample_description_zero(void);
 void test_parse_box_time_to_sample(void);
+void test_parse_box_composition_offset(void);
 
 int main(int argc, char** argv)
 {
@@ -94,6 +95,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_description_vide();
     test_parse_box_sample_description_zero();
     test_parse_box_time_to_sample();
+    test_parse_box_composition_offset();
     return 0;
 }
 
@@ -2649,6 +2651,51 @@ void test_parse_box_time_to_sample(void)
     sample = &box->samples[2];
     test_assert_equal(sample->count, 0xFFEEDDCC, "sample 2 count");
     test_assert_equal(sample->delta, 0xBBAA9988, "sample 3 delta");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_composition_offset(void)
+{
+    test_start("test_parse_box_composition_offset");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x20,
+        'c', 't', 't', 's',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // sample count
+        // sample 0
+        0x12, 0x34, 0x56, 0x78, // count
+        0x9A, 0xBC, 0xDE, 0xF1, // offset
+        // sample 1
+        0x1A, 0x2B, 0x3C, 0x4D, // count
+        0x5E, 0x6F, 0x71, 0x82, // offset
+    };
+
+    BMFFCode res;
+    CompositionOffsetBox *box = NULL;
+    res = _bmff_parse_box_composition_offset(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "ctts", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 2, "entry count");
+
+    CompositionOffset *entry = &box->entries[0];
+    test_assert_equal(entry->count, 0x12345678, "entry 0 count");
+    test_assert_equal(entry->offset, 0x9ABCDEF1, "entry 0 offset");
+
+    entry = &box->entries[1];
+    test_assert_equal(entry->count, 0x1A2B3C4D, "entry 1 count");
+    test_assert_equal(entry->offset, 0x5E6F7182, "entry 1 offset");
 
     bmff_context_destroy(&ctx);
 
