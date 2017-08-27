@@ -492,7 +492,6 @@ typedef struct VisualSampleEntry {
     uint16_t        frame_count;
     uint8_t         compressor_name[31];
     uint16_t        depth;
-
 } VisualSampleEntry;
 
 typedef struct AudioSampleEntry {
