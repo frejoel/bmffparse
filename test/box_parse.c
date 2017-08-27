@@ -48,6 +48,7 @@ void test_parse_box_sample_description_vide(void);
 void test_parse_box_sample_description_zero(void);
 void test_parse_box_time_to_sample(void);
 void test_parse_box_composition_offset(void);
+void test_parse_box_sample_to_chunk(void);
 
 int main(int argc, char** argv)
 {
@@ -96,6 +97,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_description_zero();
     test_parse_box_time_to_sample();
     test_parse_box_composition_offset();
+    test_parse_box_sample_to_chunk();
     return 0;
 }
 
@@ -2701,6 +2703,56 @@ void test_parse_box_composition_offset(void)
 
     test_end();
 }
+
+void test_parse_box_sample_to_chunk(void)
+{
+    test_start("test_parse_box_sample_to_chunk");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        's', 't', 's', 'c',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // sample count
+        // sample 0
+        0x12, 0x34, 0x56, 0x78, // first chunk
+        0x9A, 0xBC, 0xDE, 0xF1, // samples per chunk
+        0x1A, 0x2B, 0x3C, 0x4D, // sample description index
+        // sample 1
+        0x99, 0x88, 0x77, 0x66, // first chunk
+        0x55, 0x44, 0x33, 0x22, // samples per chunk
+        0x11, 0xFF, 0xEE, 0xDD, // sample description index
+    };
+
+    BMFFCode res;
+    SampleToChunkBox *box = NULL;
+    res = _bmff_parse_box_sample_to_chunk(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsc", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 2, "entry count");
+
+    SampleToChunk *entry = &box->entries[0];
+    test_assert_equal(entry->first_chunk, 0x12345678, "entry 0 first chunk");
+    test_assert_equal(entry->samples_per_chunk, 0x9ABCDEF1, "entry 0 samples per chunk");
+    test_assert_equal(entry->sample_description_index, 0x1A2B3C4D, "entry 0 sample description index");
+
+    entry = &box->entries[1];
+    test_assert_equal(entry->first_chunk, 0x99887766, "entry 1 first chunk");
+    test_assert_equal(entry->samples_per_chunk, 0x55443322, "entry 1 samples per chunk");
+    test_assert_equal(entry->sample_description_index, 0x11FFEEDD, "entry 1 sample description index");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {

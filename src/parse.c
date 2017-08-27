@@ -78,6 +78,7 @@ const MapItem parse_map[] = {
     {"stsd", 0, _bmff_parse_box_sample_description},
     {"stts", 0, _bmff_parse_box_time_to_sample},
     {"ctts", 0, _bmff_parse_box_composition_offset},
+    {"stsc", 0, _bmff_parse_box_sample_to_chunk},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1685,6 +1686,36 @@ BMFFCode _bmff_parse_box_composition_offset(BMFFContext *ctx, const uint8_t *dat
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
+
+BMFFCode _bmff_parse_box_sample_to_chunk(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleToChunkBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, SampleToChunk, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            SampleToChunk *entry = &box->entries[i];
+            ADV_PARSE_U32(entry->first_chunk, ptr);
+            ADV_PARSE_U32(entry->samples_per_chunk, ptr);
+            ADV_PARSE_U32(entry->sample_description_index, ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
