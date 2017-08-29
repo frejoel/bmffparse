@@ -50,6 +50,9 @@ void test_parse_box_time_to_sample(void);
 void test_parse_box_composition_offset(void);
 void test_parse_box_sample_to_chunk(void);
 void test_parse_box_sample_size(void);
+void test_parse_box_compact_sample_size_4(void);
+void test_parse_box_compact_sample_size_8(void);
+void test_parse_box_compact_sample_size_16(void);
 
 int main(int argc, char** argv)
 {
@@ -100,6 +103,9 @@ int main(int argc, char** argv)
     test_parse_box_composition_offset();
     test_parse_box_sample_to_chunk();
     test_parse_box_sample_size();
+    test_parse_box_compact_sample_size_4();
+    test_parse_box_compact_sample_size_8();
+    test_parse_box_compact_sample_size_16();
     return 0;
 }
 
@@ -2788,6 +2794,126 @@ void test_parse_box_sample_size(void)
     test_assert_equal(box->entry_sizes[0], 0x10, "entry size 0");
     test_assert_equal(box->entry_sizes[1], 0x100, "entry size 1");
     test_assert_equal(box->entry_sizes[2], 0x1000, "entry size 2");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_compact_sample_size_4(void)
+{
+    test_start("test_parse_box_compact_sample_size_4");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x17,
+        's', 't', 'z', '2',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, // reserved
+        0x04, // field size
+        0x00, 0x00, 0x00, 0x05, // sample count
+        0x12, 0x34, 0x5F, // sample entries
+    };
+
+    BMFFCode res;
+    CompactSampleSizeBox *box = NULL;
+    res = _bmff_parse_box_compact_sample_size(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stz2", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->field_size, 4, "field size");
+    test_assert_equal(box->sample_count, 5, "sample count");
+    test_assert_equal(box->entry_sizes[0], 1, "entry size 0");
+    test_assert_equal(box->entry_sizes[1], 2, "entry size 1");
+    test_assert_equal(box->entry_sizes[2], 3, "entry size 2");
+    test_assert_equal(box->entry_sizes[3], 4, "entry size 3");
+    test_assert_equal(box->entry_sizes[4], 5, "entry size 4");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_compact_sample_size_8(void)
+{
+    test_start("test_parse_box_compact_sample_size_8");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x19,
+        's', 't', 'z', '2',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, // reserved
+        0x08, // field size
+        0x00, 0x00, 0x00, 0x05, // sample count
+        0x12, 0x34, 0x56, 0x78, 0x9A, // sample entries
+    };
+
+    BMFFCode res;
+    CompactSampleSizeBox *box = NULL;
+    res = _bmff_parse_box_compact_sample_size(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stz2", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->field_size, 8, "field size");
+    test_assert_equal(box->sample_count, 5, "sample count");
+    test_assert_equal(box->entry_sizes[0], 0x12, "entry size 0");
+    test_assert_equal(box->entry_sizes[1], 0x34, "entry size 1");
+    test_assert_equal(box->entry_sizes[2], 0x56, "entry size 2");
+    test_assert_equal(box->entry_sizes[3], 0x78, "entry size 3");
+    test_assert_equal(box->entry_sizes[4], 0x9A, "entry size 4");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_compact_sample_size_16(void)
+{
+    test_start("test_parse_box_compact_sample_size_16");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1E,
+        's', 't', 'z', '2',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, // reserved
+        0x10, // field size
+        0x00, 0x00, 0x00, 0x05, // sample count
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF1, 0x11, 0x22, // sample entries
+    };
+
+    BMFFCode res;
+    CompactSampleSizeBox *box = NULL;
+    res = _bmff_parse_box_compact_sample_size(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stz2", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->field_size, 16, "field size");
+    test_assert_equal(box->sample_count, 5, "sample count");
+    test_assert_equal(box->entry_sizes[0], 0x1234, "entry size 0");
+    test_assert_equal(box->entry_sizes[1], 0x5678, "entry size 1");
+    test_assert_equal(box->entry_sizes[2], 0x9ABC, "entry size 2");
+    test_assert_equal(box->entry_sizes[3], 0xDEF1, "entry size 3");
+    test_assert_equal(box->entry_sizes[4], 0x1122, "entry size 4");
 
     bmff_context_destroy(&ctx);
 

@@ -80,6 +80,7 @@ const MapItem parse_map[] = {
     {"ctts", 0, _bmff_parse_box_composition_offset},
     {"stsc", 0, _bmff_parse_box_sample_to_chunk},
     {"stsz", 0, _bmff_parse_box_sample_size},
+    {"stz2", 0, _bmff_parse_box_compact_sample_size},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1737,6 +1738,48 @@ BMFFCode _bmff_parse_box_sample_size(BMFFContext *ctx, const uint8_t *data, size
         uint32_t i = 0;
         for(; i < box->sample_count; ++i) {
             ADV_PARSE_U32(box->entry_sizes[i], ptr);
+        }   
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_compact_sample_size(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompactSampleSizeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ptr += 3; // reserved
+    ADV_PARSE_U8(box->field_size, ptr);
+    ADV_PARSE_U32(box->sample_count, ptr);
+
+    if(box->sample_count > 0) {
+        BOX_MALLOCN(box->entry_sizes, uint16_t, box->sample_count);
+        uint32_t i = 0;
+        for(; i < box->sample_count; ++i) {
+            if(box->field_size == 4) {
+                uint8_t val = *ptr;
+                if(i % 2 == 0) {
+                    val = (val >> 4) & 0x0F;
+                }else{
+                    val = val & 0x0F;
+                    ptr++;
+                }
+                box->entry_sizes[i] = (uint16_t)val;
+            }else if(box->field_size == 8) {
+                box->entry_sizes[i] = (uint16_t) *ptr;
+                ptr++;
+            }else if(box->field_size == 16) {
+                ADV_PARSE_U16(box->entry_sizes[i], ptr);
+            }
         }   
     }
 
