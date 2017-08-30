@@ -55,6 +55,7 @@ void test_parse_box_compact_sample_size_8(void);
 void test_parse_box_compact_sample_size_16(void);
 void test_parse_box_chunk_offset(void);
 void test_parse_box_chunk_large_offset(void);
+void test_parse_box_sync_sample(void);
 
 int main(int argc, char** argv)
 {
@@ -110,6 +111,7 @@ int main(int argc, char** argv)
     test_parse_box_compact_sample_size_16();
     test_parse_box_chunk_offset();
     test_parse_box_chunk_large_offset();
+    test_parse_box_sync_sample();
     return 0;
 }
 
@@ -2995,6 +2997,43 @@ void test_parse_box_chunk_large_offset(void)
     test_assert_equal(box->entry_count, 3, "entry count");
     test_assert_equal_uint64(box->chunk_offsets[0], 0x123456789ABCDEF1ULL, "chunk offset 0");
     test_assert_equal_uint64(box->chunk_offsets[2], 0xAABBCCDDEEFF1122ULL, "chunk offset 2");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_sync_sample(void)
+{
+    test_start("test_parse_box_sync_sample");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x20,
+        's', 't', 's', 's',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x04, // entry count
+        0x12, 0x34, 0x56, 0x78, // chunk offsets
+        0x9A, 0xBC, 0xDE, 0xF1, 
+        0x10, 0x20, 0x30, 0x40,
+        0x50, 0x60, 0x70, 0x80,
+    };
+
+    BMFFCode res;
+    SyncSampleBox *box = NULL;
+    res = _bmff_parse_box_sync_sample(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stss", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 4, "entry count");
+    test_assert_equal(box->sample_numbers[0], 0x12345678, "sample number 0");
+    test_assert_equal(box->sample_numbers[3], 0x50607080, "sample number 3");
 
     bmff_context_destroy(&ctx);
 

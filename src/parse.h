@@ -30,7 +30,7 @@
 
 #define PARSER_FUNC(func_name)  BMFFCode func_name(BMFFContext *ctx, const uint8_t * data, size_t size, Box **box_ptr)
 // number of items in the parse_map
-#define PARSE_MAP_LEN   (64) // 68
+#define PARSE_MAP_LEN   (65) // 68
 
 /*
  * Box parser functioin potiner.
@@ -93,6 +93,7 @@ PARSER_FUNC(_bmff_parse_box_sample_size);
 PARSER_FUNC(_bmff_parse_box_compact_sample_size);
 PARSER_FUNC(_bmff_parse_box_chunk_offset);
 PARSER_FUNC(_bmff_parse_box_chunk_large_offset);
+PARSER_FUNC(_bmff_parse_box_sync_sample);
 
 typedef struct MapItem {
     union {
