@@ -53,6 +53,8 @@ void test_parse_box_sample_size(void);
 void test_parse_box_compact_sample_size_4(void);
 void test_parse_box_compact_sample_size_8(void);
 void test_parse_box_compact_sample_size_16(void);
+void test_parse_box_chunk_offset(void);
+void test_parse_box_chunk_large_offset(void);
 
 int main(int argc, char** argv)
 {
@@ -106,6 +108,8 @@ int main(int argc, char** argv)
     test_parse_box_compact_sample_size_4();
     test_parse_box_compact_sample_size_8();
     test_parse_box_compact_sample_size_16();
+    test_parse_box_chunk_offset();
+    test_parse_box_chunk_large_offset();
     return 0;
 }
 
@@ -2914,6 +2918,83 @@ void test_parse_box_compact_sample_size_16(void)
     test_assert_equal(box->entry_sizes[2], 0x9ABC, "entry size 2");
     test_assert_equal(box->entry_sizes[3], 0xDEF1, "entry size 3");
     test_assert_equal(box->entry_sizes[4], 0x1122, "entry size 4");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_chunk_offset(void)
+{
+    test_start("test_parse_box_chunk_offset");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x24,
+        's', 't', 'c', 'o',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x05, // entry count
+        0x12, 0x34, 0x56, 0x78, // chunk offsets
+        0x9A, 0xBC, 0xDE, 0xF1, 
+        0x10, 0x20, 0x30, 0x40,
+        0x50, 0x60, 0x70, 0x80,
+        0x90, 0xA0, 0xB0, 0xC0,
+    };
+
+    BMFFCode res;
+    ChunkOffsetBox *box = NULL;
+    res = _bmff_parse_box_chunk_offset(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stco", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 5, "entry count");
+    test_assert_equal(box->chunk_offsets[0], 0x12345678, "chunk offset 0");
+    test_assert_equal(box->chunk_offsets[4], 0x90A0B0C0, "chunk offset 4");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_chunk_large_offset(void)
+{
+    test_start("test_parse_box_chunk_large_offset");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        'c', 'o', '6', '4',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x03, // entry count
+        0x12, 0x34, 0x56, 0x78, // chunk offsets (64 bit)
+        0x9A, 0xBC, 0xDE, 0xF1, 
+        0x10, 0x20, 0x30, 0x40,
+        0x50, 0x60, 0x70, 0x80,
+        0xAA, 0xBB, 0xCC, 0xDD,
+        0xEE, 0xFF, 0x11, 0x22,
+    };
+
+    BMFFCode res;
+    ChunkLargeOffsetBox *box = NULL;
+    res = _bmff_parse_box_chunk_large_offset(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "co64", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 3, "entry count");
+    test_assert_equal_uint64(box->chunk_offsets[0], 0x123456789ABCDEF1ULL, "chunk offset 0");
+    test_assert_equal_uint64(box->chunk_offsets[2], 0xAABBCCDDEEFF1122ULL, "chunk offset 2");
 
     bmff_context_destroy(&ctx);
 

@@ -81,6 +81,8 @@ const MapItem parse_map[] = {
     {"stsc", 0, _bmff_parse_box_sample_to_chunk},
     {"stsz", 0, _bmff_parse_box_sample_size},
     {"stz2", 0, _bmff_parse_box_compact_sample_size},
+    {"stco", 0, _bmff_parse_box_chunk_offset},
+    {"co64", 0, _bmff_parse_box_chunk_large_offset},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1781,6 +1783,58 @@ BMFFCode _bmff_parse_box_compact_sample_size(BMFFContext *ctx, const uint8_t *da
                 ADV_PARSE_U16(box->entry_sizes[i], ptr);
             }
         }   
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_chunk_offset(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ChunkOffsetBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->chunk_offsets, uint32_t, box->entry_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->entry_count; ++i) {
+        ADV_PARSE_U32(box->chunk_offsets[i], ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_chunk_large_offset(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ChunkLargeOffsetBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->chunk_offsets, uint32_t, box->entry_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->entry_count; ++i) {
+        ADV_PARSE_U64(box->chunk_offsets[i], ptr);
     }
 
     *box_ptr = (Box*)box;
