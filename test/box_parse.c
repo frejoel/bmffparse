@@ -56,6 +56,7 @@ void test_parse_box_compact_sample_size_16(void);
 void test_parse_box_chunk_offset(void);
 void test_parse_box_chunk_large_offset(void);
 void test_parse_box_sync_sample(void);
+void test_parse_box_shadow_sync_sample(void);
 
 int main(int argc, char** argv)
 {
@@ -112,6 +113,7 @@ int main(int argc, char** argv)
     test_parse_box_chunk_offset();
     test_parse_box_chunk_large_offset();
     test_parse_box_sync_sample();
+    test_parse_box_shadow_sync_sample();
     return 0;
 }
 
@@ -3035,6 +3037,48 @@ void test_parse_box_sync_sample(void)
     test_assert_equal(box->sample_numbers[0], 0x12345678, "sample number 0");
     test_assert_equal(box->sample_numbers[3], 0x50607080, "sample number 3");
 
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_shadow_sync_sample(void)
+{
+    test_start("test_parse_box_shadown_sync_sample");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        's', 't', 's', 'h',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x03, // entry count
+        0x12, 0x34, 0x56, 0x78, // shadowed sample number
+        0x9A, 0xBC, 0xDE, 0xF1, // sync sample number
+        0x10, 0x20, 0x30, 0x40,
+        0x50, 0x60, 0x70, 0x80,
+        0x90, 0xA0, 0xB0, 0xC0,
+        0xD0, 0xE0, 0xF0, 0x10,
+    };
+
+    BMFFCode res;
+    ShadowSyncSampleBox *box = NULL;
+    res = _bmff_parse_box_shadow_sync_sample(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsh", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 3, "entry count");
+    ShadowSyncSample *entry = &box->entries[0];
+    test_assert_equal(entry->shadowed_sample_number, 0x12345678, "shadowed sample number 0");
+    test_assert_equal(entry->sync_sample_number, 0x9ABCDEF1, "sync sample number 0");
+    entry = &box->entries[2];
+    test_assert_equal(entry->shadowed_sample_number, 0x90A0B0C0, "shadowed sample number 2");
+    test_assert_equal(entry->sync_sample_number, 0xD0E0F010, "sync sample number 2");
     bmff_context_destroy(&ctx);
 
     test_end();
