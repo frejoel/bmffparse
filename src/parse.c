@@ -86,6 +86,7 @@ const MapItem parse_map[] = {
     {"stss", 0, _bmff_parse_box_sync_sample},
     {"stsh", 0, _bmff_parse_box_shadow_sync_sample},
     {"padb", 0, _bmff_parse_box_padding_bits},
+    {"stdp", 0, _bmff_parse_box_degradation_priority},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1925,6 +1926,32 @@ BMFFCode _bmff_parse_box_padding_bits(BMFFContext *ctx, const uint8_t *data, siz
         sample->pad1 = (val >> 4) & 0x07;
         sample->pad2 = val & 0x07;
         ptr++;
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_degradation_priority(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, DegradationPriorityBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(ctx->sample_count > 0) {
+        BOX_MALLOCN(box->priorities, uint16_t, ctx->sample_count);
+    }
+    box->priority_count = ctx->sample_count;
+
+    uint32_t i = 0;
+    for(; i < box->priority_count; ++i) {
+        ADV_PARSE_U16(box->priorities[i], ptr);
     }
 
     *box_ptr = (Box*)box;
