@@ -36,6 +36,7 @@ void test_parse_box_sub_sample_information(void);
 void test_parse_box_copyright(void);
 void test_parse_box_data_entry_urn(void);
 void test_parse_box_data_entry_url(void);
+void test_parse_box_data_entry_url_zero(void);
 void test_parse_box_data_reference(void);
 void test_parse_box_edit_list(void);
 void test_parse_box_media_header(void);
@@ -46,6 +47,7 @@ void test_parse_box_sample_description_soun(void);
 void test_parse_box_sample_description_hint(void);
 void test_parse_box_sample_description_vide(void);
 void test_parse_box_sample_description_zero(void);
+void test_parse_box_sample_description_invalid_type(void);
 void test_parse_box_time_to_sample(void);
 void test_parse_box_composition_offset(void);
 void test_parse_box_sample_to_chunk(void);
@@ -95,6 +97,7 @@ int main(int argc, char** argv)
     test_parse_box_sub_sample_information();
     test_parse_box_copyright();
     test_parse_box_data_entry_url();
+    test_parse_box_data_entry_url_zero();
     test_parse_box_data_entry_urn();
     test_parse_box_data_reference();
     test_parse_box_edit_list();
@@ -106,6 +109,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_description_hint();
     test_parse_box_sample_description_vide();
     test_parse_box_sample_description_zero();
+    test_parse_box_sample_description_invalid_type();
     test_parse_box_time_to_sample();
     test_parse_box_composition_offset();
     test_parse_box_sample_to_chunk();
@@ -2043,6 +2047,36 @@ void test_parse_box_data_entry_url(void)
     test_end();
 }
 
+void test_parse_box_data_entry_url_zero(void)
+{
+    test_start("test_parse_box_data_entry_url_zero");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x0C,
+        'u', 'r', 'l', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+    };
+
+    BMFFCode res;
+    DataEntryBox *box = NULL;
+    res = _bmff_parse_box_data_entry_url(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "url ", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert(box->location == NULL, "location");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 void test_parse_box_data_entry_urn(void)
 {
     test_start("test_parse_box_data_entry_urn");
@@ -2629,6 +2663,56 @@ void test_parse_box_sample_description_zero(void)
     test_end();
 }
 
+void test_parse_box_sample_description_invalid_type(void)
+{
+    test_start("test_parse_box_sample_description_invalid_type");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+    uint8_t data[] = {
+        0, 0, 0, 0x4B,
+        's', 't', 's', 'd',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // entry count
+
+        // hint sample entry
+        0x00, 0x00, 0x00, 0x20, // size
+        'h','i','n','t', // format
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, // data reference index
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // data
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, //data
+
+        0x00, 0x00, 0x00, 0x1B, // size
+        'h','i','n','t', // format
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x03, 0x04, // data reference index
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // data
+        0x09, 0x0A, 0x0B, // data
+
+    };
+
+    memcpy(ctx.track_sample_table_handler_type, "\0\0\0\0", 4);
+
+    BMFFCode res;
+    SampleDescriptionBox *box = NULL;
+    res = _bmff_parse_box_sample_description(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 2, "entry count");
+    test_assert(box->entries != NULL, "entries");
+    test_assert(box->entries[0] == NULL, "entries 0 - NULL");
+    test_assert(box->entries[1] == NULL, "entries 1 - NULL");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 void test_parse_box_time_to_sample(void)
 {
     test_start("test_parse_box_time_to_sample");

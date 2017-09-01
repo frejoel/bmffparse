@@ -25,7 +25,7 @@ const MapItem parse_map[] = {
     {"trak", 1, _bmff_parse_box_generic_container},
     {"edts", 1, _bmff_parse_box_generic_container},
     {"mdia", 1, _bmff_parse_box_generic_container},
-    {"mnif", 1, _bmff_parse_box_generic_container},
+    {"minf", 1, _bmff_parse_box_generic_container},
     {"dinf", 1, _bmff_parse_box_generic_container},
     {"stbl", 1, _bmff_parse_box_generic_container},
     {"mvex", 1, _bmff_parse_box_generic_container},
@@ -1358,7 +1358,7 @@ BMFFCode _bmff_parse_box_data_entry_url(BMFFContext *ctx, const uint8_t *data, s
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 13)   return BMFF_INVALID_SIZE;
+    if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, DataEntryBox);
@@ -1366,7 +1366,9 @@ BMFFCode _bmff_parse_box_data_entry_url(BMFFContext *ctx, const uint8_t *data, s
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_STR(box->location, ptr);
+    if(ptr < data + size) {
+        ADV_PARSE_STR(box->location, ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -1413,18 +1415,22 @@ BMFFCode _bmff_parse_box_data_reference(BMFFContext *ctx, const uint8_t *data, s
         for(; i < box->entry_count; ++i) {
             // this can contain either url or urn boxes, so we just need to check for the
             // 'l' vs 'n' in to the type of the next box to identify them correctly.
+            char d[12];
             DataEntryBox **dataEntry = &box->data_entries[i];
+            BMFFCode res = BMFF_OK;
             if(ptr[6] == 'n') {
-                _bmff_parse_box_data_entry_urn(ctx, ptr, end-ptr, (Box**)dataEntry);
+                res = _bmff_parse_box_data_entry_urn(ctx, ptr, end-ptr, (Box**)dataEntry);
             }else{
-                _bmff_parse_box_data_entry_url(ctx, ptr, end-ptr, (Box**)dataEntry);
+                res = _bmff_parse_box_data_entry_url(ctx, ptr, end-ptr, (Box**)dataEntry);
             }
             // the version and flags are copied from the Data Reference Box
-            (*dataEntry)->box.version = box->box.version;
-            (*dataEntry)->box.flags = box->box.flags;
+            if(res == BMFF_OK) {
+                (*dataEntry)->box.version = box->box.version;
+                (*dataEntry)->box.flags = box->box.flags;
+            }
             // move ptr to the start of the next Data Entry box.
-            uint32_t size = parse_u32(ptr);
-            ptr += size;
+            uint32_t box_size = parse_u32(ptr);
+            ptr += box_size;
         }
     }
 
@@ -1626,9 +1632,11 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
         }
         
         // parse the SampleEntry info
-        ptr += parse_box(ptr, end-ptr, &entry->box);
-        ptr += 6; // reserved (8)[6]
-        ADV_PARSE_U16(entry->data_reference_index, ptr);
+        if(entry != NULL) {
+            ptr += parse_box(ptr, end-ptr, &entry->box);
+            ptr += 6; // reserved (8)[6]
+            ADV_PARSE_U16(entry->data_reference_index, ptr);
+        }
 
         box->entries[i] = entry;
 
