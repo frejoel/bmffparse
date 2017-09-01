@@ -59,6 +59,7 @@ void test_parse_box_sync_sample(void);
 void test_parse_box_shadow_sync_sample(void);
 void test_parse_box_padding_bits(void);
 void test_parse_box_degradation_priority(void);
+void test_parse_box_sample_group_description(void);
 
 int main(int argc, char** argv)
 {
@@ -118,6 +119,7 @@ int main(int argc, char** argv)
     test_parse_box_shadow_sync_sample();
     test_parse_box_padding_bits();
     test_parse_box_degradation_priority();
+    test_parse_box_sample_group_description();
     return 0;
 }
 
@@ -3157,6 +3159,46 @@ void test_parse_box_degradation_priority(void)
     test_assert_equal(box->priorities[1], 0x5678, "priority 1");
     test_assert_equal(box->priorities[2], 0x9ABC, "priority 2");
     test_assert_equal(box->priorities[3], 0xDEF0, "priority 3");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_sample_group_description(void)
+{
+    test_start("test_parse_box_sample_group_description");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1B,
+        's', 'g', 'p', 'd',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, // grouping type
+        0x00, 0x00, 0x00, 0x09, // entry count
+        0x10, 0x20, 0x30, 0x40, // data
+        0x50, 0x60, 0x70,
+    };
+
+    memcpy(ctx.track_sample_table_handler_type, "vide", 4);
+
+    BMFFCode res;
+    SampleGroupDescriptionBox *box = NULL;
+    res = _bmff_parse_box_sample_group_description(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "sgpd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->grouping_type, 0x12345678, "grouping type");
+    test_assert_equal(box->entry_count, 9, "entry count");
+    test_assert_equal(box->sample_group_entries_size, 7, "entry count");
+    test_assert_equal(box->sample_group_entries[0], 0x10, "sample entry byte 0");
+    test_assert_equal(box->sample_group_entries[6], 0x70, "sample entry byte 6");
 
     bmff_context_destroy(&ctx);
 

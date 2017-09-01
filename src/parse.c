@@ -87,6 +87,7 @@ const MapItem parse_map[] = {
     {"stsh", 0, _bmff_parse_box_shadow_sync_sample},
     {"padb", 0, _bmff_parse_box_padding_bits},
     {"stdp", 0, _bmff_parse_box_degradation_priority},
+    {"sgpd", 0, _bmff_parse_box_sample_group_description},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1953,6 +1954,29 @@ BMFFCode _bmff_parse_box_degradation_priority(BMFFContext *ctx, const uint8_t *d
     for(; i < box->priority_count; ++i) {
         ADV_PARSE_U16(box->priorities[i], ptr);
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sample_group_description(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleGroupDescriptionBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->grouping_type, ptr);
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    memcpy(box->handler_type, ctx->track_sample_table_handler_type, 4);
+    box->sample_group_entries = ptr;
+    box->sample_group_entries_size = (data + size) - ptr;
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

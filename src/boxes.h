@@ -602,13 +602,13 @@ typedef struct DegradationPriorityBox { // stdp
     uint32_t        priority_count;
 } DegradationPriorityBox;
 
-typedef struct SampleGroupDescriptionBox { // sgdp
-    FullBox     box;
-    uint32_t    grouping_type;
-    uint32_t    entry_count;
-    uint8_t     handler_type[4];
-    void        *sample_group_entries; // Visual, Audio, or Hint
-    uint32_t    sample_group_entries_count;
+typedef struct SampleGroupDescriptionBox { // sgpd
+    FullBox         box;
+    uint32_t        grouping_type;
+    uint32_t        entry_count;
+    uint8_t         handler_type[4];
+    const uint8_t   *sample_group_entries; // Visual, Audio, or Hint
+    uint32_t        sample_group_entries_size;
 } SampleGroupDescriptionBox;
 
 #endif // BOXES_H

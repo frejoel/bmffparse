@@ -95,7 +95,8 @@ typedef struct BMFFContext {
     bmff_free free;
     // sample count set by the stsz or stz2 parser and used by the sdtp and stdp parsers.
     uint32_t sample_count;
-    // current track sampler handler type used by the stsd box to parse sample description data.
+    // current track sampler handler type used by the stsd and sgpd boxes to parse sample
+    // description data.
     // this data comes from the active HandlerBox.
     uint8_t track_sample_table_handler_type[4];
 } BMFFContext;
