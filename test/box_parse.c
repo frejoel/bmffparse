@@ -57,6 +57,7 @@ void test_parse_box_chunk_offset(void);
 void test_parse_box_chunk_large_offset(void);
 void test_parse_box_sync_sample(void);
 void test_parse_box_shadow_sync_sample(void);
+void test_parse_box_padding_bits(void);
 
 int main(int argc, char** argv)
 {
@@ -114,6 +115,7 @@ int main(int argc, char** argv)
     test_parse_box_chunk_large_offset();
     test_parse_box_sync_sample();
     test_parse_box_shadow_sync_sample();
+    test_parse_box_padding_bits();
     return 0;
 }
 
@@ -3079,6 +3081,43 @@ void test_parse_box_shadow_sync_sample(void)
     entry = &box->entries[2];
     test_assert_equal(entry->shadowed_sample_number, 0x90A0B0C0, "shadowed sample number 2");
     test_assert_equal(entry->sync_sample_number, 0xD0E0F010, "sync sample number 2");
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_padding_bits(void)
+{
+    test_start("test_parse_box_padding_bits");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x12,
+        'p', 'a', 'd', 'b',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // sample count
+        0b01110010, // padding bits
+        0b00010101, // padding bits
+    };
+
+    BMFFCode res;
+    PaddingBitsBox *box = NULL;
+    res = _bmff_parse_box_padding_bits(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "padb", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->sample_count, 2, "sample count");
+    test_assert_equal(box->samples[0].pad1, 7, "sample 0 pad1");
+    test_assert_equal(box->samples[0].pad2, 2, "sample 0 pad2");
+    test_assert_equal(box->samples[1].pad1, 1, "sample 1 pad1");
+    test_assert_equal(box->samples[1].pad2, 5, "sample 1 pad2");
+
     bmff_context_destroy(&ctx);
 
     test_end();

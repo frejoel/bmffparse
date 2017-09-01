@@ -85,6 +85,7 @@ const MapItem parse_map[] = {
     {"co64", 0, _bmff_parse_box_chunk_large_offset},
     {"stss", 0, _bmff_parse_box_sync_sample},
     {"stsh", 0, _bmff_parse_box_shadow_sync_sample},
+    {"padb", 0, _bmff_parse_box_padding_bits},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -1894,6 +1895,36 @@ BMFFCode _bmff_parse_box_shadow_sync_sample(BMFFContext *ctx, const uint8_t *dat
         ShadowSyncSample *sample = &box->entries[i];
         ADV_PARSE_U32(sample->shadowed_sample_number, ptr);
         ADV_PARSE_U32(sample->sync_sample_number, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_padding_bits(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, PaddingBitsBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sample_count, ptr);
+    if(box->sample_count > 0) {
+        BOX_MALLOCN(box->samples, PaddingBits, box->sample_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->sample_count; ++i) {
+        PaddingBits *sample = &box->samples[i];
+        uint8_t val = *ptr;
+        sample->pad1 = (val >> 4) & 0x07;
+        sample->pad2 = val & 0x07;
+        ptr++;
     }
 
     *box_ptr = (Box*)box;
