@@ -1,5 +1,5 @@
 # ISO Base Media File Format
-ISO/IEC JTC1/SC29/WG11 N16186. June 24 2016.
+ISO/IEC 14496-12:2015
 
 ## Overview
 This library is intended for content analysis.
