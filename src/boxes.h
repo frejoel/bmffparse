@@ -554,7 +554,7 @@ typedef struct TimeToSampleBox { // stts
 
 typedef struct CompositionOffset {
     uint32_t        count;
-    uint32_t        offset;
+    int64_t         offset;
 } CompositionOffset;
 
 typedef struct CompositionOffsetBox { // ctts

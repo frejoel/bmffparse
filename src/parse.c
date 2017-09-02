@@ -1703,7 +1703,15 @@ BMFFCode _bmff_parse_box_composition_offset(BMFFContext *ctx, const uint8_t *dat
         for(; i < box->entry_count; ++i) {
             CompositionOffset *entry = &box->entries[i];
             ADV_PARSE_U32(entry->count, ptr);
-            ADV_PARSE_U32(entry->offset, ptr);
+            if(box->box.version == 0) {
+                uint32_t offset;
+                ADV_PARSE_U32(offset, ptr);
+                entry->offset = (int64_t)offset;
+            }else if(box->box.version == 1) {
+                int32_t offset;
+                ADV_PARSE_S32(offset, ptr);
+                entry->offset = (int64_t)offset;
+            }
         }
     }
 
