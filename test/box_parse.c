@@ -1926,17 +1926,17 @@ void test_parse_box_sub_sample_information(void)
         0x0A, 0x0B, // subsample size
         0x0C, // subsample priority
         0x01, // discardable
-        0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, 0x03, 0x04, // codec specific params
         // entry 0 - subsample 1
         0x1A, 0x1B, // subsample size
         0x1C, // subsample priority
         0x00, // discardable
-        0x00, 0x00, 0x00, 0x00, // reserved
+        0x10, 0x20, 0x30, 0x40, // codec specific params
         // entry 0 - subsample 2
         0x2A, 0x2B, // subsample size
         0x2C, // subsample priority
         0x01, // discardable
-        0x00, 0x00, 0x00, 0x00, // reserved
+        0x0A, 0x0B, 0x0C, 0x0D, // codec specific params
         // entry 1
         0x11, 0x12, 0x13, 0x14, // sample delta
         0x00, 0x00, // sub sample count
@@ -1947,7 +1947,7 @@ void test_parse_box_sub_sample_information(void)
         0x21, 0x22, // subsample size
         0x23, // subsample priority
         0x01, // discardable
-        0x00, 0x00, 0x00, 0x00, // reserved
+        0x12, 0x34, 0x56, 0x78, // codec specific params
     };
 
     BMFFCode res;
@@ -1968,14 +1968,17 @@ void test_parse_box_sub_sample_information(void)
     test_assert_equal(info->size, 0x0A0B, "entry 0 subsample 0 - size");
     test_assert_equal(info->priority, 0x0C, "entry 0 subsample 0 - priority");
     test_assert_equal(info->discardable, 0x01, "entry 0 subsample 0 - discardable");
+    test_assert_equal(info->codec_specific_params, 0x01020304, "entry 0 subsample 0 - codec specific params");
     info = &entry->subsamples[1];
     test_assert_equal(info->size, 0x1A1B, "entry 0 subsample 1 - size");
     test_assert_equal(info->priority, 0x1C, "entry 0 subsample 1 - priority");
     test_assert_equal(info->discardable, 0x00, "entry 0 subsample 1 - discardable");
+    test_assert_equal(info->codec_specific_params, 0x10203040, "entry 0 subsample 1 - codec specific params");
     info = &entry->subsamples[2];
     test_assert_equal(info->size, 0x2A2B, "entry 0 subsample 2 - size");
     test_assert_equal(info->priority, 0x2C, "entry 0 subsample 2 - priority");
     test_assert_equal(info->discardable, 0x01, "entry 0 subsample 2 - discardable");
+    test_assert_equal(info->codec_specific_params, 0x0A0B0C0D, "entry 0 subsample 2 - codec specific params");
 
     entry = &box->entries[1];
     test_assert_equal(entry->sample_delta, 0x11121314, "entry 1 sample delta");
@@ -1989,6 +1992,7 @@ void test_parse_box_sub_sample_information(void)
     test_assert_equal(info->size, 0x2122, "entry 2 subsample 0 - size");
     test_assert_equal(info->priority, 0x23, "entry 2 subsample 0 - priority");
     test_assert_equal(info->discardable, 0x01, "entry 2 subsample 0 - discardable");
+    test_assert_equal(info->codec_specific_params, 0x12345678, "entry 2 subsample 0 - codec specific params");
 
     bmff_context_destroy(&ctx);
 

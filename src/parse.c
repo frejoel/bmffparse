@@ -1327,7 +1327,7 @@ BMFFCode _bmff_parse_box_sub_sample_information(BMFFContext *ctx, const uint8_t 
                 }
                 ADV_PARSE_U8(info->priority, ptr);
                 ADV_PARSE_U8(info->discardable, ptr);
-                ptr += 4; // reserved (32)
+                ADV_PARSE_U32(info->codec_specific_params, ptr);
             }
         }
     }

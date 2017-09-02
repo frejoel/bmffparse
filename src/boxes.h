@@ -430,6 +430,7 @@ typedef struct SubSampleInformation {
     uint32_t            size;
     uint8_t             priority;
     uint8_t             discardable;
+    uint32_t            codec_specific_params;
 } SubSampleInformation;
 
 typedef struct SubSampleInformationEntry {
