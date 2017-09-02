@@ -1808,7 +1808,7 @@ void test_parse_box_sample_dependency_type(void)
         0x00, // version
         0xB0, 0xC0, 0xD0, // flags
         // samples 1-4
-        0x00, 0x15, 0x2A, 0x06,
+        0x00, 0x55, 0xAA, 0xC6,
     };
 
     ctx.sample_count = 4;
@@ -1824,21 +1824,25 @@ void test_parse_box_sample_dependency_type(void)
     test_assert_equal(box->box.flags, 0xB0C0D0, "flags");
 
     SampleDependencyType *sample = &box->samples[0];
+    test_assert_equal(sample->is_leading, eBooleanUnknown, "sample 0 is leading");
     test_assert_equal(sample->depends_on, eBooleanUnknown, "sample 0 depends on");
     test_assert_equal(sample->is_depended_on, eBooleanUnknown, "sample 0 is depended on");
     test_assert_equal(sample->has_redundancy, eBooleanUnknown, "sample 0 has redundancy");
 
     sample = &box->samples[1];
+    test_assert_equal(sample->is_leading, eBooleanTrue, "sample 0 is leading");
     test_assert_equal(sample->depends_on, eBooleanTrue, "sample 1 depends on");
     test_assert_equal(sample->is_depended_on, eBooleanTrue, "sample 1 is depended on");
     test_assert_equal(sample->has_redundancy, eBooleanTrue, "sample 1 has redundancy");
 
     sample = &box->samples[2];
+    test_assert_equal(sample->is_leading, eBooleanFalse, "sample 0 is leading");
     test_assert_equal(sample->depends_on, eBooleanFalse, "sample 2 depends on");
     test_assert_equal(sample->is_depended_on, eBooleanFalse, "sample 2 is depended on");
     test_assert_equal(sample->has_redundancy, eBooleanFalse, "sample 2 has redundancy");
 
     sample = &box->samples[3];
+    test_assert_equal(sample->is_leading, eBooleanOther, "sample 0 is leading");
     test_assert_equal(sample->depends_on, eBooleanUnknown, "sample 3 depends on");
     test_assert_equal(sample->is_depended_on, eBooleanTrue, "sample 3 is depended on");
     test_assert_equal(sample->has_redundancy, eBooleanFalse, "sample 3 has redundancy");

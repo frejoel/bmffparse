@@ -65,6 +65,7 @@ typedef enum {
     eBooleanUnknown    = 0,
     eBooleanTrue       = 1,
     eBooleanFalse      = 2,
+    eBooleanOther      = 3,
 } eBoolean;
 
 typedef enum {
@@ -401,6 +402,7 @@ typedef struct TrackRunBox { // trun
 } TrackRunBox;
 
 typedef struct SampleDependencyType {
+    uint8_t     is_leading;
     uint8_t     depends_on;
     uint8_t     is_depended_on;
     uint8_t     has_redundancy;

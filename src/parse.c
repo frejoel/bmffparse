@@ -1249,7 +1249,7 @@ BMFFCode _bmff_parse_box_sample_dependency_type(BMFFContext *ctx, const uint8_t 
     uint32_t i=0;
     for(; i < ctx->sample_count; ++i) {
         SampleDependencyType *sample = &box->samples[i];
-        // reserved (2)
+        sample->is_leading = (eBoolean)((ptr[0] >> 6) & 0x03); // (2) is a leading sample
         sample->depends_on = (eBoolean)((ptr[0] >> 4) & 0x03); // (2) sample depends on
         sample->is_depended_on = (eBoolean)((ptr[0] >> 2) & 0x03); // (2) sample is depended on
         sample->has_redundancy = (eBoolean)(ptr[0] & 0x03); // (2) sample has redundency
