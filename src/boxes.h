@@ -654,4 +654,11 @@ typedef struct ExtendedLanguageTagBox { // elng
     const char  *extended_language;
 } ExtendedLanguageTagBox;
 
+typedef struct BitRateBox { // btrt
+    Box         box;
+    uint32_t    buffer_size_db;
+    uint32_t    max_bitrate;
+    uint32_t    avg_bitrate;
+} BitRateBox;
+
 #endif // BOXES_H

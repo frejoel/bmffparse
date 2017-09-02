@@ -64,6 +64,7 @@ void test_parse_box_degradation_priority(void);
 void test_parse_box_sample_group_description(void);
 void test_parse_box_track_group_type(void);
 void test_parse_box_extended_language_tag(void);
+void test_parse_box_bit_rate(void);
 
 int main(int argc, char** argv)
 {
@@ -128,6 +129,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_group_description();
     test_parse_box_track_group_type();
     test_parse_box_extended_language_tag();
+    test_parse_box_bit_rate();
     return 0;
 }
 
@@ -3354,6 +3356,38 @@ void test_parse_box_extended_language_tag(void)
 
     test_end();
 }
+
+void test_parse_box_bit_rate(void)
+{
+    test_start("test_parse_box_bit_rate");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x14,
+        'b', 't', 'r', 't',
+        0x10, 0x20, 0x30, 0x40, // buffer size db
+        0x12, 0x34, 0x56, 0x78, // max bit rate
+        0x9A, 0xBC, 0xDE, 0xF0, // avg bit rate
+    };
+
+    BMFFCode res;
+    BitRateBox *box = NULL;
+    res = _bmff_parse_box_bit_rate(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "btrt", 4), 0, "type");
+    test_assert_equal(box->buffer_size_db, 0x10203040, "buffer size db");
+    test_assert_equal(box->max_bitrate, 0x12345678, "max bitrate");
+    test_assert_equal(box->avg_bitrate, 0x9ABCDEF0, "avg bitrate");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {
