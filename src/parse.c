@@ -95,6 +95,7 @@ const MapItem parse_map[] = {
     {"msrc", 0, _bmff_parse_box_track_group_type},
     {"elng", 0, _bmff_parse_box_extended_language_tag},
     {"btrt", 0, _bmff_parse_box_bit_rate},
+    {"cslg", 0, _bmff_parse_box_composition_to_decode},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2056,6 +2057,36 @@ BMFFCode _bmff_parse_box_bit_rate(BMFFContext *ctx, const uint8_t *data, size_t 
     ADV_PARSE_U32(box->buffer_size_db, ptr);
     ADV_PARSE_U32(box->max_bitrate, ptr);
     ADV_PARSE_U32(box->avg_bitrate, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_composition_to_decode(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 32)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompositionToDecodeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_S32(box->composition_to_dts_shift, ptr);
+        ADV_PARSE_S32(box->least_decode_to_display_delta, ptr);
+        ADV_PARSE_S32(box->greatest_decode_to_display_delta, ptr);
+        ADV_PARSE_S32(box->composition_start_time, ptr);
+        ADV_PARSE_S32(box->composition_end_time, ptr);
+    }else if(box->box.version == 1) {
+        ADV_PARSE_S64(box->composition_to_dts_shift, ptr);
+        ADV_PARSE_S64(box->least_decode_to_display_delta, ptr);
+        ADV_PARSE_S64(box->greatest_decode_to_display_delta, ptr);
+        ADV_PARSE_S64(box->composition_start_time, ptr);
+        ADV_PARSE_S64(box->composition_end_time, ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

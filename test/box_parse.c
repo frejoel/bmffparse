@@ -65,6 +65,7 @@ void test_parse_box_sample_group_description(void);
 void test_parse_box_track_group_type(void);
 void test_parse_box_extended_language_tag(void);
 void test_parse_box_bit_rate(void);
+void test_parse_box_composition_to_decode(void);
 
 int main(int argc, char** argv)
 {
@@ -130,6 +131,7 @@ int main(int argc, char** argv)
     test_parse_box_track_group_type();
     test_parse_box_extended_language_tag();
     test_parse_box_bit_rate();
+    test_parse_box_composition_to_decode();
     return 0;
 }
 
@@ -3382,6 +3384,45 @@ void test_parse_box_bit_rate(void)
     test_assert_equal(box->buffer_size_db, 0x10203040, "buffer size db");
     test_assert_equal(box->max_bitrate, 0x12345678, "max bitrate");
     test_assert_equal(box->avg_bitrate, 0x9ABCDEF0, "avg bitrate");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_composition_to_decode(void)
+{
+    test_start("test_parse_box_composition_to_decode");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x20,
+        'c', 's', 'l', 'g',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, // composition to dts shift
+        0x00, 0x00, 0x01, 0xC7, // least decode to display delta
+        0x10, 0x20, 0x30, 0x40, // greatest decode to display delta
+        0x50, 0x60, 0x70, 0x80, // composition start time
+        0x01, 0xA0, 0xB0, 0xC0, // composition end time
+    };
+
+    BMFFCode res;
+    CompositionToDecodeBox *box = NULL;
+    res = _bmff_parse_box_composition_to_decode(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "cslg", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal_int64(box->composition_to_dts_shift, 0x12345678LL, "composition to dts shift");
+    test_assert_equal_int64(box->least_decode_to_display_delta, 455, "least decode to display delta");
+    test_assert_equal_int64(box->greatest_decode_to_display_delta, 0x10203040LL, "greatest decode to display delta");
+    test_assert_equal_int64(box->composition_start_time, 0x50607080LL, "composition start time");
+    test_assert_equal_int64(box->composition_end_time, 0x01A0B0C0LL, "composition end time");
 
     bmff_context_destroy(&ctx);
 

@@ -661,4 +661,13 @@ typedef struct BitRateBox { // btrt
     uint32_t    avg_bitrate;
 } BitRateBox;
 
+typedef struct CompositionToDecodeBox { // cslg
+    FullBox     box;
+    int64_t     composition_to_dts_shift;
+    int64_t     least_decode_to_display_delta;
+    int64_t     greatest_decode_to_display_delta;
+    int64_t     composition_start_time;
+    int64_t     composition_end_time;
+} CompositionToDecodeBox;
+
 #endif // BOXES_H
