@@ -34,8 +34,12 @@ const MapItem parse_map[] = {
     {"mfra", 1, _bmff_parse_box_generic_container},
     {"udta", 1, _bmff_parse_box_generic_container},
     {"tref", 1, _bmff_parse_box_generic_container},
-    {"hint", 0, _bmff_parse_box_track_reference},
-    {"cdsc", 0, _bmff_parse_box_track_reference},
+    {"hint", 0, _bmff_parse_box_track_reference_type},
+    {"cdsc", 0, _bmff_parse_box_track_reference_type},
+    {"font", 0, _bmff_parse_box_track_reference_type},
+    {"vdep", 0, _bmff_parse_box_track_reference_type},
+    {"vplx", 0, _bmff_parse_box_track_reference_type},
+    {"subt", 0, _bmff_parse_box_track_reference_type},
     {"nmhd", 0, _bmff_parse_box_full},
     {"pdin", 0, _bmff_parse_box_progressive_download_info},
     {"mdat", 0, _bmff_parse_box_media_data},
@@ -88,6 +92,7 @@ const MapItem parse_map[] = {
     {"padb", 0, _bmff_parse_box_padding_bits},
     {"stdp", 0, _bmff_parse_box_degradation_priority},
     {"sgpd", 0, _bmff_parse_box_sample_group_description},
+    {"msrc", 0, _bmff_parse_box_track_group_type},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -319,7 +324,7 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
     return BMFF_OK;
 }
 
-BMFFCode _bmff_parse_box_track_reference(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+BMFFCode _bmff_parse_box_track_reference_type(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
@@ -1985,6 +1990,24 @@ BMFFCode _bmff_parse_box_sample_group_description(BMFFContext *ctx, const uint8_
     memcpy(box->handler_type, ctx->track_sample_table_handler_type, 4);
     box->sample_group_entries = ptr;
     box->sample_group_entries_size = (data + size) - ptr;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_group_type(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackGroupTypeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->track_group_id, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

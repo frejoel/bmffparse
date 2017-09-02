@@ -4,7 +4,7 @@
 #include <string.h>
 
 void test_parse_box_file_type(void);
-void test_parse_box_track_reference(void);
+void test_parse_box_track_reference_type(void);
 void test_parse_box_null_media_header(void);
 void test_parse_box_progressive_download_info(void);
 void test_parse_box_media_data(void);
@@ -62,11 +62,12 @@ void test_parse_box_shadow_sync_sample(void);
 void test_parse_box_padding_bits(void);
 void test_parse_box_degradation_priority(void);
 void test_parse_box_sample_group_description(void);
+void test_parse_box_track_group_type(void);
 
 int main(int argc, char** argv)
 {
     test_parse_box_file_type();
-    test_parse_box_track_reference();
+    test_parse_box_track_reference_type();
     test_parse_box_null_media_header();
     test_parse_box_progressive_download_info();
     test_parse_box_media_data();
@@ -124,6 +125,7 @@ int main(int argc, char** argv)
     test_parse_box_padding_bits();
     test_parse_box_degradation_priority();
     test_parse_box_sample_group_description();
+    test_parse_box_track_group_type();
     return 0;
 }
 
@@ -171,9 +173,9 @@ void test_parse_box_file_type(void)
     test_end();
 }
 
-void test_parse_box_track_reference(void)
+void test_parse_box_track_reference_type(void)
 {
-    test_start("test_parse_box_track_reference");
+    test_start("test_parse_box_track_reference_type");
 
     BMFFContext ctx;
     bmff_context_init(&ctx);
@@ -188,7 +190,7 @@ void test_parse_box_track_reference(void)
 
     BMFFCode res;
     TrackReferenceTypeBox *box = NULL;
-    res = _bmff_parse_box_track_reference(&ctx, data, sizeof(data), (Box**)&box);
+    res = _bmff_parse_box_track_reference_type(&ctx, data, sizeof(data), (Box**)&box);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
     test_assert_equal(box->box.size, 0x14, "size");
@@ -3289,6 +3291,36 @@ void test_parse_box_sample_group_description(void)
     test_end();
 }
 
+void test_parse_box_track_group_type(void)
+{
+    test_start("test_parse_box_track_group_type");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        'm', 's', 'r', 'c',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x10, 0x20, 0x30, 0x40, // track group id
+    };
+
+    BMFFCode res;
+    TrackGroupTypeBox *box = NULL;
+    res = _bmff_parse_box_track_group_type(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "msrc", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->track_group_id, 0x10203040, "track group id");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

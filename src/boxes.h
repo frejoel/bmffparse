@@ -27,6 +27,40 @@
 
 #include <stdint.h>
 
+// wide, pnot
+// prfl, clip, crgn, matt, kmat
+// cmov, rmra, ctab, 
+// load, imap
+// tmcd, chap, sync, scpt, ssrc,
+
+// elng
+// sthd
+// csgl
+// saiz
+// saio
+// leva
+// tfdt
+// tsel 
+// strk
+// stri
+// strd
+// fiin
+// paen
+// fire
+// fpar
+// fecr
+// segr
+// gitn
+// idat
+// iref
+// meco
+// mere
+// styp
+// sidx
+// ssix
+// prft
+
+
 typedef enum {
     eBooleanUnknown    = 0,
     eBooleanTrue       = 1,
@@ -132,12 +166,11 @@ typedef struct FileTypeBox { // ftyp
 } FileTypeBox;
 
 typedef struct ProgressiveDownloadBitrate {
-    FullBox     box;
     uint32_t    rate;
     uint32_t    initial_delay;
 } ProgressiveDownloadBitrate;
 
-typedef struct ProgressiveDownloadBox { //pdin
+typedef struct ProgressiveDownloadBox { // pdin
     FullBox                     box;
     size_t                      nb_bitrates;
     ProgressiveDownloadBitrate  *bitrates;
@@ -610,5 +643,10 @@ typedef struct SampleGroupDescriptionBox { // sgpd
     const uint8_t   *sample_group_entries; // Visual, Audio, or Hint
     uint32_t        sample_group_entries_size;
 } SampleGroupDescriptionBox;
+
+typedef struct TrackGroupTypeBox { // trgr -> msrc
+    FullBox     box;
+    uint32_t    track_group_id;
+} TrackGroupTypeBox;
 
 #endif // BOXES_H
