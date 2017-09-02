@@ -63,6 +63,7 @@ void test_parse_box_padding_bits(void);
 void test_parse_box_degradation_priority(void);
 void test_parse_box_sample_group_description(void);
 void test_parse_box_track_group_type(void);
+void test_parse_box_extended_language_tag(void);
 
 int main(int argc, char** argv)
 {
@@ -126,6 +127,7 @@ int main(int argc, char** argv)
     test_parse_box_degradation_priority();
     test_parse_box_sample_group_description();
     test_parse_box_track_group_type();
+    test_parse_box_extended_language_tag();
     return 0;
 }
 
@@ -3316,6 +3318,37 @@ void test_parse_box_track_group_type(void)
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
     test_assert_equal(box->track_group_id, 0x10203040, "track group id");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_extended_language_tag(void)
+{
+    test_start("test_parse_box_extended_language_tag");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x12,
+        'e', 'l', 'n', 'g',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'e','n','-','U','S','\0',
+    };
+
+    BMFFCode res;
+    ExtendedLanguageTagBox *box = NULL;
+    res = _bmff_parse_box_extended_language_tag(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "elng", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->extended_language, "en-US"), 0, "extended language");
 
     bmff_context_destroy(&ctx);
 

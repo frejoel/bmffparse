@@ -93,6 +93,7 @@ const MapItem parse_map[] = {
     {"stdp", 0, _bmff_parse_box_degradation_priority},
     {"sgpd", 0, _bmff_parse_box_sample_group_description},
     {"msrc", 0, _bmff_parse_box_track_group_type},
+    {"elng", 0, _bmff_parse_box_extended_language_tag},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2008,6 +2009,24 @@ BMFFCode _bmff_parse_box_track_group_type(BMFFContext *ctx, const uint8_t *data,
     ptr += parse_full_box(data, size, &box->box);
 
     ADV_PARSE_U32(box->track_group_id, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_extended_language_tag(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ExtendedLanguageTagBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_STR(box->extended_language, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

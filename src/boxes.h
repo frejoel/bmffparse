@@ -649,4 +649,9 @@ typedef struct TrackGroupTypeBox { // trgr -> msrc
     uint32_t    track_group_id;
 } TrackGroupTypeBox;
 
+typedef struct ExtendedLanguageTagBox { // elng
+    FullBox     box;
+    const char  *extended_language;
+} ExtendedLanguageTagBox;
+
 #endif // BOXES_H
