@@ -101,6 +101,7 @@ const MapItem parse_map[] = {
     {"tfdt", 0, _bmff_parse_box_track_fragment_decode_time},
     {"leva", 0, _bmff_parse_box_level_assignment},
     {"trep", 0, _bmff_parse_box_track_extension_properties},
+    {"assp", 0, _bmff_parse_box_alt_startup_seq_properties},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2240,7 +2241,7 @@ BMFFCode _bmff_parse_box_track_extension_properties(BMFFContext *ctx, const uint
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(size < 16)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, TrackExtensionPropertiesBox);
@@ -2256,6 +2257,39 @@ BMFFCode _bmff_parse_box_track_extension_properties(BMFFContext *ctx, const uint
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
+
+BMFFCode _bmff_parse_box_alt_startup_seq_properties(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, AltStartupSeqPropertiesBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U32(box->min_initial_alt_startup_offset, ptr);
+    }else if(box->box.version == 1) {
+        ADV_PARSE_U32(box->entry_count, ptr);
+        if(box->entry_count > 0) {
+            BOX_MALLOCN(box->entries, AltStartSeqPropertiesEntry, box->entry_count);
+        }
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            AltStartSeqPropertiesEntry *entry = &box->entries[i];
+            ADV_PARSE_U32(entry->grouping_type_param, ptr);
+            ADV_PARSE_S32(entry->min_initial_alt_startup_offset, ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)

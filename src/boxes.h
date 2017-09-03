@@ -713,4 +713,16 @@ typedef struct TrackExtensionPropertiesBox { // trep
     Box         **children;
 } TrackExtensionPropertiesBox;
 
+typedef struct AltStartSeqPropertiesEntry {
+    uint32_t    grouping_type_param;
+    int32_t     min_initial_alt_startup_offset;
+} AltStartSeqPropertiesEntry;
+
+typedef struct AltStartupSeqPropertiesBox { // assp 
+    FullBox                     box;
+    int32_t                     min_initial_alt_startup_offset;
+    uint32_t                    entry_count;
+    AltStartSeqPropertiesEntry  *entries;
+} AltStartupSeqPropertiesBox;
+
 #endif // BOXES_H

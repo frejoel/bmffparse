@@ -71,6 +71,7 @@ void test_parse_box_sample_aux_info_offsets(void);
 void test_parse_box_track_fragment_decode_time(void);
 void test_parse_box_level_assignment(void);
 void test_parse_box_track_extension_properties(void);
+void test_parse_box_alt_startup_seq_properties(void);
 
 int main(int argc, char** argv)
 {
@@ -142,6 +143,7 @@ int main(int argc, char** argv)
     test_parse_box_track_fragment_decode_time();
     test_parse_box_level_assignment();
     test_parse_box_track_extension_properties();
+    test_parse_box_alt_startup_seq_properties();
     return 0;
 }
 
@@ -3667,6 +3669,42 @@ void test_parse_box_track_extension_properties(void)
 
     test_end();
 }
+
+void test_parse_box_alt_startup_seq_properties(void)
+{
+    test_start("test_parse_box_alt_startup_seq_properties");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x18,
+        'a', 's', 's', 'p',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x01, // num entries
+        0x01, 0x02, 0x03, 0x04, // grouping type param
+        0x00, 0x11, 0x22, 0x33, // min initial alt startup offset
+    };
+
+    BMFFCode res;
+    AltStartupSeqPropertiesBox *box = NULL;
+    res = _bmff_parse_box_alt_startup_seq_properties(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "assp", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 1, "entry count");
+    test_assert_equal(box->entries[0].grouping_type_param, 0x01020304, "entry 0 grouping type param");
+    test_assert_equal(box->entries[0].min_initial_alt_startup_offset, 0x00112233, "entry 0 min initial startup offset");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 
 /*
 void test_parse_box_(void)
