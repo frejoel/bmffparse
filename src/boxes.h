@@ -417,6 +417,7 @@ typedef struct SampleToGroupEntry {
 typedef struct SampleToGroupBox { //sbgp
     FullBox             box;
     uint32_t            grouping_type;
+    uint32_t            grouping_type_param;
     uint32_t            entry_count;
     SampleToGroupEntry  *entries;
 } SampleToGroupBox;

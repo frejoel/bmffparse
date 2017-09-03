@@ -1289,6 +1289,9 @@ BMFFCode _bmff_parse_box_sample_to_group(BMFFContext *ctx, const uint8_t *data, 
     ptr += parse_full_box(data, size, &box->box);
 
     ADV_PARSE_U32(box->grouping_type, ptr);
+    if(box->box.version == 1) {
+        ADV_PARSE_U32(box->grouping_type_param, ptr);
+    }
     ADV_PARSE_U32(box->entry_count, ptr);
 
     if(box->entry_count > 0) {

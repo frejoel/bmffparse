@@ -1873,11 +1873,12 @@ void test_parse_box_sample_to_group(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x2C,
+        0, 0, 0, 0x30,
         's', 'b', 'g', 'p',
         0x01, // version
         0xF1, 0x0F, 0xBA, // flags
         0x12, 0x34, 0x56, 0x78, // grouping type
+        0x9A, 0xBC, 0xDE, 0xF0, // grouping type param
         0x00, 0x00, 0x00, 0x03, // entry count
         // entry 0
         0x01, 0x02, 0x03, 0x04, // sample count
@@ -1900,6 +1901,7 @@ void test_parse_box_sample_to_group(void)
     test_assert_equal(box->box.version, 0x01, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
     test_assert_equal(box->grouping_type, 0x12345678, "grouping type");
+    test_assert_equal(box->grouping_type_param, 0x9ABCDEF0, "grouping type param");
     test_assert_equal(box->entry_count, 0x03, "entry count");
 
     SampleToGroupEntry *entry = &box->entries[0];
