@@ -34,7 +34,6 @@
 // tmcd, chap, sync, scpt, ssrc,
 
 // sthd
-// leva
 // tsel 
 // strk
 // stri
@@ -706,5 +705,12 @@ typedef struct LevelAssignmentBox { // leva
     uint8_t         level_count;
     LevelAssignment *levels;
 } LevelAssignmentBox;
+
+typedef struct TrackExtensionPropertiesBox { // trep
+    FullBox     box;
+    uint32_t    track_id;
+    uint32_t    child_count;
+    Box         **children;
+} TrackExtensionPropertiesBox;
 
 #endif // BOXES_H

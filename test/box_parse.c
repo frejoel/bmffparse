@@ -70,6 +70,7 @@ void test_parse_box_sample_aux_info_sizes(void);
 void test_parse_box_sample_aux_info_offsets(void);
 void test_parse_box_track_fragment_decode_time(void);
 void test_parse_box_level_assignment(void);
+void test_parse_box_track_extension_properties(void);
 
 int main(int argc, char** argv)
 {
@@ -140,6 +141,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_aux_info_offsets();
     test_parse_box_track_fragment_decode_time();
     test_parse_box_level_assignment();
+    test_parse_box_track_extension_properties();
     return 0;
 }
 
@@ -3621,6 +3623,45 @@ void test_parse_box_level_assignment(void)
     test_assert_equal(level->padding_flag, 1, "level 3 padding flag");
     test_assert_equal(level->assignment_type, 0, "level 3 assignment type");
     test_assert_equal(level->grouping_type, 0xA0B0C0D0, "level 3 grouping type");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_track_extension_properties(void)
+{
+    test_start("test_parse_box_track_extension_properties");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x21,
+        't', 'r', 'e', 'p',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, // track id
+
+        0, 0, 0, 0x11,
+        'a','s','s','p',
+        0x00, // version
+        0x00, 0x00, 0x00, 0x00, // flags
+        0x10, 0x02, 0x30, 0x04,
+    };
+
+    BMFFCode res;
+    TrackExtensionPropertiesBox *box = NULL;
+    res = _bmff_parse_box_track_extension_properties(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "trep", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->track_id, 0x12345678, "track id");
+    test_assert_equal(box->child_count, 1, "child count");
+    test_assert(box->children != NULL, "children");
 
     bmff_context_destroy(&ctx);
 

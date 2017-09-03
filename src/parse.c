@@ -100,6 +100,7 @@ const MapItem parse_map[] = {
     {"saio", 0, _bmff_parse_box_sample_aux_info_offsets},
     {"tfdt", 0, _bmff_parse_box_track_fragment_decode_time},
     {"leva", 0, _bmff_parse_box_level_assignment},
+    {"trep", 0, _bmff_parse_box_track_extension_properties},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -256,39 +257,28 @@ BMFFCode _bmff_parse_box_file_type(BMFFContext *ctx, const uint8_t *data, size_t
     return BMFF_OK;
 }
 
-BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+void _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, uint32_t *child_count, Box ***children)
 {
-    if(!ctx)        return BMFF_INVALID_CONTEXT;
-    if(!data)       return BMFF_INVALID_DATA;
-    if(size <= 8)   return BMFF_INVALID_SIZE;
-    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+    const uint8_t *tmp = data;
+    const uint8_t *end = &data[size];
 
-    BOX_MALLOC(box, ContainerBox);
-
-    const uint8_t *ptr = data;
-    ptr += parse_box(data, size, &box->box);
-
-    const uint8_t *end = data + box->box.size;
-
-    // count how many children Boxes there are.
-    box->child_count = 0;
-    box->children = NULL;
-
-    const uint8_t *tmp = ptr;
+    uint32_t count = 0;
     while(tmp + 8 < end) {
         uint32_t box_size = parse_u32(tmp);
         tmp += box_size;
-        box->child_count++;
+        count++;
     }
+    *child_count = count;
 
     // allocate room for the children
-    if(box->child_count > 0) {
-        BOX_MALLOCN(box->children, Box*, box->child_count);
+    if(count > 0) {
+        BOX_MALLOCN(*children, Box*, count);
     }
 
     // parse all the Boxes.
     int child_idx = 0;
 
+    const uint8_t *ptr = data;
     while(ptr + 8 < end)
     {
         uint32_t box_size = parse_u32(ptr);
@@ -309,9 +299,9 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
                 BMFFCode res = parse_map[i].parse_func(ctx, ptr, end-ptr, &child_box);
                 if(res == BMFF_OK) {
                     // add the parsed Box to the list of children.
-                    box->children[child_idx] = child_box;
+                    (*children)[child_idx] = child_box;
                     child_idx++;
-                    printf("%c%c%c%c, size: %d\n", child_box->type[0], child_box->type[1], child_box->type[2], child_box->type[3], child_box->size);
+                    //printf("%c%c%c%c, size: %d\n", child_box->type[0], child_box->type[1], child_box->type[2], child_box->type[3], child_box->size);
                 } else {
                     printf("Error paring box: %d\n", res);
                 }
@@ -326,6 +316,22 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
 
         ptr += box_size;
     }
+}
+
+BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size <= 8)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ContainerBox);
+
+    const uint8_t *ptr = data;
+    const uint8_t *end = data + size;
+    ptr += parse_box(data, size, &box->box);
+
+    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -2192,7 +2198,7 @@ BMFFCode _bmff_parse_box_level_assignment(BMFFContext *ctx, const uint8_t *data,
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(size < 13)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, LevelAssignmentBox);
@@ -2225,6 +2231,27 @@ BMFFCode _bmff_parse_box_level_assignment(BMFFContext *ctx, const uint8_t *data,
             } break;
         }
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_extension_properties(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackExtensionPropertiesBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->track_id, ptr);
+
+    const uint8_t *end = data + box->box.size;
+    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
