@@ -72,6 +72,7 @@ void test_parse_box_track_fragment_decode_time(void);
 void test_parse_box_level_assignment(void);
 void test_parse_box_track_extension_properties(void);
 void test_parse_box_alt_startup_seq_properties(void);
+void test_parse_box_track_selection(void);
 
 int main(int argc, char** argv)
 {
@@ -144,6 +145,7 @@ int main(int argc, char** argv)
     test_parse_box_level_assignment();
     test_parse_box_track_extension_properties();
     test_parse_box_alt_startup_seq_properties();
+    test_parse_box_track_selection();
     return 0;
 }
 
@@ -3713,6 +3715,41 @@ void test_parse_box_alt_startup_seq_properties(void)
     test_end();
 }
 
+void test_parse_box_track_selection(void)
+{
+    test_start("test_parse_box_track_selection");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x18,
+        't', 's', 'e', 'l',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x10, 0x20, 0x30, 0x40, // switch group
+        0x00, 0x11, 0x22, 0x33, // attribute list
+        0x44, 0x55, 0x66, 0x77,
+    };
+
+    BMFFCode res;
+    TrackSelectionBox *box = NULL;
+    res = _bmff_parse_box_track_selection(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "tsel", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->switch_group, 0x10203040, "switch group");
+    test_assert_equal(box->attribute_list_count, 2, "attribute list count");
+    test_assert_equal(box->attribute_list[0], 0x00112233, "attribute list 0");
+    test_assert_equal(box->attribute_list[1], 0x44556677, "attribute list 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 
 /*
 void test_parse_box_(void)

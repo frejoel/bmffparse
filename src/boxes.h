@@ -34,7 +34,6 @@
 // tmcd, chap, sync, scpt, ssrc,
 
 // sthd
-// tsel 
 // strk
 // stri
 // strd
@@ -728,5 +727,12 @@ typedef struct AltStartupSeqPropertiesBox { // assp
     uint32_t                    entry_count;
     AltStartSeqPropertiesEntry  *entries;
 } AltStartupSeqPropertiesBox;
+
+typedef struct TrackSelectionBox { // tsel
+    FullBox     box;
+    int32_t     switch_group;
+    uint32_t    *attribute_list;
+    uint32_t    attribute_list_count;
+} TrackSelectionBox;
 
 #endif // BOXES_H
