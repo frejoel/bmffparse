@@ -3288,14 +3288,17 @@ void test_parse_box_sample_group_description(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x1B,
+        0, 0, 0, 0x26,
         's', 'g', 'p', 'd',
-        0x00, // version
+        0x01, // version
         0xF1, 0x0F, 0xBA, // flags
         0x12, 0x34, 0x56, 0x78, // grouping type
-        0x00, 0x00, 0x00, 0x09, // entry count
-        0x10, 0x20, 0x30, 0x40, // data
-        0x50, 0x60, 0x70,
+        0x00, 0x00, 0x00, 0x00, // default length
+        0x00, 0x00, 0x00, 0x02, // entry count
+        0x00, 0x00, 0x00, 0x04, // description length
+        0x50, 0x60, 0x70, 0x80, // data
+        0x00, 0x00, 0x00, 0x02, // description length
+        0xAA, 0xBB, // data
     };
 
     memcpy(ctx.track_sample_table_handler_type, "vide", 4);
@@ -3307,13 +3310,16 @@ void test_parse_box_sample_group_description(void)
     test_assert(box != NULL, "NULL box reference");
     test_assert_equal(box->box.size, sizeof(data), "size");
     test_assert_equal(strncmp(box->box.type, "sgpd", 4), 0, "type");
-    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.version, 0x01, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
     test_assert_equal(box->grouping_type, 0x12345678, "grouping type");
-    test_assert_equal(box->entry_count, 9, "entry count");
-    test_assert_equal(box->sample_group_entries_size, 7, "entry count");
-    test_assert_equal(box->sample_group_entries[0], 0x10, "sample entry byte 0");
-    test_assert_equal(box->sample_group_entries[6], 0x70, "sample entry byte 6");
+    test_assert_equal(box->default_length, 0, "default length");
+    test_assert_equal(box->entry_count, 2, "entry count");
+    test_assert_equal(box->sample_group_entries_size, 14, "entry count");
+    test_assert_equal(box->description_lengths[0], 4, "description length 0");
+    test_assert_equal(box->description_lengths[1], 2, "description length 1");
+    test_assert_equal(box->sample_group_entries[0], 0x00, "sample entry byte 0");
+    test_assert_equal(box->sample_group_entries[13], 0xBB, "sample entry byte 13");
 
     bmff_context_destroy(&ctx);
 

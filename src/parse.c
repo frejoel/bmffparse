@@ -2015,11 +2015,26 @@ BMFFCode _bmff_parse_box_sample_group_description(BMFFContext *ctx, const uint8_
     ptr += parse_full_box(data, size, &box->box);
 
     ADV_PARSE_U32(box->grouping_type, ptr);
+    if(box->box.version == 1) {
+        ADV_PARSE_U32(box->default_length, ptr);
+    } else if(box->box.version >= 2) {
+        ADV_PARSE_U32(box->default_sample_description_index, ptr);
+    }
     ADV_PARSE_U32(box->entry_count, ptr);
 
     memcpy(box->handler_type, ctx->track_sample_table_handler_type, 4);
     box->sample_group_entries = ptr;
     box->sample_group_entries_size = (data + size) - ptr;
+
+    if(box->box.version == 1 && box->default_length == 0 && box->entry_count > 0) {
+        BOX_MALLOCN(box->description_lengths, uint32_t, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            ADV_PARSE_U32(box->description_lengths[i], ptr);
+            ptr += box->description_lengths[i];
+        }
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

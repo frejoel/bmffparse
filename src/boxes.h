@@ -637,9 +637,12 @@ typedef struct DegradationPriorityBox { // stdp
 typedef struct SampleGroupDescriptionBox { // sgpd
     FullBox         box;
     uint32_t        grouping_type;
+    uint32_t        default_length;
+    uint32_t        default_sample_description_index;
     uint32_t        entry_count;
     uint8_t         handler_type[4];
-    const uint8_t   *sample_group_entries; // Visual, Audio, or Hint
+    const uint8_t   *sample_group_entries; // Visual, Audio, Hint, Subtitle, Text
+    uint32_t        *description_lengths; // 
     uint32_t        sample_group_entries_size;
 } SampleGroupDescriptionBox;
 
