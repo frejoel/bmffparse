@@ -976,7 +976,7 @@ void test_parse_box_meta(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0x01, 0xEE,
+        0, 0, 0x02, 0x3A,
         'm', 'e', 't', 'a',
         0x00, // version
         0x00, 0x00, 0x00, // flags
@@ -1121,6 +1121,33 @@ void test_parse_box_meta(void)
         // IPMP Control Box Continued
         0x02, // no of IPMPDesctriptors
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+
+        // Item Reference
+        0, 0, 0, 0x3C,
+        'i', 'r', 'e', 'f',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0, 0, 0, 0x10,
+        'i','r','e','f',
+        0x12, 0x34, // from item id
+        0x00, 0x02, // reference count
+        0x01, 0x02, 0x03, 0x04, // to item ids
+        0, 0, 0, 0x0E,
+        'i','r','e','f',
+        0x56, 0x78, // from item id
+        0x00, 0x01, // reference count
+        0x11, 0x12, // to item ids
+        0, 0, 0, 0x12,
+        'i','r','e','f',
+        0x9A, 0xBC, // from item id
+        0x00, 0x03, // reference count
+        0x21, 0x22, 0x23, 0x24, 0x25, 0x26, // to item ids
+
+        // Item Data
+        0, 0, 0, 0x10,
+        'i', 'd', 'a', 't',
+        0x01, 0x02, 0x03, 0x04, // data
+        0x05, 0x06, 0x07, 0x08,
 
         // "Other" Boxes
         0x00, 0x00, 0x00, 0x0C,
@@ -1306,6 +1333,21 @@ void test_parse_box_meta(void)
     test_assert_equal(ipmc->ipmp_descriptors_len, 0x02, "ipmc descriptors length");
     uint8_t descriptors[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, };
     test_assert_equal(memcmp(ipmc->ipmp_descriptors, descriptors, 8), 0, "ipmc descriptor data");
+
+    // Item Reference Box
+    ItemReferenceBox *iref_box = box->item_refs;
+    test_assert_equal(strncmp(iref_box->box.type, "iref", 4), 0, "type");
+    test_assert_equal(iref_box->box.version, 0x00, "version");
+    test_assert_equal(iref_box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(iref_box->references_count, 3, "references count");
+
+    // Item Data Box
+    ItemDataBox *idat_box = box->item_data;
+    test_assert_equal(strncmp(idat_box->box.type, "idat", 4), 0, "type");
+    test_assert(idat_box->data != NULL, "data");
+    test_assert_equal(idat_box->data_size, 8, "data size");
+    test_assert_equal(idat_box->data[0], 0x01, "data[0]");
+    test_assert_equal(idat_box->data[7], 0x08, "data[7]");
 
     test_assert_equal(box->other_boxes_len, 2, "ipmc other boxes length");
     test_assert(NULL != box->other_boxes, "ipmc other boxes length");

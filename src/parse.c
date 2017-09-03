@@ -333,8 +333,8 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
     BOX_MALLOC(box, ContainerBox);
 
     const uint8_t *ptr = data;
-    const uint8_t *end = data + size;
     ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
 
     _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
 
@@ -874,14 +874,16 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
         AbstractBox **box_ptr;  // address of the pointer to the parsed box
     };
     // map of parsing functions
-    const int map_count = 6;
-    struct Map map[6] = {
+    const int map_count = 8;
+    struct Map map[8] = {
          { "pitm", _bmff_parse_box_primary_item, (AbstractBox**)&box->primary_resource },
          { "dinf", _bmff_parse_box_generic_container, (AbstractBox**)&box->file_locations },
          { "iloc", _bmff_parse_box_item_location, (AbstractBox**)&box->item_locations },
          { "ipro", _bmff_parse_box_item_protection, (AbstractBox**)&box->protections },
          { "iinf", _bmff_parse_box_item_info, (AbstractBox**)&box->item_infos },
          { "ipmc", _bmff_parse_box_ipmp_control, (AbstractBox**)&box->ipmp_control },
+         { "iref", _bmff_parse_box_item_reference, (AbstractBox**)&box->item_refs },
+         { "idat", _bmff_parse_box_item_data, (AbstractBox**)&box->item_data },
     };
 
     // Parse optional Boxes
@@ -912,9 +914,6 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
           ptr += parse_u32(ptr);
         }
     }
-    // Item Protection Box
-    // Item Info Box
-    // IPMP Control Box
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -2379,7 +2378,7 @@ BMFFCode _bmff_parse_box_item_reference(BMFFContext *ctx, const uint8_t *data, s
     ptr += parse_full_box(data, size, &box->box);
 
     // count the number of reference boxes coming up
-    const uint8_t *end = data + size;
+    const uint8_t *end = data + box->box.size;
     const uint8_t *tmp = ptr;
     uint32_t count = 0;
     while(tmp < end) {
@@ -2443,7 +2442,7 @@ BMFFCode _bmff_parse_box_item_data(BMFFContext *ctx, const uint8_t *data, size_t
     ptr += parse_box(data, size, &box->box);
 
     box->data = ptr;
-    box->data_size = (data + size) - ptr;
+    box->data_size = (data + box->box.size) - ptr;
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

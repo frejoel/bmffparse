@@ -44,8 +44,6 @@
 // fecr
 // segr
 // gitn
-// idat
-// iref
 // meco
 // mere
 // styp
