@@ -186,12 +186,14 @@ typedef struct PrimaryItemBox { // pitm
 } PrimaryItemBox;
 
 typedef struct Extent {
+    uint64_t    index;
     uint64_t    offset;
     uint64_t    length;
 } Extent;
 
 typedef struct ItemLocation {
-    uint16_t    item_id;
+    uint32_t    item_id;
+    uint8_t     construction_method;
     uint16_t    data_reference_index;
     uint64_t    base_offset;
     uint16_t    extent_count;
@@ -203,7 +205,8 @@ typedef struct ItemLocationBox { // iloc
     uint16_t        offset_size;
     uint16_t        length_size;
     uint16_t        base_offset_size;
-    uint16_t        item_count;
+    uint8_t         index_size;
+    uint32_t        item_count;
     ItemLocation    *items;
 } ItemLocationBox;
 

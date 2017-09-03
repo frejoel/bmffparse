@@ -485,9 +485,18 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
     ptr++;
 
     box->base_offset_size = ((*ptr) >> 4) & 0x0F;
+
+    uint8_t ver = box->box.version;
+    if(ver == 1 || ver == 2) {
+        box->index_size = (*ptr) & 0x0F;
+    }
     ptr++;
 
-    ADV_PARSE_U16(box->item_count, ptr);
+    if(ver < 2) {
+        ADV_PARSE_U16(box->item_count, ptr);
+    } else if(ver == 2) {
+        ADV_PARSE_U32(box->item_count, ptr);
+    }
 
     if(box->item_count > 0) {
         BOX_MALLOCN(box->items, ItemLocation, box->item_count);
@@ -498,37 +507,54 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
         int i=0;
         for(; i < box->item_count; ++i) {
             ItemLocation *item = &box->items[i];
-            ADV_PARSE_U16(item->item_id, ptr);
+            if(ver < 2) {
+                ADV_PARSE_U16(item->item_id, ptr);
+            }else if(ver == 2) {
+                ADV_PARSE_U32(item->item_id, ptr);
+            }
+            if(ver == 1 || ver == 2) {
+                ++ptr; // (12) reserved
+                item->construction_method = (*ptr) & 0x0F;
+                ++ptr;
+            }
             ADV_PARSE_U16(item->data_reference_index, ptr);
+            
             if(box->base_offset_size == 4) {
-                uint32_t val = parse_u32(ptr);
-                item->base_offset = (uint64_t)val;
-                ptr += 4;
+                ADV_PARSE_U32(item->base_offset, ptr);
             }else if(box->base_offset_size == 8) {
                 ADV_PARSE_U64(item->base_offset, ptr);
             }else{
                 item->base_offset = 0;
             }
-            ADV_PARSE_U16(item->extent_count, ptr);
 
+            ADV_PARSE_U16(item->extent_count, ptr);
             if(item->extent_count > 0) {
                 BOX_MALLOCN(item->extents, Extent, item->extent_count);
+                
                 int j=0;
                 for(; j<item->extent_count; ++j) {
                     Extent *extent = &item->extents[j];
+                    
+                    if((ver == 1 || ver ==2) && (box->index_size > 0)) {
+                        if(box->index_size == 4) {
+                            ADV_PARSE_U32(extent->index, ptr);
+                        }else if(box->index_size == 8) {
+                            ADV_PARSE_U64(extent->index, ptr);
+                        }else{
+                            extent->index = 0;
+                        }
+                    }
+
                     if(box->offset_size == 4) {
-                        uint32_t val = parse_u32(ptr);
-                        extent->offset = (uint64_t)val;
-                        ptr += 4;
+                        ADV_PARSE_U32(extent->offset, ptr);
                     }else if(box->offset_size == 8) {
                         ADV_PARSE_U64(extent->offset, ptr);
                     }else{
                         extent->offset = 0;
                     }
+
                     if(box->length_size == 4) {
-                        uint32_t val = parse_u32(ptr);
-                        extent->length = (uint64_t)val;
-                        ptr += 4;
+                        ADV_PARSE_U32(extent->length, ptr);
                     }else if(box->length_size == 8) {
                         ADV_PARSE_U64(extent->length, ptr);
                     }else{

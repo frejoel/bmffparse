@@ -401,26 +401,30 @@ void test_parse_box_item_location(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x34,
+        0, 0, 0, 0x40,
         'i', 'l', 'o', 'c',
-        0x00, // version
+        0x01, // version
         0x00, 0x11, 0x00, // flags
         0x44, // offset size (4), length size (4) one of {0,4,8}
-        0x40, // base offset size (4) one of {0,4,8}, reserved (4)
+        0x44, // base offset size (4) and index size (4) one of {0,4,8},
         0x00, 0x02, // item count
             // item [0]
             0x00, 0x01, // item id
+            0x00, 0x08, // reserved (12), construction method (4)
             0x00, 0x00, // data reference index
             0xE1, 0xE1, 0xC2, 0xC2, // base offset (4*8)
             0x00, 0x02, // extent count
                 // extend[0]
+                0x90, 0xA0, 0xB0, 0xC0, // index
                 0x10, 0x20, 0x30, 0x40, // offset
                 0x50, 0x60, 0x70, 0x80, // size
                 // extend[1]
+                0x91, 0xA1, 0xB1, 0xC1, // index
                 0xA1, 0xB2, 0xC3, 0xD4, // offset
                 0xA9, 0xB8, 0xC7, 0xD6, // size
             // item [1]
             0xFE, 0xDC, // item id
+            0x00, 0x01, // reserved (12), construction method (4)
             0x00, 0x01, // data reference index
             0x12, 0x34, 0x56, 0x78, // base offset (4*8)
             0x00, 0x00, // extent count
@@ -431,25 +435,30 @@ void test_parse_box_item_location(void)
     res = _bmff_parse_box_item_location(&ctx, data, sizeof(data), (Box**)&box);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
-    test_assert_equal(box->box.size, 0x34, "size");
+    test_assert_equal(box->box.size, sizeof(data), "size");
     test_assert_equal(strncmp(box->box.type, "iloc", 4), 0, "type");
-    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.version, 0x01, "version");
     test_assert_equal(box->box.flags, 0x001100, "flags");
     test_assert_equal(box->offset_size, 4, "offset size");
     test_assert_equal(box->length_size, 4, "length size");
+    test_assert_equal(box->index_size, 4, "index size");
     test_assert_equal(box->base_offset_size, 4, "base offset size");
     test_assert_equal(box->item_count, 2, "item count");
     test_assert_equal(box->items[0].item_id, 1, "item[0] item id");
     test_assert_equal(box->items[0].data_reference_index, 0, "item[0] data reference index");
     test_assert_equal(box->items[0].base_offset, 0xE1E1C2C2, "item[0] base offset");
+    test_assert_equal(box->items[0].construction_method, 0x08, "item[0] construction method");
     test_assert_equal(box->items[0].extent_count, 2, "item[0] extent count");
+    test_assert_equal(box->items[0].extents[0].index, 0x90A0B0C0, "item[0].extent[0] index");
     test_assert_equal(box->items[0].extents[0].offset, 0x10203040, "item[0].extent[0] offset");
     test_assert_equal(box->items[0].extents[0].length, 0x50607080, "item[0].extent[0] length");
+    test_assert_equal(box->items[0].extents[1].index, 0x91A1B1C1, "item[0].extent[1] index");
     test_assert_equal(box->items[0].extents[1].offset, 0xA1B2C3D4, "item[0].extent[1] offset");
     test_assert_equal(box->items[0].extents[1].length, 0xA9B8C7D6, "item[0].extent[1] length");
     test_assert_equal(box->items[1].item_id, 0xFEDC, "item[1] item id");
     test_assert_equal(box->items[1].data_reference_index, 1, "item[1] data reference index");
     test_assert_equal(box->items[1].base_offset, 0x12345678, "item[1] base offset");
+    test_assert_equal(box->items[1].construction_method, 0x01, "item[1] construction method");
     test_assert_equal(box->items[1].extent_count, 0, "item[1] extent count");
 
     bmff_context_destroy(&ctx);
