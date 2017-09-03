@@ -735,4 +735,10 @@ typedef struct TrackSelectionBox { // tsel
     uint32_t    attribute_list_count;
 } TrackSelectionBox;
 
+typedef struct KindBox { // kind
+    FullBox     box;
+    const char  *scheme_uri;
+    const char  *value;
+} KindBox;
+
 #endif // BOXES_H

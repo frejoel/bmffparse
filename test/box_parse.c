@@ -73,6 +73,7 @@ void test_parse_box_level_assignment(void);
 void test_parse_box_track_extension_properties(void);
 void test_parse_box_alt_startup_seq_properties(void);
 void test_parse_box_track_selection(void);
+void test_parse_box_kind(void);
 
 int main(int argc, char** argv)
 {
@@ -146,6 +147,7 @@ int main(int argc, char** argv)
     test_parse_box_track_extension_properties();
     test_parse_box_alt_startup_seq_properties();
     test_parse_box_track_selection();
+    test_parse_box_kind();
     return 0;
 }
 
@@ -3751,6 +3753,38 @@ void test_parse_box_track_selection(void)
     test_end();
 }
 
+void test_parse_box_kind(void)
+{
+    test_start("test_parse_box_kind");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1D,
+        'k', 'i', 'n', 'd',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        's','c','h','e','m','e',' ','u','r','i','\0',
+        'v','a','l','u','e','\0',
+    };
+
+    BMFFCode res;
+    KindBox *box = NULL;
+    res = _bmff_parse_box_kind(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "kind", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->scheme_uri, "scheme uri"), 0, "scheme uri");
+    test_assert_equal(strcmp(box->value, "value"), 0, "value");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

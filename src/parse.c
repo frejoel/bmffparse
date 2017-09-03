@@ -103,6 +103,7 @@ const MapItem parse_map[] = {
     {"trep", 0, _bmff_parse_box_track_extension_properties},
     {"assp", 0, _bmff_parse_box_alt_startup_seq_properties},
     {"tsel", 0, _bmff_parse_box_track_selection},
+    {"kind", 0, _bmff_parse_box_kind},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2338,6 +2339,31 @@ BMFFCode _bmff_parse_box_track_selection(BMFFContext *ctx, const uint8_t *data, 
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
+
+BMFFCode _bmff_parse_box_kind(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, KindBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    const uint8_t *end = data + size;
+    if(end > ptr) {
+        ADV_PARSE_STR(box->scheme_uri, ptr);
+    }
+    if(end > ptr) {
+        ADV_PARSE_STR(box->value, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
