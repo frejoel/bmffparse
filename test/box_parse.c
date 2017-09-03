@@ -69,6 +69,7 @@ void test_parse_box_composition_to_decode(void);
 void test_parse_box_sample_aux_info_sizes(void);
 void test_parse_box_sample_aux_info_offsets(void);
 void test_parse_box_track_fragment_decode_time(void);
+void test_parse_box_level_assignment(void);
 
 int main(int argc, char** argv)
 {
@@ -138,6 +139,7 @@ int main(int argc, char** argv)
     test_parse_box_sample_aux_info_sizes();
     test_parse_box_sample_aux_info_offsets();
     test_parse_box_track_fragment_decode_time();
+    test_parse_box_level_assignment();
     return 0;
 }
 
@@ -3548,6 +3550,77 @@ void test_parse_box_track_fragment_decode_time(void)
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
     test_assert_equal_uint64(box->base_media_decode_time, 0x01020304LL, "base media decode time");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_level_assignment(void)
+{
+    test_start("test_parse_box_level_assignment");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x31,
+        'l', 'e', 'v', 'a',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x04, // level count
+
+        0x01, 0x02, 0x03, 0x04, // track id
+        0x01, // padding flag (1), assignment type (7)
+        0x10, 0x20, 0x30, 0x40, // grouping type
+        0x12, 0x34, 0x56, 0x78, // grouping type parameter
+
+        0x12, 0x22, 0x32, 0x42, // track id
+        0x02, // padding flag (1), assignment type (7)
+
+        0x11, 0x22, 0x33, 0x44, // track id
+        0x84, // padding flag (1), assignment type (7)
+        0x11, 0x21, 0x31, 0x41, // sub track id
+
+        0x10, 0x20, 0x30, 0x40, // track id
+        0x80, // padding flag (1), assignment type (7)
+        0xA0, 0xB0, 0xC0, 0xD0, // grouping type
+    };
+
+    BMFFCode res;
+    LevelAssignmentBox *box = NULL;
+    res = _bmff_parse_box_level_assignment(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "leva", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->level_count, 4, "level count");
+
+    LevelAssignment *level = &box->levels[0];
+    test_assert_equal(level->track_id, 0x01020304, "level 0 track id");
+    test_assert_equal(level->padding_flag, 0, "level 0 padding flag");
+    test_assert_equal(level->assignment_type, 1, "level 0 assignment type");
+    test_assert_equal(level->grouping_type, 0x10203040, "level 0 grouping type");
+    test_assert_equal(level->grouping_type_parameter, 0x12345678, "level 0 grouping type parameter");
+
+    level = &box->levels[1];
+    test_assert_equal(level->track_id, 0x12223242, "level 1 track id");
+    test_assert_equal(level->padding_flag, 0, "level 1 padding flag");
+    test_assert_equal(level->assignment_type, 2, "level 1 assignment type");
+
+    level = &box->levels[2];
+    test_assert_equal(level->track_id, 0x11223344, "level 2 track id");
+    test_assert_equal(level->padding_flag, 1, "level 2 padding flag");
+    test_assert_equal(level->assignment_type, 4, "level 2 assignment type");
+    test_assert_equal(level->sub_track_id, 0x11213141, "level 2 sub track id");
+
+    level = &box->levels[3];
+    test_assert_equal(level->track_id, 0x10203040, "level 3 track id");
+    test_assert_equal(level->padding_flag, 1, "level 3 padding flag");
+    test_assert_equal(level->assignment_type, 0, "level 3 assignment type");
+    test_assert_equal(level->grouping_type, 0xA0B0C0D0, "level 3 grouping type");
 
     bmff_context_destroy(&ctx);
 

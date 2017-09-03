@@ -692,4 +692,19 @@ typedef struct TrackFragmentDecodeTimeBox { // tfdt
     uint64_t    base_media_decode_time;
 } TrackFragmentDecodeTimeBox;
 
+typedef struct LevelAssignment {
+    uint32_t    track_id;
+    uint8_t     padding_flag;
+    uint8_t     assignment_type;
+    uint32_t    grouping_type;
+    uint32_t    grouping_type_parameter;
+    uint32_t    sub_track_id;
+} LevelAssignment;
+
+typedef struct LevelAssignmentBox { // leva
+    FullBox         box;
+    uint8_t         level_count;
+    LevelAssignment *levels;
+} LevelAssignmentBox;
+
 #endif // BOXES_H

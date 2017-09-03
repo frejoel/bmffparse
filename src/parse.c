@@ -99,6 +99,7 @@ const MapItem parse_map[] = {
     {"saiz", 0, _bmff_parse_box_sample_aux_info_sizes},
     {"saio", 0, _bmff_parse_box_sample_aux_info_offsets},
     {"tfdt", 0, _bmff_parse_box_track_fragment_decode_time},
+    {"leva", 0, _bmff_parse_box_level_assignment},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2181,6 +2182,48 @@ BMFFCode _bmff_parse_box_track_fragment_decode_time(BMFFContext *ctx, const uint
         ADV_PARSE_U64(box->base_media_decode_time, ptr);
     } else {
         ADV_PARSE_U32(box->base_media_decode_time, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_level_assignment(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, LevelAssignmentBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U8(box->level_count, ptr);
+    if(box->level_count > 0) {
+        BOX_MALLOCN(box->levels, LevelAssignment, box->level_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->level_count; ++i) {
+        LevelAssignment *level = &box->levels[i];
+        ADV_PARSE_U32(level->track_id, ptr);
+        level->padding_flag = (ptr[0] >> 7) & 0x01;
+        level->assignment_type = ptr[0] & 0x7F;
+        ++ptr;
+        switch(level->assignment_type) {
+            case 0: {
+                ADV_PARSE_U32(level->grouping_type, ptr);
+            } break;
+            case 1: {
+                ADV_PARSE_U32(level->grouping_type, ptr);
+                ADV_PARSE_U32(level->grouping_type_parameter, ptr);
+            } break;
+            case 4: {
+                ADV_PARSE_U32(level->sub_track_id, ptr);
+            } break;
+        }
     }
 
     *box_ptr = (Box*)box;
