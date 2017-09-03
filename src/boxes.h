@@ -281,8 +281,10 @@ typedef struct ItemReferenceBox { // iref
     uint32_t                    references_count;
 } ItemReferenceBox;
 
-typedef struct ItemDataBox { //
-    FullBox     box;
+typedef struct ItemDataBox { // idat
+    Box             box;
+    const uint8_t   *data;
+    uint32_t        data_size;       
 } ItemDataBox;
 
 typedef struct MetaBox { // meta

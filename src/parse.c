@@ -105,6 +105,7 @@ const MapItem parse_map[] = {
     {"tsel", 0, _bmff_parse_box_track_selection},
     {"kind", 0, _bmff_parse_box_kind},
     {"iref", 0, _bmff_parse_box_item_reference},
+    {"idat", 0, _bmff_parse_box_item_data},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2424,6 +2425,25 @@ BMFFCode _bmff_parse_box_item_reference(BMFFContext *ctx, const uint8_t *data, s
             }
         }
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_item_data(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 8)    return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ItemDataBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    box->data = ptr;
+    box->data_size = (data + size) - ptr;
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

@@ -75,6 +75,7 @@ void test_parse_box_alt_startup_seq_properties(void);
 void test_parse_box_track_selection(void);
 void test_parse_box_kind(void);
 void test_parse_box_item_reference(void);
+void test_parse_box_item_data(void);
 
 int main(int argc, char** argv)
 {
@@ -150,6 +151,7 @@ int main(int argc, char** argv)
     test_parse_box_track_selection();
     test_parse_box_kind();
     test_parse_box_item_reference();
+    test_parse_box_item_data();
     return 0;
 }
 
@@ -3849,6 +3851,37 @@ void test_parse_box_item_reference(void)
     test_assert_equal(ref_box->to_item_ids[0], 0x2122, "to items ids 2 0");
     test_assert_equal(ref_box->to_item_ids[1], 0x2324, "to items ids 2 1");
     test_assert_equal(ref_box->to_item_ids[2], 0x2526, "to items ids 2 2");
+    test_end();
+}
+
+void test_parse_box_item_data(void)
+{
+    test_start("test_parse_box_item_data");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        'i', 'd', 'a', 't',
+        0x01, 0x02, 0x03, 0x04, // data
+        0x05, 0x06, 0x07, 0x08,
+    };
+
+    BMFFCode res;
+    ItemDataBox *box = NULL;
+    res = _bmff_parse_box_item_data(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "idat", 4), 0, "type");
+    test_assert(box->data != NULL, "data");
+    test_assert_equal(box->data_size, 8, "data size");
+    test_assert_equal(box->data[0], 0x01, "data[0]");
+    test_assert_equal(box->data[7], 0x08, "data[7]");
+
+    bmff_context_destroy(&ctx);
+
     test_end();
 }
 
