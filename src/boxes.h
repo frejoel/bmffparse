@@ -35,7 +35,6 @@
 
 // sthd
 // leva
-// tfdt
 // tsel 
 // strk
 // stri
@@ -687,5 +686,10 @@ typedef struct SampleAuxInfoOffsetsBox { // saio
     uint32_t    entry_count;
     uint64_t     *offsets;
 } SampleAuxInfoOffsetsBox;
+
+typedef struct TrackFragmentDecodeTimeBox { // tfdt
+    FullBox     box;
+    uint64_t    base_media_decode_time;
+} TrackFragmentDecodeTimeBox;
 
 #endif // BOXES_H

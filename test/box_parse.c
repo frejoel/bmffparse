@@ -68,6 +68,7 @@ void test_parse_box_bit_rate(void);
 void test_parse_box_composition_to_decode(void);
 void test_parse_box_sample_aux_info_sizes(void);
 void test_parse_box_sample_aux_info_offsets(void);
+void test_parse_box_track_fragment_decode_time(void);
 
 int main(int argc, char** argv)
 {
@@ -136,6 +137,7 @@ int main(int argc, char** argv)
     test_parse_box_composition_to_decode();
     test_parse_box_sample_aux_info_sizes();
     test_parse_box_sample_aux_info_offsets();
+    test_parse_box_track_fragment_decode_time();
     return 0;
 }
 
@@ -3520,6 +3522,38 @@ void test_parse_box_sample_aux_info_offsets(void)
 
     test_end();
 }
+
+void test_parse_box_track_fragment_decode_time(void)
+{
+    test_start("test_parse_box_track_fragment_decode_time");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        't', 'f', 'd', 't',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x01, 0x02, 0x03, 0x04, // base media decode time
+    };
+
+    BMFFCode res;
+    TrackFragmentDecodeTimeBox *box = NULL;
+    res = _bmff_parse_box_track_fragment_decode_time(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "tfdt", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal_uint64(box->base_media_decode_time, 0x01020304LL, "base media decode time");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {

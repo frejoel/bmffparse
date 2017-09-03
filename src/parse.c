@@ -98,6 +98,7 @@ const MapItem parse_map[] = {
     {"cslg", 0, _bmff_parse_box_composition_to_decode},
     {"saiz", 0, _bmff_parse_box_sample_aux_info_sizes},
     {"saio", 0, _bmff_parse_box_sample_aux_info_offsets},
+    {"tfdt", 0, _bmff_parse_box_track_fragment_decode_time},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2158,6 +2159,28 @@ BMFFCode _bmff_parse_box_sample_aux_info_offsets(BMFFContext *ctx, const uint8_t
                 ADV_PARSE_U64(box->offsets[i], ptr);
             }
         }        
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_fragment_decode_time(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackFragmentDecodeTimeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 1) {
+        ADV_PARSE_U64(box->base_media_decode_time, ptr);
+    } else {
+        ADV_PARSE_U32(box->base_media_decode_time, ptr);
     }
 
     *box_ptr = (Box*)box;
