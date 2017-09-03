@@ -1223,7 +1223,11 @@ BMFFCode _bmff_parse_box_track_run(BMFFContext *ctx, const uint8_t *data, size_t
             ADV_PARSE_U32(sample->flags, ptr);
         }
         if(flags & eTrunSampleCompTimeOffsetsPresent == eTrunSampleCompTimeOffsetsPresent) {
-            ADV_PARSE_U32(sample->composition_time_offset, ptr);
+            if(box->box.version == 0) {
+                ADV_PARSE_U32(sample->composition_time_offset, ptr);
+            }else{
+                ADV_PARSE_S32(sample->composition_time_offset, ptr);
+            }
         }
     }
 

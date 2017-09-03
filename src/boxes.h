@@ -387,7 +387,7 @@ typedef struct TrackRunSample {
     uint32_t    duration;                   // optional
     uint32_t    size;                       // optional
     uint32_t    flags;                      // optional
-    uint32_t    composition_time_offset;
+    int64_t     composition_time_offset;    // optional
 } TrackRunSample;
 
 typedef struct TrackRunBox { // trun
