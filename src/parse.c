@@ -104,6 +104,7 @@ const MapItem parse_map[] = {
     {"assp", 0, _bmff_parse_box_alt_startup_seq_properties},
     {"tsel", 0, _bmff_parse_box_track_selection},
     {"kind", 0, _bmff_parse_box_kind},
+    {"iref", 0, _bmff_parse_box_item_reference},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2364,6 +2365,69 @@ BMFFCode _bmff_parse_box_kind(BMFFContext *ctx, const uint8_t *data, size_t size
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_item_reference(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ItemReferenceBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    // count the number of reference boxes coming up
+    const uint8_t *end = data + size;
+    const uint8_t *tmp = ptr;
+    uint32_t count = 0;
+    while(tmp < end) {
+        tmp += parse_u32(ptr);
+        ++count;        
+    }
+
+    box->references_count = count;
+
+    if(count > 0) {
+        BOX_MALLOCN(box->references, SingleItemTypeReferenceBox, count);
+    }
+
+    uint32_t i = 0;
+    for(; i < count; ++i) {
+        SingleItemTypeReferenceBox *ref_box = &box->references[i];
+        ptr += parse_box(data, size, &ref_box->box);
+        
+        if(box->box.version == 0) {
+            ADV_PARSE_U16(ref_box->from_item_id, ptr);
+            ADV_PARSE_U16(ref_box->reference_count, ptr);
+            
+            if(ref_box->reference_count > 0) {
+                BOX_MALLOCN(ref_box->to_item_ids, uint16_t, ref_box->reference_count);
+            }
+
+            uint16_t j = 0;
+            for(; j < ref_box->reference_count; ++j) {
+                ADV_PARSE_U16(ref_box->to_item_ids[j], ptr);
+            }
+        }else if(box->box.version == 1) {
+            // large version of the same box above
+            ADV_PARSE_U32(ref_box->from_item_id, ptr);
+            ADV_PARSE_U16(ref_box->reference_count, ptr);
+            
+            if(ref_box->reference_count > 0) {
+                BOX_MALLOCN(ref_box->to_item_ids, uint32_t, ref_box->reference_count);
+            }
+
+            uint16_t j = 0;
+            for(; j < ref_box->reference_count; ++j) {
+                ADV_PARSE_U32(ref_box->to_item_ids[j], ptr);
+            }
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
 
 /*
 BMFFCode _bmff_parse_box_(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)

@@ -74,6 +74,7 @@ void test_parse_box_track_extension_properties(void);
 void test_parse_box_alt_startup_seq_properties(void);
 void test_parse_box_track_selection(void);
 void test_parse_box_kind(void);
+void test_parse_box_item_reference(void);
 
 int main(int argc, char** argv)
 {
@@ -148,6 +149,7 @@ int main(int argc, char** argv)
     test_parse_box_alt_startup_seq_properties();
     test_parse_box_track_selection();
     test_parse_box_kind();
+    test_parse_box_item_reference();
     return 0;
 }
 
@@ -3785,6 +3787,71 @@ void test_parse_box_kind(void)
 
     test_end();
 }
+
+void test_parse_box_item_reference(void)
+{
+    test_start("test_parse_box_item_reference");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x3C,
+        'i', 'r', 'e', 'f',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+
+        0, 0, 0, 0x10,
+        'i','r','e','f',
+        0x12, 0x34, // from item id
+        0x00, 0x02, // reference count
+        0x01, 0x02, 0x03, 0x04, // to item ids
+
+        0, 0, 0, 0x0E,
+        'i','r','e','f',
+        0x56, 0x78, // from item id
+        0x00, 0x01, // reference count
+        0x11, 0x12, // to item ids
+
+        0, 0, 0, 0x12,
+        'i','r','e','f',
+        0x9A, 0xBC, // from item id
+        0x00, 0x03, // reference count
+        0x21, 0x22, 0x23, 0x24, 0x25, 0x26 // to item ids
+    };
+
+    BMFFCode res;
+    ItemReferenceBox *box = NULL;
+    res = _bmff_parse_box_item_reference(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "iref", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->references_count, 3, "references count");
+
+    SingleItemTypeReferenceBox *ref_box = &box->references[0];
+    test_assert_equal(ref_box->from_item_id, 0x1234, "from item id 0");
+    test_assert_equal(ref_box->reference_count, 2, "reference count 0");
+    test_assert_equal(ref_box->to_item_ids[0], 0x0102, "to items ids 0 0");
+    test_assert_equal(ref_box->to_item_ids[1], 0x0304, "to items ids 0 1");
+
+    ref_box = &box->references[1];
+    test_assert_equal(ref_box->from_item_id, 0x5678, "from item id 1");
+    test_assert_equal(ref_box->reference_count, 1, "reference count 1");
+    test_assert_equal(ref_box->to_item_ids[0], 0x1112, "to items ids 1 0");
+    bmff_context_destroy(&ctx);
+
+    ref_box = &box->references[2];
+    test_assert_equal(ref_box->from_item_id, 0x9ABC, "from item id 2");
+    test_assert_equal(ref_box->reference_count, 3, "reference count 2");
+    test_assert_equal(ref_box->to_item_ids[0], 0x2122, "to items ids 2 0");
+    test_assert_equal(ref_box->to_item_ids[1], 0x2324, "to items ids 2 1");
+    test_assert_equal(ref_box->to_item_ids[2], 0x2526, "to items ids 2 2");
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {

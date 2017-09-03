@@ -268,15 +268,34 @@ typedef struct ItemProtectionBox { // ipro
     ProtectionSchemeInfoBox **protection_info;
 } ItemProtectionBox;
 
+typedef struct SingleItemTypeReferenceBox {
+    Box         box;
+    uint32_t    from_item_id;
+    uint16_t    reference_count;
+    uint32_t    *to_item_ids;
+} SingleItemTypeReferenceBox;
+
+typedef struct ItemReferenceBox { // iref
+    FullBox                     box;
+    SingleItemTypeReferenceBox  *references;
+    uint32_t                    references_count;
+} ItemReferenceBox;
+
+typedef struct ItemDataBox { //
+    FullBox     box;
+} ItemDataBox;
+
 typedef struct MetaBox { // meta
     FullBox             box;
     HandlerBox          *handler;
-    PrimaryItemBox      *primary_resource;   // optional
-    DataInformationBox  *file_locations;     // optional
-    ItemLocationBox     *item_locations;     // optional
-    ItemProtectionBox   *protections;        // optional
-    ItemInfoBox         *item_infos;         // optional
-    IPMPControlBox      *ipmp_control;       // optional
+    PrimaryItemBox      *primary_resource;  // optional
+    DataInformationBox  *file_locations;    // optional
+    ItemLocationBox     *item_locations;    // optional
+    ItemProtectionBox   *protections;       // optional
+    ItemInfoBox         *item_infos;        // optional
+    IPMPControlBox      *ipmp_control;      // optional
+    ItemReferenceBox    *item_refs;         // optional
+    ItemDataBox         *item_data;         // optional
     Box                 *other_boxes;       // optional
     size_t              other_boxes_len;
 } MetaBox;
