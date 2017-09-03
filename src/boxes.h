@@ -33,10 +33,7 @@
 // load, imap
 // tmcd, chap, sync, scpt, ssrc,
 
-// elng
 // sthd
-// csgl
-// saiz
 // saio
 // leva
 // tfdt
@@ -672,5 +669,23 @@ typedef struct CompositionToDecodeBox { // cslg
     int64_t     composition_start_time;
     int64_t     composition_end_time;
 } CompositionToDecodeBox;
+
+
+typedef struct SampleAuxInfoSizesBox { // saiz
+    FullBox     box;
+    uint32_t    aux_info_type;
+    uint32_t    aux_info_type_param;
+    uint8_t     default_sample_info_size;
+    uint32_t    sample_count;
+    uint8_t     *sample_info_sizes;
+} SampleAuxInfoSizesBox;
+
+typedef struct SampleAuxInfoOffsetsBox { // saio
+    FullBox     box;
+    uint32_t    aux_info_type;
+    uint32_t    aux_info_type_param;
+    uint32_t    entry_count;
+    uint64_t     *offsets;
+} SampleAuxInfoOffsetsBox;
 
 #endif // BOXES_H

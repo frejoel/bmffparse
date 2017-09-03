@@ -66,6 +66,8 @@ void test_parse_box_track_group_type(void);
 void test_parse_box_extended_language_tag(void);
 void test_parse_box_bit_rate(void);
 void test_parse_box_composition_to_decode(void);
+void test_parse_box_sample_aux_info_sizes(void);
+void test_parse_box_sample_aux_info_offsets(void);
 
 int main(int argc, char** argv)
 {
@@ -132,6 +134,8 @@ int main(int argc, char** argv)
     test_parse_box_extended_language_tag();
     test_parse_box_bit_rate();
     test_parse_box_composition_to_decode();
+    test_parse_box_sample_aux_info_sizes();
+    test_parse_box_sample_aux_info_offsets();
     return 0;
 }
 
@@ -3437,6 +3441,84 @@ void test_parse_box_composition_to_decode(void)
     test_end();
 }
 
+void test_parse_box_sample_aux_info_sizes(void)
+{
+    test_start("test_parse_box_sample_aux_info_sizes");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1D,
+        's', 'a', 'i', 'z',
+        0x00, // version
+        0x00, 0x00, 0x01, // flags
+        0x12, 0x34, 0x56, 0x78, // aux info type
+        0x9A, 0xBC, 0xDE, 0xF0, // aux info type param
+        0x00, // default sample info size
+        0x00, 0x00, 0x00, 0x04, // sample count
+        0x01, 0x02, 0x03, 0x04, // sizes
+    };
+
+    BMFFCode res;
+    SampleAuxInfoSizesBox *box = NULL;
+    res = _bmff_parse_box_sample_aux_info_sizes(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "saiz", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0x000001, "flags");
+    test_assert_equal(box->aux_info_type, 0x12345678, "aux info type");
+    test_assert_equal(box->aux_info_type_param, 0x9ABCDEF0, "aux info type param");
+    test_assert_equal(box->default_sample_info_size, 0, "default sampe info size");
+    test_assert_equal(box->sample_count, 4, "sample count");
+    test_assert_equal(box->sample_info_sizes[0], 0x01, "sizes 0");
+    test_assert_equal(box->sample_info_sizes[3], 0x04, "sizes 3");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_sample_aux_info_offsets(void)
+{
+    test_start("test_parse_box_sample_aux_info_offsets");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x20,
+        's', 'a', 'i', 'o',
+        0x00, // version
+        0x00, 0x00, 0x01, // flags
+        0x12, 0x34, 0x56, 0x78, // aux info type
+        0x9A, 0xBC, 0xDE, 0xF0, // aux info type param
+        0x00, 0x00, 0x00, 0x02, // entry count
+        0x01, 0x02, 0x03, 0x04, // offsets
+        0x05, 0x06, 0x07, 0x08,
+    };
+
+    BMFFCode res;
+    SampleAuxInfoOffsetsBox *box = NULL;
+    res = _bmff_parse_box_sample_aux_info_offsets(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "saio", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0x000001, "flags");
+    test_assert_equal(box->aux_info_type, 0x12345678, "aux info type");
+    test_assert_equal(box->aux_info_type_param, 0x9ABCDEF0, "aux info type param");
+    test_assert_equal(box->entry_count, 2, "entry count");
+    test_assert_equal(box->offsets[0], 0x01020304, "offset 0");
+    test_assert_equal(box->offsets[1], 0x05060708, "offset 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {
