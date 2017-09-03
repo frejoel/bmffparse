@@ -1129,7 +1129,8 @@ BMFFCode _bmff_parse_box_track_extends(BMFFContext *ctx, const uint8_t *data, si
     ADV_PARSE_U32(box->default_sample_size, ptr);
 
     // default sample flags
-    // (6) reserved
+    // (4) reserved
+    box->default_sample_is_leading = (eBoolean)((ptr[0] >> 2) & 0x03); // (2) sample is leading
     box->default_sample_depends_on = (eBoolean)(ptr[0] & 0x03); // (2) sample depends on
     box->default_sample_is_depended_on = (eBoolean)((ptr[1] >> 6) & 0x03); // (2) sample is depended on
     box->default_sample_has_redundancy = (eBoolean)((ptr[1] >> 4) & 0x03); // (2) sample has redundency

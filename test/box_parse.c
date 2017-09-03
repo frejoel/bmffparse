@@ -1655,7 +1655,7 @@ void test_parse_box_track_extends(void)
         0x10, 0x20, 0x30, 0x40, // default sample duration
         0x1A, 0x2B, 0x3C, 0x4D, // default sample size
         // flags
-        0b00000001, // reserved (6), sample depends on (2)
+        0b00000101, // reserved (4), is leading (2), sample depends on (2)
         0b10001011, // sample is depended on (2), sample has redundancy (2), sample padding (3), sample is difference sample (1) 
         0xF3, 0xF4, // sample degradation priority
     };
@@ -1669,6 +1669,7 @@ void test_parse_box_track_extends(void)
     test_assert_equal(strncmp(box->box.type, "trex", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->default_sample_is_leading, eBooleanTrue, "sample is leading");
     test_assert_equal(box->default_sample_depends_on, eBooleanTrue, "sample depends on");
     test_assert_equal(box->default_sample_is_depended_on, eBooleanFalse, "sample is depended on");
     test_assert_equal(box->default_sample_has_redundancy, eBooleanUnknown, "sample has redundancy");

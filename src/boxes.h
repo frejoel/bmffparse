@@ -34,7 +34,6 @@
 // tmcd, chap, sync, scpt, ssrc,
 
 // sthd
-// saio
 // leva
 // tfdt
 // tsel 
@@ -365,11 +364,12 @@ typedef struct TrackExtendsBox { // trex
     uint32_t    default_sample_duration;
     uint32_t    default_sample_size;
     // defaut sample flags
-    eBoolean   default_sample_depends_on;
-    eBoolean   default_sample_is_depended_on;
-    eBoolean   default_sample_has_redundancy;
+    eBoolean    default_sample_is_leading;
+    eBoolean    default_sample_depends_on;
+    eBoolean    default_sample_is_depended_on;
+    eBoolean    default_sample_has_redundancy;
     uint8_t     default_sample_padding_value;
-    eBoolean   default_sample_is_difference_sample;
+    eBoolean    default_sample_is_difference_sample;
     uint16_t    default_sample_degradation_priority;
 } TrackExtendsBox;
 
