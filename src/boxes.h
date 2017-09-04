@@ -222,11 +222,14 @@ typedef struct FDItemInfoExtension { // fdel
 
 typedef struct ItemInfoEntry { // infe
     FullBox         box;
-    uint16_t        item_id;
+    uint32_t        item_id;
     uint16_t        item_protection_index;
     const char      *item_name;
     const char      *content_type;
     const char      *content_encoding;  // optional
+    uint32_t        extension_type; // optional
+    uint8_t         item_type[4];
+    const char      *item_uri_type;
 } ItemInfoEntry;
 
 typedef struct ItemInfoBox { // iinf

@@ -476,12 +476,13 @@ void test_parse_box_item_info_entry(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x38,
+        0, 0, 0, 0x3C,
         'i', 'n', 'f', 'e',
-        0x00, // version
+        0x02, // version
         0x00, 0x00, 0x00, // flags
         0x12, 0x34, // item id
         0xAB, 0xCD, // item protection index
+        'm', 'i', 'm', 'e', // item type
         'i','t','e','m',' ','n','a','m','e',0, // 10
         'c','o','n','t','e','n','t',' ','t','y','p','e',0, // 13
         'c','o','n','t','e','n','t',' ','e','n','c','o','d','i','n','g',0, // 17
@@ -492,12 +493,13 @@ void test_parse_box_item_info_entry(void)
     res = _bmff_parse_box_item_info_entry(&ctx, data, sizeof(data), (Box**)&box);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
-    test_assert_equal(box->box.size, 0x38, "size");
+    test_assert_equal(box->box.size, sizeof(data), "size");
     test_assert_equal(strncmp(box->box.type, "infe", 4), 0, "type");
-    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.version, 0x02, "version");
     test_assert_equal(box->box.flags, 0x000000, "flags");
     test_assert_equal(box->item_id, 0x1234, "item id");
     test_assert_equal(box->item_protection_index, 0xABCD, "item protection index");
+    test_assert_equal(strncmp(box->item_type, "mime", 4), 0, "item type");
     test_assert_equal(strcmp(box->item_name, "item name"), 0, "item name");
     test_assert_equal(strcmp(box->content_type, "content type"), 0, "content type");
     test_assert_equal(strcmp(box->content_encoding, "content encoding"), 0, "content encoding");
@@ -3976,6 +3978,7 @@ void test_parse_box_fd_item_info_extension(void)
 
     test_end();
 }
+
 /*
 void test_parse_box_(void)
 {

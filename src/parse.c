@@ -618,11 +618,29 @@ BMFFCode _bmff_parse_box_item_info_entry(BMFFContext *ctx, const uint8_t *data, 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_U16(box->item_id, ptr);
+    uint8_t ver = box->box.version;
+    if(ver <= 2) {
+        ADV_PARSE_U16(box->item_id, ptr);
+    }else if(ver == 3) {
+        ADV_PARSE_U32(box->item_id, ptr);
+    }
     ADV_PARSE_U16(box->item_protection_index, ptr);
+
+    if(ver >= 2) {
+        memcpy(box->item_type, ptr, 4);
+        ptr += 4;
+    }
+
     ADV_PARSE_STR(box->item_name, ptr);
-    ADV_PARSE_STR(box->content_type, ptr);
-    box->content_encoding = ptr;
+
+    if(ver == 0 || ver == 1 || memcmp(&box->item_type, "mime", 4) == 0) {
+        ADV_PARSE_STR(box->content_type, ptr);
+        ADV_PARSE_STR(box->content_encoding, ptr);
+    }
+
+    if(ver >= 2 && memcmp(&box->item_type, "uri ", 4) == 0) {
+        ADV_PARSE_STR(box->item_uri_type, ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
