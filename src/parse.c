@@ -106,6 +106,7 @@ const MapItem parse_map[] = {
     {"kind", 0, _bmff_parse_box_kind},
     {"iref", 0, _bmff_parse_box_item_reference},
     {"idat", 0, _bmff_parse_box_item_data},
+    {"fdel", 0, _bmff_parse_box_fd_item_info_extension},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -572,6 +573,38 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
+
+BMFFCode _bmff_parse_box_fd_item_info_extension(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 27)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FDItemInfoExtension);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_STR(box->content_location, ptr);
+    ADV_PARSE_STR(box->content_md5, ptr);
+    ADV_PARSE_U64(box->content_length, ptr);
+    ADV_PARSE_U64(box->transfer_length, ptr);
+    ADV_PARSE_U8(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->group_ids, uint32_t, box->entry_count);
+    }
+
+    uint8_t i = 0;
+    for(; i < box->entry_count; ++i) {
+        ADV_PARSE_U32(box->group_ids[i], ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 
 BMFFCode _bmff_parse_box_item_info_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {

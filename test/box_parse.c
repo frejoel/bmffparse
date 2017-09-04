@@ -76,6 +76,7 @@ void test_parse_box_track_selection(void);
 void test_parse_box_kind(void);
 void test_parse_box_item_reference(void);
 void test_parse_box_item_data(void);
+void test_parse_box_fd_item_info_extension(void);
 
 int main(int argc, char** argv)
 {
@@ -152,6 +153,7 @@ int main(int argc, char** argv)
     test_parse_box_kind();
     test_parse_box_item_reference();
     test_parse_box_item_data();
+    test_parse_box_fd_item_info_extension();
     return 0;
 }
 
@@ -3936,6 +3938,44 @@ void test_parse_box_item_data(void)
     test_end();
 }
 
+void test_parse_box_fd_item_info_extension(void)
+{
+    test_start("test_parse_box_fd_item_info_extension");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x2A,
+        'f', 'd', 'e', 'l',
+        'c','l','o','c','\0', // content location
+        'm','d','5','\0', // content md5
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // content length
+        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, // transfer length
+        0x02, // entry count
+        0x0A, 0x0B, 0x0C, 0x0D, // group id
+        0x1A, 0x1B, 0x1C, 0x1D, // group id
+    };
+
+    BMFFCode res;
+    FDItemInfoExtension *box = NULL;
+    res = _bmff_parse_box_fd_item_info_extension(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "fdel", 4), 0, "type");
+    test_assert_equal(strcmp(box->content_location, "cloc"), 0, "content location");
+    test_assert_equal(strcmp(box->content_md5, "md5"), 0, "content md5");
+    test_assert_equal_uint64(box->content_length, 0x0102030405060708ULL, "content length");
+    test_assert_equal_uint64(box->transfer_length, 0x1112131415161718ULL, "transfer length");
+    test_assert_equal(box->entry_count, 2, "entry count");
+    test_assert_equal(box->group_ids[0], 0x0A0B0C0D, "group ids 0");
+    test_assert_equal(box->group_ids[1], 0x1A1B1C1D, "group ids 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

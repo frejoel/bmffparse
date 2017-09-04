@@ -210,6 +210,16 @@ typedef struct ItemLocationBox { // iloc
     ItemLocation    *items;
 } ItemLocationBox;
 
+typedef struct FDItemInfoExtension { // fdel
+    Box             box;
+    const char      *content_location;
+    const char      *content_md5;
+    uint64_t        content_length;
+    uint64_t        transfer_length;
+    uint8_t         entry_count;
+    uint32_t        *group_ids;
+} FDItemInfoExtension;
+
 typedef struct ItemInfoEntry { // infe
     FullBox         box;
     uint16_t        item_id;
