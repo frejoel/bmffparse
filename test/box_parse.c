@@ -10,7 +10,8 @@ void test_parse_box_progressive_download_info(void);
 void test_parse_box_media_data(void);
 void test_parse_box_primary_item(void);
 void test_parse_box_item_location(void);
-void test_parse_box_item_info_entry(void);
+void test_parse_box_item_info_entry_v1(void);
+void test_parse_box_item_info_entry_v2(void);
 void test_parse_box_item_info(void);
 void test_parse_box_ipmp_control(void);
 void test_parse_box_original_format(void);
@@ -76,7 +77,6 @@ void test_parse_box_track_selection(void);
 void test_parse_box_kind(void);
 void test_parse_box_item_reference(void);
 void test_parse_box_item_data(void);
-void test_parse_box_fd_item_info_extension(void);
 
 int main(int argc, char** argv)
 {
@@ -87,7 +87,8 @@ int main(int argc, char** argv)
     test_parse_box_media_data();
     test_parse_box_primary_item();
     test_parse_box_item_location();
-    test_parse_box_item_info_entry();
+    test_parse_box_item_info_entry_v1();
+    test_parse_box_item_info_entry_v2();
     test_parse_box_item_info();
     test_parse_box_ipmp_control();
     test_parse_box_original_format();
@@ -153,7 +154,6 @@ int main(int argc, char** argv)
     test_parse_box_kind();
     test_parse_box_item_reference();
     test_parse_box_item_data();
-    test_parse_box_fd_item_info_extension();
     return 0;
 }
 
@@ -468,9 +468,66 @@ void test_parse_box_item_location(void)
     test_end();
 }
 
-void test_parse_box_item_info_entry(void)
+void test_parse_box_item_info_entry_v1(void)
 {
-    test_start("test_parse_box_item_info_entry");
+    test_start("test_parse_box_item_info_entry_v1");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x5D,
+        'i', 'n', 'f', 'e',
+        0x01, // version
+        0x00, 0x00, 0x00, // flags
+        0x12, 0x34, // item id
+        0xAB, 0xCD, // item protection index
+        'i','t','e','m',' ','n','a','m','e',0, // 10
+        'c','o','n','t','e','n','t',' ','t','y','p','e',0, // 13
+        'c','o','n','t','e','n','t',' ','e','n','c','o','d','i','n','g',0, // 17
+        'f','d','e','l', // extension type
+        'l','o','c','\0', // extension
+        'm','d','5','\0',
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // content length
+        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, // transfer length
+        0x02, // entry count
+        0x0A, 0x0B, 0x0C, 0x0D, // group id
+        0x1A, 0x1B, 0x1C, 0x1D, // group id
+    };
+
+    BMFFCode res;
+    ItemInfoEntry *box = NULL;
+    res = _bmff_parse_box_item_info_entry(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "infe", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0x000000, "flags");
+    test_assert_equal(box->item_id, 0x1234, "item id");
+    test_assert_equal(box->item_protection_index, 0xABCD, "item protection index");
+    test_assert_equal(strcmp(box->item_name, "item name"), 0, "item name");
+    test_assert_equal(strcmp(box->content_type, "content type"), 0, "content type");
+    test_assert_equal(strcmp(box->content_encoding, "content encoding"), 0, "content encoding");
+    test_assert_equal(strncmp(box->extension_type, "fdel", 4), 0, "extension type");
+
+    FDItemInfoExtension *ext = box->extension;
+    test_assert_equal(strcmp(ext->content_location, "loc"), 0, "content location");
+    test_assert_equal(strcmp(ext->content_md5, "md5"), 0, "content md5");
+    test_assert_equal_uint64(ext->content_length, 0x0102030405060708ULL, "content length");
+    test_assert_equal_uint64(ext->transfer_length, 0x1112131415161718ULL, "transfer length");
+    test_assert_equal(ext->entry_count, 2, "entry count");
+    test_assert_equal(ext->group_ids[0], 0x0A0B0C0D, "group ids 0");
+    test_assert_equal(ext->group_ids[1], 0x1A1B1C1D, "group ids 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_item_info_entry_v2(void)
+{
+    test_start("test_parse_box_item_info_entry_v2");
 
     BMFFContext ctx;
     bmff_context_init(&ctx);
@@ -3934,45 +3991,6 @@ void test_parse_box_item_data(void)
     test_assert_equal(box->data_size, 8, "data size");
     test_assert_equal(box->data[0], 0x01, "data[0]");
     test_assert_equal(box->data[7], 0x08, "data[7]");
-
-    bmff_context_destroy(&ctx);
-
-    test_end();
-}
-
-void test_parse_box_fd_item_info_extension(void)
-{
-    test_start("test_parse_box_fd_item_info_extension");
-
-    BMFFContext ctx;
-    bmff_context_init(&ctx);
-
-    uint8_t data[] = {
-        0, 0, 0, 0x2A,
-        'f', 'd', 'e', 'l',
-        'c','l','o','c','\0', // content location
-        'm','d','5','\0', // content md5
-        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // content length
-        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, // transfer length
-        0x02, // entry count
-        0x0A, 0x0B, 0x0C, 0x0D, // group id
-        0x1A, 0x1B, 0x1C, 0x1D, // group id
-    };
-
-    BMFFCode res;
-    FDItemInfoExtension *box = NULL;
-    res = _bmff_parse_box_fd_item_info_extension(&ctx, data, sizeof(data), (Box**)&box);
-    test_assert_equal(BMFF_OK, res, "success");
-    test_assert(box != NULL, "NULL box reference");
-    test_assert_equal(box->box.size, sizeof(data), "size");
-    test_assert_equal(strncmp(box->box.type, "fdel", 4), 0, "type");
-    test_assert_equal(strcmp(box->content_location, "cloc"), 0, "content location");
-    test_assert_equal(strcmp(box->content_md5, "md5"), 0, "content md5");
-    test_assert_equal_uint64(box->content_length, 0x0102030405060708ULL, "content length");
-    test_assert_equal_uint64(box->transfer_length, 0x1112131415161718ULL, "transfer length");
-    test_assert_equal(box->entry_count, 2, "entry count");
-    test_assert_equal(box->group_ids[0], 0x0A0B0C0D, "group ids 0");
-    test_assert_equal(box->group_ids[1], 0x1A1B1C1D, "group ids 1");
 
     bmff_context_destroy(&ctx);
 

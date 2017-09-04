@@ -106,7 +106,6 @@ const MapItem parse_map[] = {
     {"kind", 0, _bmff_parse_box_kind},
     {"iref", 0, _bmff_parse_box_item_reference},
     {"idat", 0, _bmff_parse_box_item_data},
-    {"fdel", 0, _bmff_parse_box_fd_item_info_extension},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -574,17 +573,16 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
     return BMFF_OK;
 }
 
-BMFFCode _bmff_parse_box_fd_item_info_extension(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+size_t _bmff_parse_fd_item_info_extension(BMFFContext *ctx, const uint8_t *data, size_t size, FDItemInfoExtension **box_ptr)
 {
-    if(!ctx)        return BMFF_INVALID_CONTEXT;
-    if(!data)       return BMFF_INVALID_DATA;
-    if(size < 27)   return BMFF_INVALID_SIZE;
-    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+    if(!ctx)        return 0;
+    if(!data)       return 0;
+    if(size < 27)   return 0;
+    if(!box_ptr)    return 0;
 
     BOX_MALLOC(box, FDItemInfoExtension);
 
     const uint8_t *ptr = data;
-    ptr += parse_box(data, size, &box->box);
 
     ADV_PARSE_STR(box->content_location, ptr);
     ADV_PARSE_STR(box->content_md5, ptr);
@@ -601,10 +599,9 @@ BMFFCode _bmff_parse_box_fd_item_info_extension(BMFFContext *ctx, const uint8_t 
         ADV_PARSE_U32(box->group_ids[i], ptr);
     }
 
-    *box_ptr = (Box*)box;
-    return BMFF_OK;
+    *box_ptr = box;
+    return ptr - data;
 }
-
 
 BMFFCode _bmff_parse_box_item_info_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
@@ -638,6 +635,22 @@ BMFFCode _bmff_parse_box_item_info_entry(BMFFContext *ctx, const uint8_t *data, 
         ADV_PARSE_STR(box->content_encoding, ptr);
     }
 
+    if(ver == 1) {
+        memcpy(box->extension_type, ptr, 4);
+        ptr += 4;
+        const uint8_t *end = data + box->box.size;
+        if(strcmp(box->extension_type, "fdel") == 0) {
+            BOX_MALLOC(ext, FDItemInfoExtension); 
+            box->extension_size = _bmff_parse_fd_item_info_extension(ctx, ptr, end - ptr, &ext);
+            box->extension = ext;
+            ptr += box->extension_size;
+        }else{
+            box->extension_bytes = ptr;
+            box->extension_size = end - ptr;
+            ptr = end;
+        }
+    }
+
     if(ver >= 2 && memcmp(&box->item_type, "uri ", 4) == 0) {
         ADV_PARSE_STR(box->item_uri_type, ptr);
     }
@@ -658,10 +671,14 @@ BMFFCode _bmff_parse_box_item_info(BMFFContext *ctx, const uint8_t *data, size_t
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_U16(box->entry_count, ptr);
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->entry_count, ptr);
+    }else {
+        ADV_PARSE_U32(box->entry_count, ptr);
+    }
 
     BOX_MALLOCN(box->entries, ItemInfoEntry*, box->entry_count);
-    int i=0;
+    uint32_t i=0;
     for(; i < box->entry_count; ++i) {
         BMFFCode res = _bmff_parse_box_item_info_entry(ctx, ptr, size-(ptr-data), (Box**)&box->entries[i]);
         if(res != BMFF_OK) {
