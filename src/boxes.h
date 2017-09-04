@@ -182,7 +182,7 @@ typedef struct HandlerBox { // hdlr
 
 typedef struct PrimaryItemBox { // pitm
     FullBox     box;
-    uint16_t    item_id;
+    uint32_t    item_id;
 } PrimaryItemBox;
 
 typedef struct Extent {

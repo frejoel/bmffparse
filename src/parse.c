@@ -462,7 +462,11 @@ BMFFCode _bmff_parse_box_primary_item(BMFFContext *ctx, const uint8_t *data, siz
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_U16(box->item_id, ptr);
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->item_id, ptr);
+    }else {
+        ADV_PARSE_U32(box->item_id, ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

@@ -372,9 +372,9 @@ void test_parse_box_primary_item(void)
     uint8_t data[] = {
         0, 0, 0, 0x0E,
         'p', 'i', 't', 'm',
-        0x00, // version
+        0x01, // version
         0xEE, 0xCC, 0xBB, // flags
-        0x01, 0x05, // item id
+        0x01, 0x02, 0x03, 0x04, // item id
     };
 
     BMFFCode res;
@@ -384,9 +384,9 @@ void test_parse_box_primary_item(void)
     test_assert(box != NULL, "NULL box reference");
     test_assert_equal(box->box.size, 0x0E, "size");
     test_assert_equal(strncmp(box->box.type, "pitm", 4), 0, "type");
-    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.version, 0x01, "version");
     test_assert_equal(box->box.flags, 0xEECCBB, "flags");
-    test_assert_equal(box->item_id, 0x0105, "item id");
+    test_assert_equal(box->item_id, 0x01020304, "item id");
 
     bmff_context_destroy(&ctx);
 
