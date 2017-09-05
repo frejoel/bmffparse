@@ -34,6 +34,7 @@ const MapItem parse_map[] = {
     {"mfra", 1, _bmff_parse_box_generic_container},
     {"udta", 1, _bmff_parse_box_generic_container},
     {"tref", 1, _bmff_parse_box_generic_container},
+    {"meco", 1, _bmff_parse_box_generic_container},
     {"hint", 0, _bmff_parse_box_track_reference_type},
     {"cdsc", 0, _bmff_parse_box_track_reference_type},
     {"font", 0, _bmff_parse_box_track_reference_type},
@@ -106,6 +107,7 @@ const MapItem parse_map[] = {
     {"kind", 0, _bmff_parse_box_kind},
     {"iref", 0, _bmff_parse_box_item_reference},
     {"idat", 0, _bmff_parse_box_item_data},
+    {"mere", 0, _bmff_parse_box_metabox_relation},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2541,6 +2543,28 @@ BMFFCode _bmff_parse_box_item_data(BMFFContext *ctx, const uint8_t *data, size_t
 
     box->data = ptr;
     box->data_size = (data + box->box.size) - ptr;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_metabox_relation(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 21)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, MetaboxRelationBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    memcpy(box->first_metabox_handler_type, ptr, 4);
+    ptr += 4;
+    memcpy(box->second_metabox_handler_type, ptr, 4);
+    ptr += 4;
+    ADV_PARSE_U8(box->metabox_relation, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

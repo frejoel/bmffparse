@@ -45,7 +45,6 @@
 // segr
 // gitn
 // meco
-// mere
 // styp
 // sidx
 // ssix
@@ -144,6 +143,7 @@ typedef ContainerBox EditBox; // edts
 typedef ContainerBox MediaBox; // mdia
 typedef ContainerBox MediaInformationBox;// minf
 typedef ContainerBox SampleTableBox;// stbl
+typedef ContainerBox AdditionalMetadataContainerBox;// meco
 
 typedef Box FreeSpaceBox; // free, skip
 typedef Box TrackReferenceBox; // tref
@@ -777,5 +777,20 @@ typedef struct KindBox { // kind
     const char  *scheme_uri;
     const char  *value;
 } KindBox;
+
+typedef enum {
+    eMetaboxRelationUnknown            = 1,
+    eMetaboxRelationUnrelated          = 2,
+    eMetaboxRelationComplementary      = 3,
+    eMetaboxRelationOverlap            = 4,
+    eMetaboxRelationFirstPreferred     = 5,
+} eMetaboxRelation;
+
+typedef struct MetaboxRelationBox { // mere
+    FullBox             box;
+    uint8_t             first_metabox_handler_type[4];
+    uint8_t             second_metabox_handler_type[4];
+    eMetaboxRelation    metabox_relation;
+} MetaboxRelationBox;
 
 #endif // BOXES_H

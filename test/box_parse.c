@@ -77,6 +77,7 @@ void test_parse_box_track_selection(void);
 void test_parse_box_kind(void);
 void test_parse_box_item_reference(void);
 void test_parse_box_item_data(void);
+void test_parse_box_metabox_relation(void);
 
 int main(int argc, char** argv)
 {
@@ -154,6 +155,7 @@ int main(int argc, char** argv)
     test_parse_box_kind();
     test_parse_box_item_reference();
     test_parse_box_item_data();
+    test_parse_box_metabox_relation();
     return 0;
 }
 
@@ -3997,6 +3999,40 @@ void test_parse_box_item_data(void)
     test_end();
 }
 
+void test_parse_box_metabox_relation(void)
+{
+    test_start("test_parse_box_metabox_relation");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x15,
+        'm', 'e', 'r', 'e',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'a', 'b', 'c', 'd', // first metabox handler type
+        'e', 'f', 'g', 'h', // second metabox handler type
+        0x03, // metabox relation
+    };
+
+    BMFFCode res;
+    MetaboxRelationBox *box = NULL;
+    res = _bmff_parse_box_metabox_relation(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "mere", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strncmp(box->first_metabox_handler_type, "abcd", 4), 0, "first metabox handler");
+    test_assert_equal(strncmp(box->second_metabox_handler_type, "efgh", 4), 0, "second metabox handler");
+    test_assert_equal(box->metabox_relation, eMetaboxRelationComplementary, "metabox relation");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {
