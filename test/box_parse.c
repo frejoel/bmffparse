@@ -885,15 +885,11 @@ void test_parse_box_protection_scheme_info(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x4F,
+        0, 0, 0, 0x3F,
         's', 'i', 'n', 'f',
+        0, 0, 0, 0x0C,
+        'f', 'r', 'm', 'a',
         'm','p','4','v', // data format
-        // IPMP Info Box
-        0, 0, 0, 0x18,
-        'i', 'm', 'i', 'f',
-        0x00, // version
-        0x00, 0x00, 0x00, // flags
-        'd','e','s','c','r','i','p','t','o','r','s',0, // IPMP descriptors
         // Scheme Type Box
         0, 0, 0, 0x14,
         's', 'c', 'h', 'm',
@@ -915,17 +911,12 @@ void test_parse_box_protection_scheme_info(void)
     res = _bmff_parse_box_protection_scheme_info(&ctx, data, sizeof(data), (Box**)&box);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
-    test_assert_equal(box->box.box.size, sizeof(data), "size");
-    test_assert_equal(strncmp(box->box.box.type, "sinf", 4), 0, "type");
-    test_assert_equal(strncmp(box->box.data_format, "mp4v", 4), 0, "data format");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "sinf", 4), 0, "type");
 
-    test_assert(box->ipmp_descriptors != NULL, "NULL IPMP box descriptors");
-    IPMPInfoBox *ipmp = box->ipmp_descriptors;
-    test_assert_equal(strncmp("imif", ipmp->box.type, 4), 0, "IPMP Info type");
-    test_assert_equal(ipmp->box.size, 0x18, "IPMP Info size");
-    test_assert_equal(ipmp->box.version, 0x00, "IPMP Info version");
-    test_assert_equal(ipmp->box.flags, 0x000000, "IPMP Info flags");
-    // TODO: IPMP Descriptors
+    test_assert_equal(box->original_format.box.size, 0x0C, "original format size");
+    test_assert_equal(strncmp(box->original_format.box.type, "frma", 4), 0, "original format type");
+    test_assert_equal(strncmp(box->original_format.data_format, "mp4v", 4), 0, "original format data");
 
     test_assert(box->scheme_type != NULL, "NULL Scheme Type box");
     SchemeTypeBox *schm_type = box->scheme_type;
@@ -958,7 +949,7 @@ void test_parse_box_item_protection(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x5D,
+        0, 0, 0, 0x4D,
         'i', 'p', 'r', 'o',
         0x00, // version
         0x00, 0x00, 0x00, // flags
@@ -968,13 +959,9 @@ void test_parse_box_item_protection(void)
         ///////
         0, 0, 0, 0x4F,
         's', 'i', 'n', 'f',
+        0, 0, 0, 0x0C, // original format
+        'f', 'r', 'm', 'a',
         'm','p','4','v', // data format
-        // IPMP Info Box
-        0, 0, 0, 0x18,
-        'i', 'm', 'i', 'f',
-        0x00, // version
-        0x00, 0x00, 0x00, // flags
-        'd','e','s','c','r','i','p','t','o','r','s',0, // IPMP descriptors
         // Scheme Type Box
         0, 0, 0, 0x14,
         's', 'c', 'h', 'm',
@@ -1005,17 +992,12 @@ void test_parse_box_item_protection(void)
 
     ProtectionSchemeInfoBox *info = box->protection_info[0];
 
-    test_assert_equal(info->box.box.size, 0x4F, "size");
-    test_assert_equal(strncmp(info->box.box.type, "sinf", 4), 0, "type");
-    test_assert_equal(strncmp(info->box.data_format, "mp4v", 4), 0, "data format");
+    test_assert_equal(info->box.size, 0x4F, "size");
+    test_assert_equal(strncmp(info->box.type, "sinf", 4), 0, "type");
 
-    test_assert(info->ipmp_descriptors != NULL, "NULL IPMP box descriptors");
-    IPMPInfoBox *ipmp = info->ipmp_descriptors;
-    test_assert_equal(strncmp("imif", ipmp->box.type, 4), 0, "IPMP Info type");
-    test_assert_equal(ipmp->box.size, 0x18, "IPMP Info size");
-    test_assert_equal(ipmp->box.version, 0x00, "IPMP Info version");
-    test_assert_equal(ipmp->box.flags, 0x000000, "IPMP Info flags");
-    // TODO: IPMP Descriptors
+    test_assert_equal(info->original_format.box.size, 0x0C, "original format size");
+    test_assert_equal(strncmp(info->original_format.box.type, "frma", 4), 0, "original format type");
+    test_assert_equal(strncmp(info->original_format.data_format, "mp4v", 4), 0, "original format data");
 
     test_assert(info->scheme_type != NULL, "NULL Scheme Type box");
     SchemeTypeBox *schm_type = info->scheme_type;
@@ -1048,7 +1030,7 @@ void test_parse_box_meta(void)
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0x02, 0x3A,
+        0, 0, 0x02, 0x2A,
         'm', 'e', 't', 'a',
         0x00, // version
         0x00, 0x00, 0x00, // flags
@@ -1106,21 +1088,17 @@ void test_parse_box_meta(void)
         0x00, 0x00, // extent count
 
         // Item Protection
-        0, 0, 0, 0x5D,
+        0, 0, 0, 0x4D,
         'i', 'p', 'r', 'o',
         0x00, // version
         0x00, 0x00, 0x00, // flags
         0x00, 0x01, // protection count
         // Protection Scheme Info Box
-        0, 0, 0, 0x4F,
+        0, 0, 0, 0x3F,
         's', 'i', 'n', 'f',
+        0, 0, 0, 0x0C,
+        'f','r','m','a',
         'm','p','4','v', // data format
-        // IPMP Info Box
-        0, 0, 0, 0x18,
-        'i', 'm', 'i', 'f',
-        0x00, // version
-        0x00, 0x00, 0x00, // flags
-        'd','e','s','c','r','i','p','t','o','r','s',0, // IPMP descriptors
         // Scheme Type Box
         0, 0, 0, 0x14,
         's', 'c', 'h', 'm',
@@ -1131,7 +1109,7 @@ void test_parse_box_meta(void)
         // Scheme Information Box
         0, 0, 0, 0x17, //(23)
         's', 'c', 'h', 'i',
-            // scheme specific Boxes
+        // scheme specific Boxes
         0, 0, 0, 0x0F,
         'a','b','c','d',
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -1287,7 +1265,7 @@ void test_parse_box_meta(void)
 
     // Item Protection
     ItemProtectionBox *ipro = box->protections;
-    test_assert_equal(ipro->box.size, 0x5D, "ipro size");
+    test_assert_equal(ipro->box.size, 0x4D, "ipro size");
     test_assert_equal(strncmp(ipro->box.type, "ipro", 4), 0, "ipro type");
     test_assert_equal(ipro->box.version, 0x00, "ipro version");
     test_assert_equal(ipro->box.flags, 0x000000, "ipro flags");
@@ -1295,18 +1273,12 @@ void test_parse_box_meta(void)
     test_assert(ipro->protection_info != NULL, "ipro protection info");
 
     ProtectionSchemeInfoBox *info = ipro->protection_info[0];
-    test_assert_equal(info->box.box.size, 0x4F, "sinf size");
-    test_assert_equal(strncmp(info->box.box.type, "sinf", 4), 0, "sinf type");
-    test_assert_equal(strncmp(info->box.data_format, "mp4v", 4), 0, "sinf data format");
-    test_assert(info->ipmp_descriptors != NULL, "NULL IPMP box descriptors");
+    test_assert_equal(info->box.size, 0x3F, "sinf size");
+    test_assert_equal(strncmp(info->box.type, "sinf", 4), 0, "sinf type");
 
-    IPMPInfoBox *ipmp = info->ipmp_descriptors;
-    test_assert_equal(strncmp("imif", ipmp->box.type, 4), 0, "IPMP Info type");
-    test_assert_equal(ipmp->box.size, 0x18, "IPMP Info size");
-    test_assert_equal(ipmp->box.version, 0x00, "IPMP Info version");
-    test_assert_equal(ipmp->box.flags, 0x000000, "IPMP Info flags");
-    // TODO: IPMP Descriptors
-    test_assert(info->scheme_type != NULL, "NULL Scheme Type box");
+    test_assert_equal(info->original_format.box.size, 0x0C, "original format size");
+    test_assert_equal(strncmp(info->original_format.box.type, "frma", 4), 0, "original format type");
+    test_assert_equal(strncmp(info->original_format.data_format, "mp4v", 4), 0, "original format data");
 
     SchemeTypeBox *schm_type = info->scheme_type;
     test_assert_equal(strncmp("schm", schm_type->box.type, 4), 0, "Scheme Type type");

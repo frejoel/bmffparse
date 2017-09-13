@@ -272,8 +272,8 @@ typedef struct SchemeInformationBox { // schi
 } SchemeInformationBox;
 
 typedef struct ProtectionSchemeInfoBox { // sinf
-    OriginalFormatBox       box;
-    IPMPInfoBox             *ipmp_descriptors;       // optional
+    Box                     box;
+    OriginalFormatBox       original_format;
     SchemeTypeBox           *scheme_type;            // optional
     SchemeInformationBox    *scheme_info;            // optional
 } ProtectionSchemeInfoBox;

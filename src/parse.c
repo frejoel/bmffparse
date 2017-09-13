@@ -869,26 +869,18 @@ BMFFCode _bmff_parse_box_protection_scheme_info(BMFFContext *ctx, const uint8_t 
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(size < 20)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, ProtectionSchemeInfoBox);
 
     const uint8_t *ptr = data;
-    ptr += parse_original_format_box(data, size, &box->box);
+    ptr += parse_box(ptr, size, &box->box);
+    ptr += parse_original_format_box(ptr, size, &box->original_format);
 
-    const uint8_t *end = data + box->box.box.size;
+    const uint8_t *end = data + box->box.size;
 
     // parse the optional boxes
-    if(ptr < end && strncmp(ptr+4, "imif", 4) == 0) {
-        BMFFCode res = _bmff_parse_box_ipmp_info(ctx, ptr, end-ptr, (Box**)&box->ipmp_descriptors);
-        if(res != BMFF_OK) {
-            return res;
-        }
-        uint32_t box_size = parse_u32(ptr);
-        ptr += box_size;
-    }
-
     if(ptr < end && strncmp(ptr+4, "schm", 4) == 0) {
         BMFFCode res = _bmff_parse_box_scheme_type(ctx, ptr, end-ptr, (Box**)&box->scheme_type);
         if(res != BMFF_OK) {
