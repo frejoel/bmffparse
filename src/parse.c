@@ -2744,7 +2744,7 @@ BMFFCode _bmff_parse_box_group_id_to_name(BMFFContext *ctx, const uint8_t *data,
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(size < 14)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, GroupIdToNameBox);
@@ -2803,8 +2803,10 @@ BMFFCode _bmff_parse_box_fd_item_information(BMFFContext *ctx, const uint8_t *da
             return res;
         }
         ptr += box->session_info->box.size;
+    }
 
-        res = _bmff_parse_box_group_id_to_name(ctx, ptr, end-ptr, (Box**)&box->group_id_to_name);
+    if(ptr + 8 < end) {
+        BMFFCode res = _bmff_parse_box_group_id_to_name(ctx, ptr, end-ptr, (Box**)&box->group_id_to_name);
         if(res != BMFF_OK) {
             return res;
         }

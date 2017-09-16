@@ -4300,9 +4300,7 @@ void test_parse_box_group_id_to_name(void)
     test_end();
 }
 
-void test_parse_box_fd_item_inforamation(void) {}
-/*
-void test_parse_box_fd_item_inforamation(void);
+void test_parse_box_fd_item_inforamation(void)
 {
     test_start("test_parse_box_fd_item_information");
 
@@ -4310,10 +4308,41 @@ void test_parse_box_fd_item_inforamation(void);
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x30,
-        'p', 'd', 'i', 'n',
+        0, 0, 0, 0x55,
+        'f', 'i', 'i', 'n',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x01, // number of entries
+
+        // PartitionEntry - parition entries (1)
+        0, 0, 0, 0x2F,
+        'p', 'a', 'e', 'n',
+        // File Partition Box
+        0, 0, 0, 0x27,
+        'f', 'p', 'a', 'r',
         0x01, // version
         0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, // item id
+        0x00, 0x05, // packet payload size
+        0x00, 0xF0, // reserved (8), FEC Encoding ID
+        0x56, 0x78, // FEC instance id
+        0x9A, 0xBC, // max source block length
+        0xDE, 0xF1, // encoding symbol length
+        0xFF, 0xEE, // max number of encoding symbols
+        's','c','h','e','m','e','\00', // scheme specific info
+        0x00, 0x00, 0x00, 0x00, // entry count
+        
+        // FDSessionGroupBox - session info
+        0, 0, 0, 0x0A,
+        's', 'e', 'g', 'r',
+        0x00, 0x00, // num of session groups
+
+        // GroupIdToNameBox - group id to name
+        0, 0, 0, 0x0E,
+        'g', 'i', 't', 'n',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, // entry count
     };
 
     BMFFCode res;
@@ -4322,12 +4351,44 @@ void test_parse_box_fd_item_inforamation(void);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
     test_assert_equal(box->box.size, sizeof(data), "size");
-    test_assert_equal(strncmp(box->box.type, "pdin", 4), 0, "type");
-    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(strncmp(box->box.type, "fiin", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 1, "number of entries");
+
+    PartitionEntryBox *entry = box->entries[0];
+    test_assert_equal_ptr((size_t)entry->fec_symbol_locations, (size_t)NULL, "fec symbol location");
+    test_assert_equal_ptr((size_t)entry->file_symbol_locations, (size_t)NULL, "file symbol location");
+
+    FilePartitionBox *fpar = entry->blocks_and_symbols;
+    test_assert_equal(fpar->box.size, 0x027, "fpar size");
+    test_assert_equal(strncmp(fpar->box.type, "fpar", 4), 0, "fpar type");
+    test_assert_equal(fpar->box.version, 0x01, "fpar version");
+    test_assert_equal(fpar->box.flags, 0xF10FBA, "fpar flags");
+    test_assert_equal(fpar->item_id, 0x12345678, "fpar item id");
+    test_assert_equal(fpar->packet_payload_size, 5, "fpar packet payload size");
+    test_assert_equal(fpar->fec_encoding_id, 0xF0, "fpar FEC encoding id");
+    test_assert_equal(fpar->fec_instance_id, 0x5678, "fpar FEC instance id");
+    test_assert_equal(fpar->max_source_block_length, 0x9ABC, "fpar max source block length");
+    test_assert_equal(fpar->encoding_symbol_length, 0xDEF1, "fpar encoding symbol length");
+    test_assert_equal(fpar->max_number_of_encoding_symbols, 0xFFEE, "fpar max number of encoding symbols");
+    test_assert_equal(strcmp(fpar->scheme_specific_info, "scheme"), 0, "fpar scheme specific info");
+    test_assert_equal(fpar->entry_count, 0, "fpar entry count");
+
+    FDSessionGroupBox *segr = box->session_info;
+    test_assert_equal(segr->box.size, 0x0A, "segr size");
+    test_assert_equal(strncmp(segr->box.type, "segr", 4), 0, "segr type");
+    test_assert_equal(segr->num_session_groups, 0x00, "segr num of session groups");
+
+    GroupIdToNameBox *gitn = box->group_id_to_name;
+    test_assert_equal(gitn->box.size, 0x0E, "size");
+    test_assert_equal(strncmp(gitn->box.type, "gitn", 4), 0, "type");
+    test_assert_equal(gitn->box.version, 0x00, "version");
+    test_assert_equal(gitn->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(gitn->entry_count, 0, "entry count");
 
     bmff_context_destroy(&ctx);
-
+    
     test_end();
 }
 
