@@ -21,6 +21,7 @@
 
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},
+    {"styp", 1, _bmff_parse_box_file_type},
     {"moov", 1, _bmff_parse_box_generic_container},
     {"trak", 1, _bmff_parse_box_generic_container},
     {"edts", 1, _bmff_parse_box_generic_container},
@@ -35,6 +36,8 @@ const MapItem parse_map[] = {
     {"udta", 1, _bmff_parse_box_generic_container},
     {"tref", 1, _bmff_parse_box_generic_container},
     {"meco", 1, _bmff_parse_box_generic_container},
+    {"strk", 1, _bmff_parse_box_generic_container},
+    {"strd", 1, _bmff_parse_box_generic_container},
     {"hint", 0, _bmff_parse_box_track_reference_type},
     {"cdsc", 0, _bmff_parse_box_track_reference_type},
     {"font", 0, _bmff_parse_box_track_reference_type},

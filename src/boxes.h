@@ -34,11 +34,6 @@
 // tmcd, chap, sync, scpt, ssrc,
 
 // sthd
-// strk
-// stri
-// strd
-// styp
-// sidx
 // ssix
 // prft
 
@@ -133,9 +128,11 @@ typedef ContainerBox TrackFragmentBox; // traf
 typedef ContainerBox UserDataBox; // udta
 typedef ContainerBox EditBox; // edts
 typedef ContainerBox MediaBox; // mdia
-typedef ContainerBox MediaInformationBox;// minf
-typedef ContainerBox SampleTableBox;// stbl
-typedef ContainerBox AdditionalMetadataContainerBox;// meco
+typedef ContainerBox MediaInformationBox; // minf
+typedef ContainerBox SampleTableBox; // stbl
+typedef ContainerBox AdditionalMetadataContainerBox; // meco
+typedef ContainerBox SubTrackBox; // strk
+typedef ContainerBox SubTrackDefinitionBox; // strd
 
 typedef Box FreeSpaceBox; // free, skip
 typedef Box TrackReferenceBox; // tref
@@ -148,6 +145,8 @@ typedef struct FileTypeBox { // ftyp
     const uint8_t   *compatible_brands;     // printable 4 character code
     size_t          nb_compatible_brands;   // number of 4 character codes
 } FileTypeBox;
+
+typedef FileTypeBox SegmentTypeBox; // styp
 
 typedef struct ProgressiveDownloadBitrate {
     uint32_t    rate;
@@ -843,5 +842,45 @@ typedef struct FDItemInformationBox { // fiin
     FDSessionGroupBox   *session_info;           // optional
     GroupIdToNameBox    *group_id_to_name;       // optional
 } FDItemInformationBox;
+
+typedef struct SubTrackInformationBox { // stri
+    FullBox             box;
+    uint16_t            switch_group;
+    uint16_t            alternate_group;
+    uint32_t            sub_track_id;
+    uint32_t            attribute_list_count;
+    uint8_t             **attribute_list;
+} SubTrackInformationBox;
+
+typedef struct SubTrackSampleGroupBox { // stsg
+    FullBox             box;
+    uint32_t            grouping_type;
+    uint16_t            item_count;
+    uint32_t            *group_description_indicies;
+} SubTrackSampleGroupBox;
+
+typedef struct RestrictedSchemeInfoBox { // rinf
+    Box                     box;
+    OriginalFormatBox       original_format;
+    SchemeTypeBox           *scheme_type;
+    SchemeInformationBox    *scheme_info;
+} RestrictedSchemeInfoBox;
+
+typedef enum {
+   eSingleViewModeStereoscopic      = 0,
+   eSingleViewModeMonoscopicRight   = 1,
+   eSingleViewModeMonoscopicLeft    = 2, 
+} eSingleViewMode;
+
+typedef struct StereoVideoBox { // stvi
+    eSingleViewMode         single_view_allowed;
+    uint32_t                stereo_scheme;
+    uint32_t                stereo_indication_type;
+} StereoVideoBox;
+
+typedef struct SegmentIndexBox { // sidx
+    // TODO: this
+} SegmentIndexBox;
+
 
 #endif // BOXES_H
