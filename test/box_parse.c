@@ -4199,11 +4199,7 @@ void test_parse_box_partition_entry(void)
     test_end();
 }
 
-void test_parse_box_fd_session_group(void) {}
-void test_parse_box_group_id_to_name(void) {}
-void test_parse_box_fd_item_inforamation(void) {}
-/*
-void test_parse_box_fd_session_group(void);
+void test_parse_box_fd_session_group(void)
 {
     test_start("test_parse_box_fd_session_group");
 
@@ -4211,10 +4207,22 @@ void test_parse_box_fd_session_group(void);
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x30,
-        'p', 'd', 'i', 'n',
-        0x01, // version
-        0xF1, 0x0F, 0xBA, // flags
+        0, 0, 0, 0x2F,
+        's', 'e', 'g', 'r',
+        0x00, 0x03, // num of session groups
+        0x01, // entry count
+        0x01, 0x02, 0x03, 0x04, // group Id
+        0x00, 0x01, // num of channels in session group
+        0x12, 0x34, 0x56, 0x78, // hint track id
+        0x00, // entry count
+        0x00, 0x00, // num of channels in session group
+        0x02, // entry count
+        0x05, 0x06, 0x07, 0x08, // group Id
+        0x09, 0x0A, 0x0B, 0x0C, // group Id
+        0x00, 0x03, // num of channels in session group
+        0x12, 0x34, 0x56, 0x78, // hint track id
+        0x9A, 0xBC, 0xDE, 0xF1, // hint track id
+        0x23, 0x45, 0x67, 0x89, // hint track id
     };
 
     BMFFCode res;
@@ -4223,14 +4231,35 @@ void test_parse_box_fd_session_group(void);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
     test_assert_equal(box->box.size, sizeof(data), "size");
-    test_assert_equal(strncmp(box->box.type, "pdin", 4), 0, "type");
-    test_assert_equal(box->box.version, 0x01, "version");
-    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strncmp(box->box.type, "segr", 4), 0, "type");
+    test_assert_equal(box->num_session_groups, 3, "number of session groups");
 
+    FDSessionGroupEntry *entry = &box->session_groups[0];
+    test_assert_equal(entry->entry_count, 1, "entry count 0");
+    test_assert_equal(entry->group_ids[0], 0x01020304, "groupd id 0");
+    test_assert_equal(entry->num_channels_in_session_group, 1, "num of channels in session group 0");
+    test_assert_equal(entry->hint_track_ids[0], 0x12345678, "hint track ids 0");
+
+    entry = &box->session_groups[1];
+    test_assert_equal(entry->entry_count, 0, "entry count 1");
+    test_assert_equal(entry->num_channels_in_session_group, 0, "num of channels in session group 1");
+
+    entry = &box->session_groups[2];
+    test_assert_equal(entry->entry_count, 2, "entry count 2");
+    test_assert_equal(entry->group_ids[0], 0x05060708, "groupd id 2 0");
+    test_assert_equal(entry->group_ids[1], 0x090A0B0C, "groupd id 2 1");
+    test_assert_equal(entry->num_channels_in_session_group, 3, "num of channels in session group 2");
+    test_assert_equal(entry->hint_track_ids[0], 0x12345678, "hint track ids 2 0");
+    test_assert_equal(entry->hint_track_ids[1], 0x9ABCDEF1, "hint track ids 2 1");
+    test_assert_equal(entry->hint_track_ids[2], 0x23456789, "hint track ids 2 2");
     bmff_context_destroy(&ctx);
 
     test_end();
 }
+
+void test_parse_box_group_id_to_name(void) {}
+void test_parse_box_fd_item_inforamation(void) {}
+/*
 void test_parse_box_group_id_to_name(void);
 {
     test_start("test_parse_box_group_id_to_name");
