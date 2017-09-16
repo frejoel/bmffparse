@@ -4257,10 +4257,7 @@ void test_parse_box_fd_session_group(void)
     test_end();
 }
 
-void test_parse_box_group_id_to_name(void) {}
-void test_parse_box_fd_item_inforamation(void) {}
-/*
-void test_parse_box_group_id_to_name(void);
+void test_parse_box_group_id_to_name(void)
 {
     test_start("test_parse_box_group_id_to_name");
 
@@ -4268,10 +4265,17 @@ void test_parse_box_group_id_to_name(void);
     bmff_context_init(&ctx);
 
     uint8_t data[] = {
-        0, 0, 0, 0x30,
-        'p', 'd', 'i', 'n',
-        0x01, // version
+        0, 0, 0, 0x29,
+        'g', 'i', 't', 'n',
+        0x00, // version
         0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x03, // entry count
+        0x01, 0x02, 0x03, 0x04, // group id
+        'n','a','m','e','0','\00', // group name
+        0x01, 0x02, 0x03, 0x04, // group id
+        'n','a','m','e','1','_','_','\00', // group name
+        0x01, 0x02, 0x03, 0x04, // group id
+        '\00', // group name
     };
 
     BMFFCode res;
@@ -4280,14 +4284,24 @@ void test_parse_box_group_id_to_name(void);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
     test_assert_equal(box->box.size, sizeof(data), "size");
-    test_assert_equal(strncmp(box->box.type, "pdin", 4), 0, "type");
-    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(strncmp(box->box.type, "gitn", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 3, "entry count");
+    test_assert_equal(box->group_ids[0], 0x01020304, "group id 0");
+    test_assert_equal(strcmp(box->group_names[0], "name0"), 0, "group name 0");
+    test_assert_equal(box->group_ids[1], 0x01020304, "group id 1");
+    test_assert_equal(strcmp(box->group_names[1], "name1__"), 0, "group name 0");
+    test_assert_equal(box->group_ids[2], 0x01020304, "group id 2");
+    test_assert_equal(strcmp(box->group_names[2], ""), 0, "group name 0");
 
     bmff_context_destroy(&ctx);
 
     test_end();
 }
+
+void test_parse_box_fd_item_inforamation(void) {}
+/*
 void test_parse_box_fd_item_inforamation(void);
 {
     test_start("test_parse_box_fd_item_information");
