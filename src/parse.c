@@ -108,6 +108,13 @@ const MapItem parse_map[] = {
     {"iref", 0, _bmff_parse_box_item_reference},
     {"idat", 0, _bmff_parse_box_item_data},
     {"mere", 0, _bmff_parse_box_metabox_relation},
+    {"fpar", 0, _bmff_parse_box_file_partition},
+    {"fecr", 0, _bmff_parse_box_reservoir},
+    {"fire", 0, _bmff_parse_box_reservoir},
+    {"paen", 0, _bmff_parse_box_partition_entry},
+    {"segr", 0, _bmff_parse_box_fd_session_group},
+    {"gitn", 0, _bmff_parse_box_group_id_to_name},
+    {"fiin", 0, _bmff_parse_box_fd_item_information},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2557,6 +2564,253 @@ BMFFCode _bmff_parse_box_metabox_relation(BMFFContext *ctx, const uint8_t *data,
     memcpy(box->second_metabox_handler_type, ptr, 4);
     ptr += 4;
     ADV_PARSE_U8(box->metabox_relation, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_file_partition(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 28)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FilePartitionBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->item_id, ptr);
+    }else{
+        ADV_PARSE_U32(box->item_id, ptr);
+    }
+
+    ADV_PARSE_U16(box->packet_payload_size, ptr);
+    ptr++; // reserved
+    ADV_PARSE_U8(box->fec_encoding_id, ptr);
+    ADV_PARSE_U16(box->fec_instance_id, ptr);
+    ADV_PARSE_U16(box->max_source_block_length, ptr);
+    ADV_PARSE_U16(box->encoding_symbol_length, ptr);
+    ADV_PARSE_U16(box->max_number_of_encoding_symbols, ptr);
+    ADV_PARSE_STR(box->scheme_specific_info, ptr);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->entry_count, ptr);
+    } else {
+        ADV_PARSE_U32(box->entry_count, ptr);
+    }
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->block_counts, uint16_t, box->entry_count);
+        BOX_MALLOCN(box->block_sizes, uint32_t, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            ADV_PARSE_U16(box->block_counts[i], ptr);
+            ADV_PARSE_U32(box->block_sizes[i], ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_reservoir(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FECReservoirBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->entry_count, ptr);
+    }else{
+        ADV_PARSE_U32(box->entry_count, ptr);
+    }
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->item_ids, uint32_t, box->entry_count);        
+        BOX_MALLOCN(box->symbol_counts, uint32_t, box->entry_count);    
+
+        uint32_t i = 0;
+        uint8_t ver = box->box.version;
+        for(; i < box->entry_count; ++i) {
+            if(ver == 0) {
+                ADV_PARSE_U16(box->item_ids[i], ptr);
+            }else{
+                ADV_PARSE_U32(box->item_ids[i], ptr);
+            }
+            ADV_PARSE_U32(box->symbol_counts[i], ptr);
+        }    
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_partition_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 30)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, PartitionEntryBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
+
+    BMFFCode res = _bmff_parse_box_file_partition(ctx, ptr, end - ptr, (Box**)&box->blocks_and_symbols);
+    if(res != BMFF_OK) {
+        return res;
+    }
+    ptr += box->blocks_and_symbols->box.size;
+
+    if(ptr + 8 < end) {
+        res = _bmff_parse_box_reservoir(ctx, ptr, end - ptr, (Box**)&box->fec_symbol_locations);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->fec_symbol_locations->box.size;
+    }
+
+    if(ptr + 8 < end) {
+        res = _bmff_parse_box_reservoir(ctx, ptr, end - ptr, (Box**)&box->file_symbol_locations);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->file_symbol_locations->box.size;
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_fd_session_group(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 10)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FDSessionGroupBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->num_session_groups, ptr);
+
+    if(box->num_session_groups > 0) {
+        BOX_MALLOCN(box->session_groups, FDSessionGroupEntry, box->num_session_groups);
+
+        uint32_t i = 0;
+        for(; i < box->num_session_groups; ++i) {
+            FDSessionGroupEntry *entry = &box->session_groups[i];
+            ADV_PARSE_U8(entry->entry_count, ptr);
+
+            if(entry->entry_count > 0) {
+                BOX_MALLOCN(entry->group_ids, uint32_t, entry->entry_count);
+                uint8_t j = 0;
+                for(; j < entry->entry_count; ++j) {
+                    ADV_PARSE_U32(entry->group_ids[j], ptr);
+                } 
+            }
+
+            ADV_PARSE_U16(entry->num_channels_in_session_group, ptr);
+            if(entry->num_channels_in_session_group) {
+                BOX_MALLOCN(entry->hint_track_ids, uint32_t, entry->num_channels_in_session_group);
+                uint16_t k = 0;
+                for(; k < entry->num_channels_in_session_group; ++k) {
+                    ADV_PARSE_U32(entry->hint_track_ids[k], ptr);
+                } 
+            }                  
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_group_id_to_name(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, GroupIdToNameBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->group_ids, uint32_t, box->entry_count);
+        BOX_MALLOCN(box->group_names, char*, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            ADV_PARSE_U32(box->group_ids[i], ptr);
+            ADV_PARSE_STR(box->group_names[i], ptr);
+        }        
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_fd_item_information(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FDItemInformationBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
+
+    ADV_PARSE_U16(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, PartitionEntryBox*, box->entry_count);
+        uint16_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            BMFFCode res = _bmff_parse_box_partition_entry(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
+            if(res != BMFF_OK) {
+                return res;
+            }
+            ptr += box->entries[i]->box.size;
+        }
+    }
+
+    if(ptr + 8 < end) {
+        BMFFCode res = _bmff_parse_box_fd_session_group(ctx, ptr, end-ptr, (Box**)&box->session_info);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->session_info->box.size;
+
+        res = _bmff_parse_box_group_id_to_name(ctx, ptr, end-ptr, (Box**)&box->group_id_to_name);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->group_id_to_name->box.size;
+    }
+
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

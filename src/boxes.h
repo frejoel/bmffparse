@@ -37,14 +37,6 @@
 // strk
 // stri
 // strd
-// fiin
-// paen
-// fire
-// fpar
-// fecr
-// segr
-// gitn
-// meco
 // styp
 // sidx
 // ssix
@@ -792,5 +784,64 @@ typedef struct MetaboxRelationBox { // mere
     uint8_t             second_metabox_handler_type[4];
     eMetaboxRelation    metabox_relation;
 } MetaboxRelationBox;
+
+typedef struct FilePartitionBox { // fpar
+    FullBox             box;
+    uint32_t            item_id;
+    uint16_t            packet_payload_size;
+    uint8_t             fec_encoding_id;
+    uint16_t            fec_instance_id;
+    uint16_t            max_source_block_length;
+    uint16_t            encoding_symbol_length;
+    uint16_t            max_number_of_encoding_symbols;
+    const char          *scheme_specific_info;
+    uint32_t            entry_count;
+    uint16_t            *block_counts;
+    uint32_t            *block_sizes;
+} FilePartitionBox;
+
+typedef struct FECReservoirBox { // fecr
+    FullBox             box;
+    uint32_t            entry_count;
+    uint32_t            *item_ids;
+    uint32_t            *symbol_counts;
+} FECReservoirBox;
+
+typedef FECReservoirBox FileReservoirBox; // fire
+
+typedef struct PartitionEntryBox { // paen
+    Box                 box;
+    FilePartitionBox    *blocks_and_symbols;
+    FECReservoirBox     *fec_symbol_locations;   // optional
+    FileReservoirBox    *file_symbol_locations;  // optional
+} PartitionEntryBox;
+
+typedef struct FDSessionGroupEntry {
+    uint8_t             entry_count;
+    uint32_t            *group_ids;
+    uint16_t            num_channels_in_session_group;
+    uint32_t            *hint_track_ids;
+} FDSessionGroupEntry;
+
+typedef struct FDSessionGroupBox { // segr
+    Box                 box;
+    uint16_t            num_session_groups;
+    FDSessionGroupEntry *session_groups;
+} FDSessionGroupBox;
+
+typedef struct GroupIdToNameBox { // gitn
+    FullBox             box;
+    uint16_t            entry_count;
+    uint32_t            *group_ids;
+    const char          **group_names;
+} GroupIdToNameBox;
+
+typedef struct FDItemInformationBox { // fiin
+    FullBox             box;
+    uint16_t            entry_count;
+    PartitionEntryBox   **entries;
+    FDSessionGroupBox   *session_info;           // optional
+    GroupIdToNameBox    *group_id_to_name;       // optional
+} FDItemInformationBox;
 
 #endif // BOXES_H

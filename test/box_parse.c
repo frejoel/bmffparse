@@ -78,6 +78,12 @@ void test_parse_box_kind(void);
 void test_parse_box_item_reference(void);
 void test_parse_box_item_data(void);
 void test_parse_box_metabox_relation(void);
+void test_parse_box_file_partition(void);
+void test_parse_box_reservoir(void);
+void test_parse_box_partition_entry(void);
+void test_parse_box_fd_session_group(void);
+void test_parse_box_group_id_to_name(void);
+void test_parse_box_fd_item_inforamation(void);
 
 int main(int argc, char** argv)
 {
@@ -156,6 +162,12 @@ int main(int argc, char** argv)
     test_parse_box_item_reference();
     test_parse_box_item_data();
     test_parse_box_metabox_relation();
+    test_parse_box_file_partition();
+    test_parse_box_reservoir();
+    test_parse_box_partition_entry();
+    test_parse_box_fd_session_group();
+    test_parse_box_group_id_to_name();
+    test_parse_box_fd_item_inforamation();
     return 0;
 }
 
@@ -4005,6 +4017,277 @@ void test_parse_box_metabox_relation(void)
 
     test_end();
 }
+
+void test_parse_box_file_partition(void)
+{
+    test_start("test_parse_box_file_partition");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x38,
+        'f', 'p', 'a', 'r',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, // item id
+        0x00, 0x05, // packet payload size
+        0x00, 0xF0, // reserved (8), FEC Encoding ID
+        0x56, 0x78, // FEC instance id
+        0x9A, 0xBC, // max source block length
+        0xDE, 0xF1, // encoding symbol length
+        0xFF, 0xEE, // max number of encoding symbols
+        's','c','h','e','m','e',' ','s','p','e','c','i','f','i','c','\0', // scheme specific info
+        0x00, 0x02, // entry count
+        0x00, 0x01, // block count
+        0xDC, 0xBA, 0x98, 0x76, //block size
+        0x00, 0x02, // block count
+        0x54, 0x32, 0x10, 0xFE, // block size
+    };
+
+    BMFFCode res;
+    FilePartitionBox *box = NULL;
+    res = _bmff_parse_box_file_partition(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "fpar", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->item_id, 0x1234, "item id");
+    test_assert_equal(box->packet_payload_size, 5, "packet payload size");
+    test_assert_equal(box->fec_encoding_id, 0xF0, "FEC encoding id");
+    test_assert_equal(box->fec_instance_id, 0x5678, "FEC instance id");
+    test_assert_equal(box->max_source_block_length, 0x9ABC, "max source block length");
+    test_assert_equal(box->encoding_symbol_length, 0xDEF1, "encoding symbol length");
+    test_assert_equal(box->max_number_of_encoding_symbols, 0xFFEE, "max number of encoding symbols");
+    test_assert_equal(strcmp(box->scheme_specific_info, "scheme specific"), 0, "scheme specific info");
+    test_assert_equal(box->entry_count, 2, "entry count");
+    test_assert_equal(box->block_counts[0], 1, "block count 0");
+    test_assert_equal(box->block_sizes[0], 0xDCBA9876, "block size 0");
+    test_assert_equal(box->block_counts[1], 2, "block count 1");
+    test_assert_equal(box->block_sizes[1], 0x543210FE, "block size 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_reservoir(void)
+{
+    test_start("test_parse_box_reservoir");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1A,
+        'f', 'e', 'c', 'r',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x02, // entry count
+        0xFE, 0x01, // item id
+        0xAB, 0xCD, 0xEF, 0x01, // symbol count
+        0xFE, 0x02, // item id
+        0x12, 0x34, 0x56, 0x78, // symbol count
+    };
+
+    BMFFCode res;
+    FECReservoirBox *box = NULL;
+    res = _bmff_parse_box_reservoir(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "fecr", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->entry_count, 0x02, "entry count");
+    test_assert_equal(box->item_ids[0], 0xFE01, "item id 0");
+    test_assert_equal(box->symbol_counts[0], 0xABCDEF01, "symbol count 0");
+    test_assert_equal(box->item_ids[1], 0xFE02, "item id 1");
+    test_assert_equal(box->symbol_counts[1], 0x12345678, "symbol count 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_partition_entry(void)
+{
+    test_start("test_parse_box_partition_entry");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x66,
+        'p', 'a', 'e', 'n',
+        // File Partition Box
+        0, 0, 0, 0x30,
+        'f', 'p', 'a', 'r',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, // item id
+        0x00, 0x05, // packet payload size
+        0x00, 0xF0, // reserved (8), FEC Encoding ID
+        0x56, 0x78, // FEC instance id
+        0x9A, 0xBC, // max source block length
+        0xDE, 0xF1, // encoding symbol length
+        0xFF, 0xEE, // max number of encoding symbols
+        's','c','h','e','m','e',' ','s','p','e','c','i','f','i','c','\0', // scheme specific info
+        0x00, 0x00, 0x00, 0x00, // entry count
+        // FEC Reservoir Box
+        0, 0, 0, 0x0E,
+        'f', 'e', 'c', 'r',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, // entry count
+        // File Reservoir Box
+        0, 0, 0, 0x20,
+        'f', 'i', 'r', 'e',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x02, // entry count
+        0xFE, 0x01, 0x02, 0x03, // item id
+        0xAB, 0xCD, 0xEF, 0x01, // symbol count
+        0x12, 0x34, 0x56, 0x78, // item id
+        0xFE, 0xDC, 0xBA, 0x98, // symbol count
+    };
+
+    BMFFCode res;
+    PartitionEntryBox *box = NULL;
+    res = _bmff_parse_box_partition_entry(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "paen", 4), 0, "type");
+
+    FilePartitionBox *fpar = box->blocks_and_symbols;
+    test_assert_equal(fpar->box.size, 0x30, "fpar size");
+    test_assert_equal(fpar->box.version, 1, "fpar version");
+    test_assert_equal(strncmp(fpar->box.type, "fpar", 4), 0, "fpar type");
+    test_assert_equal(fpar->item_id, 0x12345678, "fpar item id");
+    test_assert_equal(fpar->packet_payload_size, 5, "fpar packet payload size");
+    test_assert_equal(fpar->fec_encoding_id, 0xF0, "fpar FEC encoding id");
+    test_assert_equal(fpar->fec_instance_id, 0x5678, "fpar FEC instance id");
+    test_assert_equal(fpar->max_source_block_length, 0x9ABC, "fpar max source block length");
+    test_assert_equal(fpar->encoding_symbol_length, 0xDEF1, "fpar encoding symbol length");
+    test_assert_equal(fpar->max_number_of_encoding_symbols, 0xFFEE, "fpar max number of encoding symbols");
+    test_assert_equal(strcmp(fpar->scheme_specific_info, "scheme specific"), 0, "fpar scheme specific info");
+    test_assert_equal(fpar->entry_count, 0, "fpar entry count");
+
+    FECReservoirBox *reservoir = box->fec_symbol_locations; 
+    test_assert_equal(reservoir->box.size, 0x0E, "fecr size");
+    test_assert_equal(strncmp(reservoir->box.type, "fecr", 4), 0, "fecr type");
+    test_assert_equal(reservoir->box.version, 0x00, "fecr version");
+    test_assert_equal(reservoir->box.flags, 0xF10FBA, "fecr flags");
+    test_assert_equal(reservoir->entry_count, 0x00, "fecr entry count");
+
+    reservoir = box->file_symbol_locations;
+    test_assert_equal(reservoir->box.size, 0x20, "fire size");
+    test_assert_equal(strncmp(reservoir->box.type, "fire", 4), 0, "fire type");
+    test_assert_equal(reservoir->box.version, 0x01, "fire version");
+    test_assert_equal(reservoir->box.flags, 0xF10FBA, "fire flags");
+    test_assert_equal(reservoir->entry_count, 0x02, "fire entry count");
+    test_assert_equal(reservoir->item_ids[0], 0xFE010203, "fire item id 0");
+    test_assert_equal(reservoir->symbol_counts[0], 0xABCDEF01, "fire symbol count 0");
+    test_assert_equal(reservoir->item_ids[1], 0x12345678, "fire item id 1");
+    test_assert_equal(reservoir->symbol_counts[1], 0xFEDCBA98, "fire symbol count 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_fd_session_group(void) {}
+void test_parse_box_group_id_to_name(void) {}
+void test_parse_box_fd_item_inforamation(void) {}
+/*
+void test_parse_box_fd_session_group(void);
+{
+    test_start("test_parse_box_fd_session_group");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x30,
+        'p', 'd', 'i', 'n',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+    };
+
+    BMFFCode res;
+    FDSessionGroupBox *box = NULL;
+    res = _bmff_parse_box_fd_session_group(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "pdin", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+void test_parse_box_group_id_to_name(void);
+{
+    test_start("test_parse_box_group_id_to_name");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x30,
+        'p', 'd', 'i', 'n',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+    };
+
+    BMFFCode res;
+    GroupIdToNameBox *box = NULL;
+    res = _bmff_parse_box_group_id_to_name(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "pdin", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+void test_parse_box_fd_item_inforamation(void);
+{
+    test_start("test_parse_box_fd_item_information");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x30,
+        'p', 'd', 'i', 'n',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+    };
+
+    BMFFCode res;
+    FDItemInformationBox *box = NULL;
+    res = _bmff_parse_box_fd_item_information(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "pdin", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {
