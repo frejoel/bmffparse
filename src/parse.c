@@ -119,6 +119,7 @@ const MapItem parse_map[] = {
     {"gitn", 0, _bmff_parse_box_group_id_to_name},
     {"fiin", 0, _bmff_parse_box_fd_item_information},
     {"stri", 0, _bmff_parse_box_sub_track_information},
+    {"stsg", 0, _bmff_parse_box_sub_track_sample_group},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2850,6 +2851,34 @@ BMFFCode _bmff_parse_box_sub_track_information(BMFFContext *ctx, const uint8_t *
             ptr += 4;
         }
     }    
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sub_track_sample_group(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubTrackSampleGroupBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->grouping_type, ptr);
+    ADV_PARSE_U16(box->item_count, ptr);
+
+    if(box->item_count > 0) {
+        BOX_MALLOCN(box->group_description_indicies, uint32_t, box->item_count);
+        
+        uint16_t i = 0;
+        for(; i < box->item_count; ++i) {
+            ADV_PARSE_U32(box->group_description_indicies[i], ptr);
+        }
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

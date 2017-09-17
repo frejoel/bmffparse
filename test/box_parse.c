@@ -85,6 +85,7 @@ void test_parse_box_fd_session_group(void);
 void test_parse_box_group_id_to_name(void);
 void test_parse_box_fd_item_inforamation(void);
 void test_parse_box_sub_track_information(void);
+void test_parse_box_sub_track_sample_group(void);
 
 int main(int argc, char** argv)
 {
@@ -170,6 +171,7 @@ int main(int argc, char** argv)
     test_parse_box_group_id_to_name();
     test_parse_box_fd_item_inforamation();
     test_parse_box_sub_track_information();
+    test_parse_box_sub_track_sample_group();
     return 0;
 }
 
@@ -4435,6 +4437,46 @@ void test_parse_box_sub_track_information(void)
 
     test_end();
 }
+
+void test_parse_box_sub_track_sample_group(void)
+{
+    test_start("test_parse_box_sub_track_sample_group");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1E,
+        's', 't', 's', 'g',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x01, 0x02, 0x03, 0x4, // grouping type
+        0x00, 0x03, // item count
+        0x01, 0x02, 0x03, 0x04, // group description index 0
+        0x11, 0x12, 0x13, 0x14, // group description index 1
+        0x21, 0x22, 0x23, 0x24, // group description index 2
+    };
+
+    BMFFCode res;
+    SubTrackSampleGroupBox *box = NULL;
+    res = _bmff_parse_box_sub_track_sample_group(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stsg", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->grouping_type, 0x01020304, "grouping type");
+    test_assert_equal(box->item_count, 3, "item count");
+    test_assert_equal(box->group_description_indicies[0], 0x01020304, "group description index 0");
+    test_assert_equal(box->group_description_indicies[1], 0x11121314, "group description index 1");
+    test_assert_equal(box->group_description_indicies[2], 0x21222324, "group description index 2");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
 /*
 void test_parse_box_(void)
 {
