@@ -84,6 +84,7 @@ void test_parse_box_partition_entry(void);
 void test_parse_box_fd_session_group(void);
 void test_parse_box_group_id_to_name(void);
 void test_parse_box_fd_item_inforamation(void);
+void test_parse_box_sub_track_information(void);
 
 int main(int argc, char** argv)
 {
@@ -168,6 +169,7 @@ int main(int argc, char** argv)
     test_parse_box_fd_session_group();
     test_parse_box_group_id_to_name();
     test_parse_box_fd_item_inforamation();
+    test_parse_box_sub_track_information();
     return 0;
 }
 
@@ -4392,6 +4394,47 @@ void test_parse_box_fd_item_inforamation(void)
     test_end();
 }
 
+void test_parse_box_sub_track_information(void)
+{
+    test_start("test_parse_box_sub_track_information");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x20,
+        's', 't', 'r', 'i',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x01, 0x02, // switch group
+        0x03, 0x04, // alternate group
+        0x05, 0x06, 0x07, 0x08, // sub track id
+        'a','b','c','d', // attribute 0
+        'e','f','g','h', // attribute 0
+        'i','j','k','l', // attribute 0
+    };
+
+    BMFFCode res;
+    SubTrackInformationBox *box = NULL;
+    res = _bmff_parse_box_sub_track_information(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stri", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->switch_group, 0x0102, "switch group");
+    test_assert_equal(box->alternate_group, 0x0304, "alternate group");
+    test_assert_equal(box->sub_track_id, 0x05060708, "sub track id");
+    test_assert_equal(box->attribute_list_count, 3, "attribute list count");
+    test_assert_equal(strncmp(box->attribute_list[0], "abcd", 4), 0, "attribute 0");
+    test_assert_equal(strncmp(box->attribute_list[1], "efgh", 4), 0, "attribute 1");
+    test_assert_equal(strncmp(box->attribute_list[2], "ijkl", 4), 0, "attribute 2");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 /*
 void test_parse_box_(void)
 {

@@ -27,17 +27,6 @@
 
 #include <stdint.h>
 
-// wide, pnot
-// prfl, clip, crgn, matt, kmat
-// cmov, rmra, ctab, 
-// load, imap
-// tmcd, chap, sync, scpt, ssrc,
-
-// sthd
-// ssix
-// prft
-
-
 typedef enum {
     eBooleanUnknown    = 0,
     eBooleanTrue       = 1,
@@ -849,7 +838,7 @@ typedef struct SubTrackInformationBox { // stri
     uint16_t            alternate_group;
     uint32_t            sub_track_id;
     uint32_t            attribute_list_count;
-    uint8_t             **attribute_list;
+    const uint8_t       **attribute_list;
 } SubTrackInformationBox;
 
 typedef struct SubTrackSampleGroupBox { // stsg
@@ -873,14 +862,98 @@ typedef enum {
 } eSingleViewMode;
 
 typedef struct StereoVideoBox { // stvi
-    eSingleViewMode         single_view_allowed;
-    uint32_t                stereo_scheme;
-    uint32_t                stereo_indication_type;
+    eSingleViewMode     single_view_allowed;
+    uint32_t            stereo_scheme;
+    uint32_t            stereo_indication_type;
 } StereoVideoBox;
 
+typedef struct SegmentIndexRefEntry {
+    uint8_t             reference_type;
+    uint32_t            referenced_size;
+    uint32_t            subsegment_duration;
+    uint8_t             starts_with_sap;
+    uint8_t             sap_type;
+    uint32_t            sap_delta_time;
+} SegmentIndexRefEntry;
+
 typedef struct SegmentIndexBox { // sidx
-    // TODO: this
+    FullBox                 box;
+    uint32_t                reference_id;
+    uint32_t                timescale;
+    uint64_t                earliest_presentation_time;
+    uint64_t                first_offset;
+    uint16_t                reference_count;
+    SegmentIndexRefEntry    *references;
 } SegmentIndexBox;
 
+// ssix
+// prft
+// icpv
+// icnf
+// rtp_
+// tims
+// tsro
+// snro
+// srtp
+// srpp
+// hnti
+// sdp_
+// hinf
+// trpy
+// nump
+// tpyl
+// totl
+// npck
+// tpay
+// maxr
+// dmed
+// dimm
+// drep
+// tmin
+// tmax
+// pmax
+// dmax
+// payt
+// fdp_
+// fdsa
+// fdpa
+// extr
+// feci
+// rm2t
+// sm2t
+// tPAT
+// tPMT
+// tOD
+// tsti
+// istm
+// pm2t
+// rrtp
+// tssy
+// tssr
+// rcsr
+// rsrp
+// ccid
+// sroc
+// prtp
+// roll
+// prol
+// rash
+// alst
+// rap_
+// tele
+// sap_
+// clap
+// colr
+// chn1
+// dmix
+// ludt
+// alou
+// tlou
+// txtC
+// urim
+// stxt
+// sthd
+// stpp
+// sbtt
 
 #endif // BOXES_H

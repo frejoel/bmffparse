@@ -118,6 +118,7 @@ const MapItem parse_map[] = {
     {"segr", 0, _bmff_parse_box_fd_session_group},
     {"gitn", 0, _bmff_parse_box_group_id_to_name},
     {"fiin", 0, _bmff_parse_box_fd_item_information},
+    {"stri", 0, _bmff_parse_box_sub_track_information},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2816,6 +2817,39 @@ BMFFCode _bmff_parse_box_fd_item_information(BMFFContext *ctx, const uint8_t *da
         ptr += box->group_id_to_name->box.size;
     }
 
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sub_track_information(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 24)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubTrackInformationBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->switch_group, ptr);
+    ADV_PARSE_U16(box->alternate_group, ptr);
+    ADV_PARSE_U32(box->sub_track_id, ptr);
+
+    const uint8_t *end = data + box->box.size;
+    box->attribute_list_count = (end - ptr) / 4;
+
+    if(box->attribute_list_count > 0) {
+        BOX_MALLOCN(box->attribute_list, uint8_t*, box->attribute_list_count);
+
+        uint32_t i = 0;
+        for(; i < box->attribute_list_count; ++i) {
+            box->attribute_list[i] = ptr;
+            ptr += 4;
+        }
+    }    
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
