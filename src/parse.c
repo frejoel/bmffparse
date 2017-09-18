@@ -120,6 +120,8 @@ const MapItem parse_map[] = {
     {"fiin", 0, _bmff_parse_box_fd_item_information},
     {"stri", 0, _bmff_parse_box_sub_track_information},
     {"stsg", 0, _bmff_parse_box_sub_track_sample_group},
+    {"rinf", 0, _bmff_parse_box_protection_scheme_info},
+    {"stvi", 0, _bmff_parse_box_stereo_video},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2878,6 +2880,40 @@ BMFFCode _bmff_parse_box_sub_track_sample_group(BMFFContext *ctx, const uint8_t 
         for(; i < box->item_count; ++i) {
             ADV_PARSE_U32(box->group_description_indicies[i], ptr);
         }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_stereo_video(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 26)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, StereoVideoBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    box->single_view_allowed = (eSingleViewMode)(ptr[3] & 0x03);
+    ptr += 4;
+    
+    ADV_PARSE_U32(box->stereo_scheme, ptr);
+    ADV_PARSE_U32(box->length, ptr);
+
+    switch(box->length) {
+        case 1: ADV_PARSE_U8(box->stereo_indication_type, ptr); break;
+        case 2: ADV_PARSE_U16(box->stereo_indication_type, ptr); break;
+        case 4: ADV_PARSE_U32(box->stereo_indication_type, ptr); break;
+        case 8: ADV_PARSE_U64(box->stereo_indication_type, ptr); break;
+    }
+
+    const uint8_t *end = data + box->box.size;
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
     }
 
     *box_ptr = (Box*)box;

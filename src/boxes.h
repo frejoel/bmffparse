@@ -98,7 +98,7 @@ typedef struct AbstractBox {
     Box box;
 } AbstractBox;
 
-// All Boxes that can contain other Boxes inherit the ContainerBox.
+// All Boxes that can contain other Boxes "inherit" the ContainerBox.
 typedef struct ContainerBox {
     Box         box;
     uint32_t    child_count;
@@ -257,6 +257,8 @@ typedef struct ProtectionSchemeInfoBox { // sinf
     SchemeTypeBox           *scheme_type;            // optional
     SchemeInformationBox    *scheme_info;            // optional
 } ProtectionSchemeInfoBox;
+
+typedef ProtectionSchemeInfoBox RestrictedSchemeInfoBox; // rinf
 
 typedef struct ItemProtectionBox { // ipro
     FullBox                 box;
@@ -848,13 +850,6 @@ typedef struct SubTrackSampleGroupBox { // stsg
     uint32_t            *group_description_indicies;
 } SubTrackSampleGroupBox;
 
-typedef struct RestrictedSchemeInfoBox { // rinf
-    Box                     box;
-    OriginalFormatBox       original_format;
-    SchemeTypeBox           *scheme_type;
-    SchemeInformationBox    *scheme_info;
-} RestrictedSchemeInfoBox;
-
 typedef enum {
    eSingleViewModeStereoscopic      = 0,
    eSingleViewModeMonoscopicRight   = 1,
@@ -862,9 +857,13 @@ typedef enum {
 } eSingleViewMode;
 
 typedef struct StereoVideoBox { // stvi
+    FullBox             box;
     eSingleViewMode     single_view_allowed;
     uint32_t            stereo_scheme;
-    uint32_t            stereo_indication_type;
+    uint32_t            length;
+    uint64_t            stereo_indication_type;
+    uint32_t            child_count;
+    Box                 **children;
 } StereoVideoBox;
 
 typedef struct SegmentIndexRefEntry {

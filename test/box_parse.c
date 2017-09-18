@@ -86,6 +86,7 @@ void test_parse_box_group_id_to_name(void);
 void test_parse_box_fd_item_inforamation(void);
 void test_parse_box_sub_track_information(void);
 void test_parse_box_sub_track_sample_group(void);
+void test_parse_box_stereo_video(void);
 
 int main(int argc, char** argv)
 {
@@ -172,6 +173,7 @@ int main(int argc, char** argv)
     test_parse_box_fd_item_inforamation();
     test_parse_box_sub_track_information();
     test_parse_box_sub_track_sample_group();
+    test_parse_box_stereo_video();
     return 0;
 }
 
@@ -4471,6 +4473,52 @@ void test_parse_box_sub_track_sample_group(void)
     test_assert_equal(box->group_description_indicies[0], 0x01020304, "group description index 0");
     test_assert_equal(box->group_description_indicies[1], 0x11121314, "group description index 1");
     test_assert_equal(box->group_description_indicies[2], 0x21222324, "group description index 2");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_stereo_video(void)
+{
+    test_start("test_parse_box_stereo_video");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x3C,
+        's', 't', 'v', 'i',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x03, // reserved (30), single view allowed(2)
+        0x10, 0x20, 0x30, 0x40, // stereo scheme
+        0x00, 0x00, 0x00, 0x08, // length
+        0x12, 0x34, 0x56, 0x78,
+        0x9A, 0xBC, 0xDE, 0xF1, // stereo indication type
+        0x00, 0x00, 0x00, 0x0C, // random boxes
+        'a', 'b', 'c', 'd',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        0x00, 0x00, 0x00, 0x10,
+        'a', 'b', 'c', 'd',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF,
+    };
+
+    BMFFCode res;
+    StereoVideoBox *box = NULL;
+    res = _bmff_parse_box_stereo_video(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "stvi", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->single_view_allowed, 0x03, "single view allowed");
+    test_assert_equal(box->stereo_scheme, 0x10203040, "stereo scheme");
+    test_assert_equal(box->length, 0x08, "length");
+    test_assert_equal_uint64(box->stereo_indication_type, 0x123456789ABCDEF1ULL, "stereo indication type");
+    test_assert_equal(box->child_count, 2, "child count");
 
     bmff_context_destroy(&ctx);
 
