@@ -885,9 +885,35 @@ typedef struct SegmentIndexBox { // sidx
     SegmentIndexRefEntry    *references;
 } SegmentIndexBox;
 
-// ssix
-// prft
-// icpv
+typedef struct SubsegmentIndexEntry {
+    uint32_t                range_count;
+    uint8_t                 *range_levels;
+    uint32_t                *range_sizes;
+} SubsegmentIndexEntry;
+
+typedef struct SubsegmentIndexBox { // ssix
+    FullBox                 box;
+    uint32_t                subsegment_count;
+    SubsegmentIndexEntry    *subsegments;
+} SubsegmentIndexBox;
+
+typedef struct ProducerReferenceTimeBox { // prft
+    FullBox                 box;
+    uint32_t                reference_track_id;
+    uint64_t                ntp_timestamp;
+    uint64_t                media_time;
+} ProducerReferenceTimeBox;
+
+typedef struct CompleteTrackInfoBox { //
+
+} CompleteTrackInfoBox;
+
+typedef struct IncompleteAVCSampleEntryBox { // icpv
+    CompleteTrackInfoBox            complete_track_info;
+    uint8_t                         *data;
+    size_t                          data_size;
+} IncompleteAVCSampleEntryBox;
+
 // icnf
 // rtp_
 // tims

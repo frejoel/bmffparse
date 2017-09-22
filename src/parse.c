@@ -122,6 +122,8 @@ const MapItem parse_map[] = {
     {"stsg", 0, _bmff_parse_box_sub_track_sample_group},
     {"rinf", 0, _bmff_parse_box_protection_scheme_info},
     {"stvi", 0, _bmff_parse_box_stereo_video},
+    {"sidx", 0, _bmff_parse_box_segment_index},
+    {"prft", 0, _bmff_parse_box_producer_reference_time},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2914,6 +2916,78 @@ BMFFCode _bmff_parse_box_stereo_video(BMFFContext *ctx, const uint8_t *data, siz
     const uint8_t *end = data + box->box.size;
     if(ptr < end) {
         _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_segment_index(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 32)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SegmentIndexBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->reference_id, ptr);
+    ADV_PARSE_U32(box->timescale, ptr);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U32(box->earliest_presentation_time, ptr);
+        ADV_PARSE_U32(box->first_offset, ptr);
+    }else{
+        ADV_PARSE_U64(box->earliest_presentation_time, ptr);
+        ADV_PARSE_U64(box->first_offset, ptr);
+    }
+
+    ptr += 2; // reserved(16)
+    ADV_PARSE_U16(box->reference_count, ptr);
+
+    if(box->reference_count > 0) {
+        BOX_MALLOCN(box->references, SegmentIndexRefEntry, box->reference_count);
+
+        uint16_t i = 0;
+        for(; i < box->reference_count; ++i) {
+            SegmentIndexRefEntry *ref = &box->references[i];
+            ref->reference_type = ((*ptr) >> 7) & 0x01;
+            ADV_PARSE_U32(ref->referenced_size, ptr);
+            ref->referenced_size &= 0x07FFFFFFF;
+            ADV_PARSE_U32(ref->subsegment_duration, ptr);
+            ref->starts_with_sap = ((*ptr) >> 7) & 0x01;
+            ref->sap_type = ((*ptr) >> 4) & 0x07;
+            ADV_PARSE_U32(ref->sap_delta_time, ptr);
+            ref->sap_delta_time &= 0x0FFFFFFF;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_producer_reference_time(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ProducerReferenceTimeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->reference_track_id, ptr);
+    ADV_PARSE_U64(box->ntp_timestamp, ptr);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U32(box->media_time, ptr);
+    }else{
+        ADV_PARSE_U64(box->media_time, ptr);
     }
 
     *box_ptr = (Box*)box;

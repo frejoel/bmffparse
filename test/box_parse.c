@@ -87,6 +87,8 @@ void test_parse_box_fd_item_inforamation(void);
 void test_parse_box_sub_track_information(void);
 void test_parse_box_sub_track_sample_group(void);
 void test_parse_box_stereo_video(void);
+void test_parse_box_segment_index(void);
+void test_parse_box_producer_reference_time(void);
 
 int main(int argc, char** argv)
 {
@@ -174,6 +176,8 @@ int main(int argc, char** argv)
     test_parse_box_sub_track_information();
     test_parse_box_sub_track_sample_group();
     test_parse_box_stereo_video();
+    test_parse_box_segment_index();
+    test_parse_box_producer_reference_time();
     return 0;
 }
 
@@ -4519,6 +4523,103 @@ void test_parse_box_stereo_video(void)
     test_assert_equal(box->length, 0x08, "length");
     test_assert_equal_uint64(box->stereo_indication_type, 0x123456789ABCDEF1ULL, "stereo indication type");
     test_assert_equal(box->child_count, 2, "child count");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_segment_index(void)
+{
+    test_start("test_parse_box_segment_index");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x38,
+        's', 'i', 'd', 'x',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x10, 0x20, 0x30, 0x40, // reference id
+        0x50, 0x60, 0x70, 0x80, // timescale
+        0x90, 0xA0, 0xB0, 0xC0, // earliest presentation time
+        0xD0, 0xE0, 0xF0, 0x01, // first offset
+        0x00, 0x00, // reserved
+        0x00, 0x02, // reference count
+        0x8F, 0x0E, 0x0D, 0x0C, // reference type (1), referenced size (31)
+        0x12, 0x34, 0x56, 0x78, // subsegment duration
+        0xDF, 0xED, 0xCB, 0xA9, // starts with sap(1), sap type(3), sap delta time (28)
+        0x00, 0xA1, 0xB2, 0xC3, // reference type (1), referenced size (31)
+        0xF9, 0xE8, 0xD7, 0xC6, // subsegment duration
+        0x40, 0xFF, 0xEE, 0xDD, // starts with sap(1), sap type(3), sap delta time (28)
+    };
+
+    BMFFCode res;
+    SegmentIndexBox *box = NULL;
+    res = _bmff_parse_box_segment_index(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "sidx", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->reference_id, 0x10203040, "reference id");
+    test_assert_equal(box->timescale, 0x50607080, "timescale");
+    test_assert_equal(box->earliest_presentation_time, 0x90A0B0C0, "earliest presentation time");
+    test_assert_equal(box->first_offset, 0xD0E0F001, "first offset");
+    test_assert_equal(box->reference_count, 2, "reference count");
+
+    SegmentIndexRefEntry *ref = &box->references[0];
+    test_assert_equal(ref->reference_type, 1, "reference type 0");
+    test_assert_equal(ref->referenced_size, 0x0F0E0D0C, "referenced size 0");
+    test_assert_equal(ref->subsegment_duration, 0x12345678, "subsegment duration 0");
+    test_assert_equal(ref->starts_with_sap, 1, "starts with sap 0");
+    test_assert_equal(ref->sap_type, 5, "sap type 0");
+    test_assert_equal(ref->sap_delta_time, 0x0FEDCBA9, "sap delta time 0");
+
+    ref = &box->references[1];
+    test_assert_equal(ref->reference_type, 0, "reference type 1");
+    test_assert_equal(ref->referenced_size, 0x00A1B2C3, "referenced size 1");
+    test_assert_equal(ref->subsegment_duration, 0xF9E8D7C6, "subsegment duration 1");
+    test_assert_equal(ref->starts_with_sap, 0, "starts with sap 1");
+    test_assert_equal(ref->sap_type, 4, "sap type 1");
+    test_assert_equal(ref->sap_delta_time, 0xFFEEDD, "sap delta time 1");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_producer_reference_time(void)
+{
+    test_start("test_parse_box_producer_reference_time");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1C,
+        'p', 'r', 'f', 't',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x12, 0x34, 0x56, 0x78, // reference track id
+        0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, // ntp timestamp
+        0x11, 0x22, 0x33, 0x44, // media time
+    };
+
+    BMFFCode res;
+    ProducerReferenceTimeBox *box = NULL;
+    res = _bmff_parse_box_producer_reference_time(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "prft", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->reference_track_id, 0x12345678, "reference track id");
+    test_assert_equal_uint64(box->ntp_timestamp, 0x1020304050607080ULL, "ntp timestamp");
+    test_assert_equal(box->media_time, 0x11223344, "media time");
 
     bmff_context_destroy(&ctx);
 
