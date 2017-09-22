@@ -904,14 +904,17 @@ typedef struct ProducerReferenceTimeBox { // prft
     uint64_t                media_time;
 } ProducerReferenceTimeBox;
 
-typedef struct CompleteTrackInfoBox { //
-
+typedef struct CompleteTrackInfoBox { // cinf
+    Box                     box;
+    OriginalFormatBox       original_format;
+    Box                     **children;
+    uint32_t                child_count;
 } CompleteTrackInfoBox;
 
 typedef struct IncompleteAVCSampleEntryBox { // icpv
-    CompleteTrackInfoBox            complete_track_info;
-    uint8_t                         *data;
-    size_t                          data_size;
+    CompleteTrackInfoBox    complete_track_info;
+    uint8_t                 *data;
+    size_t                  data_size;
 } IncompleteAVCSampleEntryBox;
 
 // icnf

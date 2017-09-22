@@ -124,6 +124,7 @@ const MapItem parse_map[] = {
     {"stvi", 0, _bmff_parse_box_stereo_video},
     {"sidx", 0, _bmff_parse_box_segment_index},
     {"prft", 0, _bmff_parse_box_producer_reference_time},
+    {"cinf", 0, _bmff_parse_box_complete_track_info},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -2973,7 +2974,7 @@ BMFFCode _bmff_parse_box_producer_reference_time(BMFFContext *ctx, const uint8_t
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(size < 28)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, ProducerReferenceTimeBox);
@@ -2989,6 +2990,27 @@ BMFFCode _bmff_parse_box_producer_reference_time(BMFFContext *ctx, const uint8_t
     }else{
         ADV_PARSE_U64(box->media_time, ptr);
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_complete_track_info(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompleteTrackInfoBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
+    ptr += parse_original_format_box(ptr, end-ptr, &box->original_format);
+
+    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

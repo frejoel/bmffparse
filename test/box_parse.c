@@ -89,6 +89,7 @@ void test_parse_box_sub_track_sample_group(void);
 void test_parse_box_stereo_video(void);
 void test_parse_box_segment_index(void);
 void test_parse_box_producer_reference_time(void);
+void test_parse_box_complete_track_info(void);
 
 int main(int argc, char** argv)
 {
@@ -178,6 +179,7 @@ int main(int argc, char** argv)
     test_parse_box_stereo_video();
     test_parse_box_segment_index();
     test_parse_box_producer_reference_time();
+    test_parse_box_complete_track_info();
     return 0;
 }
 
@@ -4620,6 +4622,45 @@ void test_parse_box_producer_reference_time(void)
     test_assert_equal(box->reference_track_id, 0x12345678, "reference track id");
     test_assert_equal_uint64(box->ntp_timestamp, 0x1020304050607080ULL, "ntp timestamp");
     test_assert_equal(box->media_time, 0x11223344, "media time");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_complete_track_info(void)
+{
+    test_start("test_parse_box_complete_track_info");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x31,
+        'c', 'i', 'n', 'f',
+        0, 0, 0, 0x0C,
+        'h','i','n','t',
+        'a','b','c','d', //data format
+        0, 0 ,0, 0x0D, // random boxes
+        'e','f','g','h',
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0, 0, 0, 0x10, // random boxes
+        'i','j','k','l',
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    };
+
+    BMFFCode res;
+    CompleteTrackInfoBox *box = NULL;
+    res = _bmff_parse_box_complete_track_info(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "cinf", 4), 0, "type");
+    test_assert_equal(box->original_format.box.size, 0x0C, "original format size");
+    test_assert_equal(strncmp(box->original_format.box.type, "hint", 4), 0, "original format type");
+    test_assert_equal(strncmp(box->original_format.data_format, "abcd", 4), 0, "original format data format");
+    test_assert_equal(box->child_count, 2, "child count");
+    test_assert(box->children != NULL, "children");
 
     bmff_context_destroy(&ctx);
 
