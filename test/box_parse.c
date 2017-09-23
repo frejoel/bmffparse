@@ -2536,7 +2536,7 @@ void test_parse_box_hint_media_header(void)
 
 void test_parse_box_sample_description_soun(void)
 {
-    test_start("test_parse_box_sample_description");
+    test_start("test_parse_box_sample_description_soun");
 
     BMFFContext ctx;
     bmff_context_init(&ctx);
@@ -2855,8 +2855,8 @@ void test_parse_box_sample_description_invalid_type(void)
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
     test_assert_equal(box->entry_count, 2, "entry count");
     test_assert(box->entries != NULL, "entries");
-    test_assert(box->entries[0] == NULL, "entries 0 - NULL");
-    test_assert(box->entries[1] == NULL, "entries 1 - NULL");
+    test_assert(box->entries[0] != NULL, "entries 0 - not NULL");
+    test_assert(box->entries[1] != NULL, "entries 1 - not NULL");
 
     bmff_context_destroy(&ctx);
 

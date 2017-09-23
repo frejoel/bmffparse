@@ -30,7 +30,7 @@
 
 #define PARSER_FUNC(func_name)  BMFFCode func_name(BMFFContext *ctx, const uint8_t * data, size_t size, Box **box_ptr)
 // number of items in the parse_map
-#define PARSE_MAP_LEN   (106)
+#define PARSE_MAP_LEN   (112)
 
 /*
  * Box parser functioin potiner.
@@ -44,6 +44,7 @@ uint64_t parse_u64(const uint8_t *data);
 fxpt16_t parse_fp16(const uint8_t *data);
 
 // list of parsing functions.
+PARSER_FUNC(_bmff_parse_box);
 PARSER_FUNC(_bmff_parse_box_file_type);
 PARSER_FUNC(_bmff_parse_box_generic_container);
 PARSER_FUNC(_bmff_parse_box_track_reference_type);
@@ -85,6 +86,9 @@ PARSER_FUNC(_bmff_parse_box_media_header);
 PARSER_FUNC(_bmff_parse_box_video_media_header);
 PARSER_FUNC(_bmff_parse_box_sound_media_header);
 PARSER_FUNC(_bmff_parse_box_hint_media_header);
+PARSER_FUNC(_bmff_parse_box_visual_sample_entry);
+PARSER_FUNC(_bmff_parse_box_audio_sample_entry);
+PARSER_FUNC(_bmff_parse_box_hint_sample_entry);
 PARSER_FUNC(_bmff_parse_box_sample_description);
 PARSER_FUNC(_bmff_parse_box_time_to_sample);
 PARSER_FUNC(_bmff_parse_box_composition_offset);
@@ -125,6 +129,7 @@ PARSER_FUNC(_bmff_parse_box_stereo_video);
 PARSER_FUNC(_bmff_parse_box_segment_index);
 PARSER_FUNC(_bmff_parse_box_producer_reference_time);
 PARSER_FUNC(_bmff_parse_box_complete_track_info);
+PARSER_FUNC(_bmff_parse_box_incomplete_sample_entry);
 
 typedef struct MapItem {
     union {

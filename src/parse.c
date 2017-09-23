@@ -259,6 +259,22 @@ int parse_original_format_box(const uint8_t *data, size_t size, OriginalFormatBo
     return ptr - data;
 }
 
+BMFFCode _bmff_parse_box(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 8)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, AbstractBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 BMFFCode _bmff_parse_box_file_type(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
@@ -1707,6 +1723,105 @@ BMFFCode _bmff_parse_box_hint_media_header(BMFFContext *ctx, const uint8_t *data
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_visual_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 53)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, VisualSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    // Sample Entry parsing
+    ptr += 6; // reserverd (8)[6]
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    // Visual Sample Entry parsing
+    ptr += 16; // predefined(2), reserved(2), predefined(12)
+    ADV_PARSE_U16(box->width, ptr);
+    ADV_PARSE_U16(box->height, ptr);
+    ADV_PARSE_FP16(box->horiz_resolution, ptr);
+    ADV_PARSE_FP16(box->vert_resolution, ptr);
+    ptr += 4; // reserved
+    ADV_PARSE_U16(box->frame_count, ptr);
+    // the first byte contains the length of the compressor string
+    uint8_t len = *ptr;
+    if(len > 31) len = 31; // make sure the length is valid
+    ptr++;
+    // copy the string
+    strncpy(box->compressor_name, ptr, len);
+    // null terminate the string at it's length
+    box->compressor_name[len] = '\0';
+    ptr += 31;
+    ADV_PARSE_U16(box->depth, ptr);
+    ptr += 2; // predefined
+
+    // TODO:
+    // CleanApertureBox
+    // PixelAspectRatioBox
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_audio_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 36)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, AudioSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    // Sample Entry parsing
+    ptr += 6; // reserverd (8)[6]
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    ptr += 8; // reserved (32)[2]
+    ADV_PARSE_U16(box->channel_count, ptr);
+    ADV_PARSE_U16(box->sample_size, ptr);
+    ptr += 2; // predefined
+    ptr += 2; // reserved
+    ADV_PARSE_U32(box->sample_rate, ptr);
+
+    // TODO: parse ChannelLayout
+
+    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_hint_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, HintSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    // Sample Entry parsing
+    ptr += 6; // reserverd (8)[6]
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    box->data = ptr;
+    box->data_size = (data + box->box.size) -  ptr;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
@@ -1717,70 +1832,34 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
     BOX_MALLOC(box, SampleDescriptionBox);
 
     const uint8_t *ptr = data;
-    const uint8_t *end = ptr + size;
     ptr += parse_full_box(data, size, &box->box);
+    const uint8_t *end = ptr + box->box.size;
 
     ADV_PARSE_U32(box->entry_count, ptr);
     if(box->entry_count > 0) {
-        BOX_MALLOCN(box->entries, SampleEntry**, box->entry_count);
-    }
 
-    uint32_t i=0;
-    for(; i<box->entry_count; ++i) {
-        // skip past the SampleEntry info.
-        const uint8_t *entry_ptr = ptr + 16;
-        SampleEntry *entry = NULL;
+        parse_func parser;
 
-        if(0 == strncmp(ctx->track_sample_table_handler_type,"soun",4)) {
-            BOX_MALLOC(audio_entry, AudioSampleEntry);
-            entry_ptr += 8; // reserved (32)[2]
-            ADV_PARSE_U16(audio_entry->channel_count, entry_ptr);
-            ADV_PARSE_U16(audio_entry->sample_size, entry_ptr);
-            entry_ptr += 2; // predefined
-            entry_ptr += 2; // reserved
-            ADV_PARSE_U32(audio_entry->sample_rate, entry_ptr);
-            entry = (SampleEntry*)audio_entry;
-        }else if(0 == strncmp(ctx->track_sample_table_handler_type,"vide",4)) {
-            BOX_MALLOC(visual_entry, VisualSampleEntry);
-            entry_ptr += 16; // predefined(2), reserved(2), predefined(12)
-            ADV_PARSE_U16(visual_entry->width, entry_ptr);
-            ADV_PARSE_U16(visual_entry->height, entry_ptr);
-            ADV_PARSE_FP16(visual_entry->horiz_resolution, entry_ptr);
-            ADV_PARSE_FP16(visual_entry->vert_resolution, entry_ptr);
-            entry_ptr += 4; // reserved
-            ADV_PARSE_U16(visual_entry->frame_count, entry_ptr);
-            // the first byte contains the length of the compressor string
-            uint8_t len = *entry_ptr;
-            if(len > 31) len = 31; // make sure the length is valid
-            entry_ptr++;
-            // copy the string
-            strncpy(visual_entry->compressor_name, entry_ptr, len);
-            // null terminate the string at it's length
-            visual_entry->compressor_name[len] = '\0';
-            entry_ptr += 31;
-            ADV_PARSE_U16(visual_entry->depth, entry_ptr);
-            entry_ptr += 2; // predefined
-            entry = (SampleEntry*)visual_entry;
-        }else if(0 == strncmp(ctx->track_sample_table_handler_type,"hint",4)) {
-            BOX_MALLOC(hint_entry, HintSampleEntry);
-            hint_entry->data = entry_ptr;
-            const uint8_t *entry_ptr_end = ptr + parse_u32(ptr);
-            hint_entry->data_size = entry_ptr_end - entry_ptr;
-            entry_ptr = entry_ptr_end;
-            entry = (SampleEntry*)hint_entry;
-        }
-        
-        // parse the SampleEntry info
-        if(entry != NULL) {
-            ptr += parse_box(ptr, end-ptr, &entry->box);
-            ptr += 6; // reserved (8)[6]
-            ADV_PARSE_U16(entry->data_reference_index, ptr);
+        if(strncmp(ctx->track_sample_table_handler_type, "soun", 4) == 0) {
+            parser = _bmff_parse_box_audio_sample_entry;
+        } else if(strncmp(ctx->track_sample_table_handler_type, "vide", 4) == 0) {
+            parser = _bmff_parse_box_visual_sample_entry;
+        } else if(strncmp(ctx->track_sample_table_handler_type, "hint", 4) == 0) {
+            parser = _bmff_parse_box_hint_sample_entry;
+        }else{
+            parser = _bmff_parse_box;
         }
 
-        box->entries[i] = entry;
+        BOX_MALLOCN(box->entries, SampleEntry*, box->entry_count);
 
-        // set the ptr to the end of the current box / start of the next one.
-        ptr = entry_ptr;
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            BMFFCode res = parser(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
+            if(res != BMFF_OK) {
+                return res;
+            }
+            ptr += box->entries[i]->box.size;
+        }
     }
 
     *box_ptr = (Box*)box;
@@ -2676,7 +2755,6 @@ BMFFCode _bmff_parse_box_partition_entry(BMFFContext *ctx, const uint8_t *data, 
 
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, &box->box);
-
     const uint8_t *end = data + box->box.size;
 
     BMFFCode res = _bmff_parse_box_file_partition(ctx, ptr, end - ptr, (Box**)&box->blocks_and_symbols);
@@ -3011,6 +3089,24 @@ BMFFCode _bmff_parse_box_complete_track_info(BMFFContext *ctx, const uint8_t *da
     ptr += parse_original_format_box(ptr, end-ptr, &box->original_format);
 
     _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_incomplete_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, IncompleteSampleEntryBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    // TODO:
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

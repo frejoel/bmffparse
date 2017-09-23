@@ -542,6 +542,9 @@ typedef struct VisualSampleEntry {
     uint16_t        frame_count;
     uint8_t         compressor_name[31];
     uint16_t        depth;
+    // TODO:
+    //CleanApertureBox  *clap;
+    //PixelAspectRatioBox   *pasp;
 } VisualSampleEntry;
 
 typedef struct AudioSampleEntry {
@@ -550,6 +553,8 @@ typedef struct AudioSampleEntry {
     uint16_t        channel_count;
     uint16_t        sample_size;
     uint32_t        sample_rate;
+    Box             **children;
+    uint32_t        child_count;
 } AudioSampleEntry;
 
 typedef struct SampleDescriptionBox { // stsd
@@ -911,11 +916,13 @@ typedef struct CompleteTrackInfoBox { // cinf
     uint32_t                child_count;
 } CompleteTrackInfoBox;
 
-typedef struct IncompleteAVCSampleEntryBox { // icpv
+typedef struct IncompleteSampleEntryBox { // icpv, icpa, icpt, icps, icph, icpm
+    Box                     box;
+    SampleEntry             *sample_entry;
     CompleteTrackInfoBox    complete_track_info;
-    uint8_t                 *data;
-    size_t                  data_size;
-} IncompleteAVCSampleEntryBox;
+    Box                     ***children;
+    uint32_t                child_count;
+} IncompleteSampleEntryBox;
 
 // icnf
 // rtp_
