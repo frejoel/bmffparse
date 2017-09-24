@@ -1854,7 +1854,15 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
 
         uint32_t i = 0;
         for(; i < box->entry_count; ++i) {
-            BMFFCode res = parser(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
+            BMFFCode res = BMFF_OK;
+
+            // if the next entry is an incomplete sample, parse it accordingly
+            if(strncmp(&ptr[4], "icp", 3) == 0) {
+                res = _bmff_parse_box_incomplete_sample_entry(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
+            }else{
+                res = parser(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
+            }
+
             if(res != BMFF_OK) {
                 return res;
             }
@@ -3104,9 +3112,42 @@ BMFFCode _bmff_parse_box_incomplete_sample_entry(BMFFContext *ctx, const uint8_t
     BOX_MALLOC(box, IncompleteSampleEntryBox);
 
     const uint8_t *ptr = data;
-    ptr += parse_box(data, size, &box->box);
+    parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
 
-    // TODO:
+    parse_func parser;
+    // assuming the type starts with "ipc" and ends in one of the following characters
+    switch(box->box.type[3]) {
+        case 'v': parser = _bmff_parse_box_visual_sample_entry; break;
+        case 'a': parser = _bmff_parse_box_audio_sample_entry; break;
+        case 'h': parser = _bmff_parse_box_hint_sample_entry; break;
+        default: parser = _bmff_parse_box; break;
+    }
+
+    // parse the sample type
+    BMFFCode res = BMFF_OK;
+    res = parser(ctx, ptr, end-ptr, (Box**)&box->sample_entry);
+    if(res != BMFF_OK) {
+        return res;
+    }
+    ptr += box->sample_entry->box.size;
+
+    // NOTE: I can't figure out how incomplete hint samples work.
+    //       The data array goes to the end of the box, so can't tell where
+    //       the Complete Track Info box would start ?!?!?!?!
+    if(end > ptr) {
+        // parse complete track info
+        res = _bmff_parse_box_complete_track_info(ctx, ptr, end-ptr, (Box**)&box->complete_track_info);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->complete_track_info->box.size;
+    }
+
+    // parse any other boxes
+    if(end > ptr) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

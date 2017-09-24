@@ -919,8 +919,8 @@ typedef struct CompleteTrackInfoBox { // cinf
 typedef struct IncompleteSampleEntryBox { // icpv, icpa, icpt, icps, icph, icpm
     Box                     box;
     SampleEntry             *sample_entry;
-    CompleteTrackInfoBox    complete_track_info;
-    Box                     ***children;
+    CompleteTrackInfoBox    *complete_track_info;
+    Box                     **children;
     uint32_t                child_count;
 } IncompleteSampleEntryBox;
 

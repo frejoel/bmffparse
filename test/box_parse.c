@@ -2613,11 +2613,11 @@ void test_parse_box_sample_description_hint(void)
     BMFFContext ctx;
     bmff_context_init(&ctx);
     uint8_t data[] = {
-        0, 0, 0, 0x5E,
+        0, 0, 0, 0xA2,
         's', 't', 's', 'd',
         0x00, // version
         0xF1, 0x0F, 0xBA, // flags
-        0x00, 0x00, 0x00, 0x03, // entry count
+        0x00, 0x00, 0x00, 0x04, // entry count
 
         // hint sample entry
         0x00, 0x00, 0x00, 0x20, // size
@@ -2633,6 +2633,27 @@ void test_parse_box_sample_description_hint(void)
         0x03, 0x04, // data reference index
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // data
         0x09, 0x0A, 0x0B, // data
+
+        0x00, 0x00, 0x00, 0x44, // size
+        'i', 'c', 'p', 'h', // incomplete box
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x0F, 0xFF, // data reference index
+        0x01, 0x02, 0x03, 0x04, // data
+        // complete track info
+        0x00, 0x00, 0x00, 0x14,
+        'c', 'i', 'n', 'f',
+            // orginal format box
+            0x00, 0x00, 0x00, 0x0C,
+            'f', 'r', 'm', 'a',
+            'h', 'i', 'n', 't', // orignal data format
+        // "other" boxes
+        0x00, 0x00, 0x00, 0x0C,
+        'a', 'b', 'c', 'd',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        0x00, 0x00, 0x00, 0x10,
+        'a', 'b', 'c', 'd',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF,
 
         0x00, 0x00, 0x00, 0x13, // size
         'h','i','n','t', // format
@@ -2652,7 +2673,7 @@ void test_parse_box_sample_description_hint(void)
     test_assert_equal(strncmp(box->box.type, "stsd", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
-    test_assert_equal(box->entry_count, 3, "entry count");
+    test_assert_equal(box->entry_count, 4, "entry count");
 
     HintSampleEntry *entry = (HintSampleEntry*) box->entries[0];
     test_assert_equal(entry->box.size, 0x20, "entry 0 size");
@@ -2670,13 +2691,22 @@ void test_parse_box_sample_description_hint(void)
     test_assert_equal(entry->data[0], 0x01, "entry 1 data start");
     test_assert_equal(entry->data[10], 0x0B, "entry 1 data end");
 
-    entry = (HintSampleEntry*) box->entries[2];
-    test_assert_equal(entry->box.size, 0x13, "entry 2 size");
-    test_assert_equal(strncmp(entry->box.type, "hint", 4), 0, "entry 2 format / type");
-    test_assert_equal(entry->data_reference_index, 0x0506, "entry 2 data reference index");
-    test_assert_equal(entry->data_size, 3, "entry 2 data_size");
+    IncompleteSampleEntryBox *incp_entry = (IncompleteSampleEntryBox*) box->entries[2];
+    test_assert_equal(incp_entry->box.size, 0x44, "entry 2 size");
+    test_assert_equal(strncmp(incp_entry->box.type, "icph", 4), 0, "entry 2 format / type");
+    entry = (HintSampleEntry*) incp_entry->sample_entry;
+    test_assert_equal(entry->data_reference_index, 0x0FFF, "entry 2 data reference index");
+    test_assert_equal(entry->data_size, 52, "entry 2 data_size");
     test_assert_equal(entry->data[0], 0x01, "entry 2 data start");
-    test_assert_equal(entry->data[2], 0x03, "entry 2 data end");
+    test_assert_equal(entry->data[51], 0xFF, "entry 2 data end");
+
+    entry = (HintSampleEntry*) box->entries[3];
+    test_assert_equal(entry->box.size, 0x13, "entry 3 size");
+    test_assert_equal(strncmp(entry->box.type, "hint", 4), 0, "entry 3 format / type");
+    test_assert_equal(entry->data_reference_index, 0x0506, "entry 3 data reference index");
+    test_assert_equal(entry->data_size, 3, "entry 3 data_size");
+    test_assert_equal(entry->data[0], 0x01, "entry 3 data start");
+    test_assert_equal(entry->data[2], 0x03, "entry 3 data end");
     bmff_context_destroy(&ctx);
 
     test_end();
