@@ -525,36 +525,55 @@ typedef struct SampleEntry {
     uint16_t        data_reference_index;
 } SampleEntry;
 
+typedef struct CompleteTrackInfoBox { // cinf
+    Box                     box;
+    OriginalFormatBox       original_format;
+    Box                     **children;
+    uint32_t                child_count;
+} CompleteTrackInfoBox;
+
+typedef struct IncompleteSampleEntry {
+    CompleteTrackInfoBox    *complete_track_info;
+    Box                     **children;
+    uint32_t                child_count;
+} IncompleteSampleEntry;
+
 typedef struct HintSampleEntry {
-    Box             box;
-    uint16_t        data_reference_index;
-    const uint8_t   *data;
-    size_t          data_size;
+    Box                     box;
+    uint16_t                data_reference_index;
+    const uint8_t           *data;
+    size_t                  data_size;
+    eBoolean                is_incomplete;
+    IncompleteSampleEntry   *incomplete_sample;
 } HintSampleEntry;
 
 typedef struct VisualSampleEntry {
-    Box             box;
-    uint16_t        data_reference_index;
-    uint16_t        width;
-    uint16_t        height;
-    fxpt16_t        horiz_resolution;
-    fxpt16_t        vert_resolution;
-    uint16_t        frame_count;
-    uint8_t         compressor_name[31];
-    uint16_t        depth;
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                width;
+    uint16_t                height;
+    fxpt16_t                horiz_resolution;
+    fxpt16_t                vert_resolution;
+    uint16_t                frame_count;
+    uint8_t                 compressor_name[31];
+    uint16_t                depth;
     // TODO:
-    //CleanApertureBox  *clap;
-    //PixelAspectRatioBox   *pasp;
+    //CleanApertureBox        *clap;
+    //PixelAspectRatioBox     *pasp;
+    eBoolean                is_incomplete;
+    IncompleteSampleEntry   *incomplete_sample;
 } VisualSampleEntry;
 
 typedef struct AudioSampleEntry {
-    Box             box;
-    uint16_t        data_reference_index;
-    uint16_t        channel_count;
-    uint16_t        sample_size;
-    uint32_t        sample_rate;
-    Box             **children;
-    uint32_t        child_count;
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                channel_count;
+    uint16_t                sample_size;
+    uint32_t                sample_rate;
+    Box                     **children;
+    uint32_t                child_count;
+    eBoolean                is_incomplete;
+    IncompleteSampleEntry   *incomplete_sample;
 } AudioSampleEntry;
 
 typedef struct SampleDescriptionBox { // stsd
@@ -908,21 +927,6 @@ typedef struct ProducerReferenceTimeBox { // prft
     uint64_t                ntp_timestamp;
     uint64_t                media_time;
 } ProducerReferenceTimeBox;
-
-typedef struct CompleteTrackInfoBox { // cinf
-    Box                     box;
-    OriginalFormatBox       original_format;
-    Box                     **children;
-    uint32_t                child_count;
-} CompleteTrackInfoBox;
-
-typedef struct IncompleteSampleEntryBox { // icpv, icpa, icpt, icps, icph, icpm
-    Box                     box;
-    SampleEntry             *sample_entry;
-    CompleteTrackInfoBox    *complete_track_info;
-    Box                     **children;
-    uint32_t                child_count;
-} IncompleteSampleEntryBox;
 
 // icnf
 // rtp_

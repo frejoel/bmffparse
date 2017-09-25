@@ -2541,11 +2541,12 @@ void test_parse_box_sample_description_soun(void)
     BMFFContext ctx;
     bmff_context_init(&ctx);
     uint8_t data[] = {
-        0, 0, 0, 0x58,
+        0, 0, 0, 0x9C,
         's', 't', 's', 'd',
         0x00, // version
         0xF1, 0x0F, 0xBA, // flags
-        0x00, 0x00, 0x00, 0x02, // entry count
+        0x00, 0x00, 0x00, 0x03, // entry count
+
         // soun sample entry
         0x00, 0x00, 0x00, 0x24, // size
         's','o','u','n', // coding name
@@ -2558,6 +2559,7 @@ void test_parse_box_sample_description_soun(void)
         0x00, 0x00, // pre defined
         0x00, 0x00, // reserved
         0x10, 0x20, 0x30, 0x40, // sample rate
+
         // soun sample entry
         0x00, 0x00, 0x00, 0x24, // size
         's','o','u','n', // coding name
@@ -2570,6 +2572,30 @@ void test_parse_box_sample_description_soun(void)
         0x00, 0x00, // pre defined
         0x00, 0x00, // reserved
         0xA0, 0xB0, 0xC0, 0xD0, // sample rate
+
+        // Incomplete soun sample entry
+        0x00, 0x00, 0x00, 0x44, // size
+        'i','c','p','a', // coding name
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0xAB, 0xCD, // data reference index
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x00, 0x00, 0x00, 0x00, // reserved
+        0x00, 0x06, // channel count
+        0x01, 0x23, // samplesize
+        0x00, 0x00, // pre defined
+        0x00, 0x00, // reserved
+        0xA0, 0xB0, 0xC0, 0xD0, // sample rate
+        // complete track info
+        0x00, 0x00, 0x00, 0x14,
+        'c', 'i', 'n', 'f',
+            // orginal format box
+            0x00, 0x00, 0x00, 0x0C,
+            'f', 'r', 'm', 'a',
+            's', 'o', 'u', 'n', // orignal data format
+        // "other" boxes
+        0x00, 0x00, 0x00, 0x0C,
+        'a', 'b', 'c', 'd',
+        0xFF, 0xFF, 0xFF, 0xFF
     };
 
     memcpy(ctx.track_sample_table_handler_type, "soun", 4);
@@ -2583,7 +2609,7 @@ void test_parse_box_sample_description_soun(void)
     test_assert_equal(strncmp(box->box.type, "stsd", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
-    test_assert_equal(box->entry_count, 2, "entry count");
+    test_assert_equal(box->entry_count, 3, "entry count");
 
     AudioSampleEntry *entry = (AudioSampleEntry*) box->entries[0];
     test_assert_equal(entry->box.size, 0x24, "entry 0 size");
@@ -2592,6 +2618,7 @@ void test_parse_box_sample_description_soun(void)
     test_assert_equal(entry->channel_count, 2, "entry 0 channel count");
     test_assert_equal(entry->sample_size, 16, "entry 0 sample size");
     test_assert_equal(entry->sample_rate, 0x10203040, "entry 0 sample rate");
+    test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 0 is incomplete");
 
     entry = (AudioSampleEntry*) box->entries[1];
     test_assert_equal(entry->box.size, 0x24, "entry 1 size");
@@ -2600,6 +2627,20 @@ void test_parse_box_sample_description_soun(void)
     test_assert_equal(entry->channel_count, 6, "entry 1 channel count");
     test_assert_equal(entry->sample_size, 0x0123, "entry 1 sample size");
     test_assert_equal(entry->sample_rate, 0xA0B0C0D0, "entry 1 sample rate");
+    test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 1 is incomplete");
+
+    entry = (AudioSampleEntry*) box->entries[2];
+    test_assert_equal(entry->box.size, 0x44, "entry 2 size");
+    test_assert_equal(strncmp(entry->box.type, "icpa", 4), 0, "entry 2 coding name / type");
+    test_assert_equal(entry->is_incomplete, eBooleanTrue, "entry 2 is incomplete");
+    test_assert_equal(strncmp(entry->incomplete_sample->complete_track_info->box.type, "cinf", 4), 0, "entry complete track info type");
+    test_assert_equal(strncmp(entry->incomplete_sample->complete_track_info->original_format.data_format, "soun", 4), 0, "entry 2 original format data format");
+    test_assert_equal(entry->incomplete_sample->child_count, 1, "entry 2 child count");
+    test_assert(entry->incomplete_sample->children != NULL, "entry 2 children");
+    test_assert_equal(entry->data_reference_index, 0xABCD, "entry 2 data reference index");
+    test_assert_equal(entry->channel_count, 6, "entry 2 channel count");
+    test_assert_equal(entry->sample_size, 0x0123, "entry 2 sample size");
+    test_assert_equal(entry->sample_rate, 0xA0B0C0D0, "entry 2 sample rate");
 
     bmff_context_destroy(&ctx);
 
@@ -2682,6 +2723,7 @@ void test_parse_box_sample_description_hint(void)
     test_assert_equal(entry->data_size, 16, "entry 0 data_size");
     test_assert_equal(entry->data[0], 0x01, "entry 0 data start");
     test_assert_equal(entry->data[15], 0x10, "entry 0 data end");
+    test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 0 is incomplete");
 
     entry = (HintSampleEntry*) box->entries[1];
     test_assert_equal(entry->box.size, 0x1B, "entry 1 size");
@@ -2690,11 +2732,13 @@ void test_parse_box_sample_description_hint(void)
     test_assert_equal(entry->data_size, 11, "entry 1 data_size");
     test_assert_equal(entry->data[0], 0x01, "entry 1 data start");
     test_assert_equal(entry->data[10], 0x0B, "entry 1 data end");
+    test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 1 is incomplete");
 
-    IncompleteSampleEntryBox *incp_entry = (IncompleteSampleEntryBox*) box->entries[2];
-    test_assert_equal(incp_entry->box.size, 0x44, "entry 2 size");
-    test_assert_equal(strncmp(incp_entry->box.type, "icph", 4), 0, "entry 2 format / type");
-    entry = (HintSampleEntry*) incp_entry->sample_entry;
+    entry = (HintSampleEntry*) box->entries[2];
+    test_assert_equal(entry->box.size, 0x44, "entry 2 size");
+    test_assert_equal(strncmp(entry->box.type, "icph", 4), 0, "entry 2 format / type");
+    test_assert_equal(entry->is_incomplete, eBooleanTrue, "entry 2 is incomplete");
+    test_assert(entry->incomplete_sample == NULL, "incomplete sample is NULL");
     test_assert_equal(entry->data_reference_index, 0x0FFF, "entry 2 data reference index");
     test_assert_equal(entry->data_size, 52, "entry 2 data_size");
     test_assert_equal(entry->data[0], 0x01, "entry 2 data start");
@@ -2707,6 +2751,7 @@ void test_parse_box_sample_description_hint(void)
     test_assert_equal(entry->data_size, 3, "entry 3 data_size");
     test_assert_equal(entry->data[0], 0x01, "entry 3 data start");
     test_assert_equal(entry->data[2], 0x03, "entry 3 data end");
+    test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 3 is incomplete");
     bmff_context_destroy(&ctx);
 
     test_end();

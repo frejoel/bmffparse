@@ -1723,6 +1723,33 @@ BMFFCode _bmff_parse_box_hint_media_header(BMFFContext *ctx, const uint8_t *data
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_incomplete_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, IncompleteSampleEntry **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, IncompleteSampleEntry);
+
+    const uint8_t *ptr = data;
+    const uint8_t *end = data + size;
+
+    BMFFCode res = _bmff_parse_box_complete_track_info(ctx, ptr, end-ptr, (Box**)&box->complete_track_info);
+    if(res != BMFF_OK) {
+        return res;
+    }
+    ptr += box->complete_track_info->box.size;
+
+    // parse any other boxes
+    if(end > ptr) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+    }
+
+    *box_ptr = box;
+    return BMFF_OK;
+}
+
 BMFFCode _bmff_parse_box_visual_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
@@ -1763,6 +1790,18 @@ BMFFCode _bmff_parse_box_visual_sample_entry(BMFFContext *ctx, const uint8_t *da
     // CleanApertureBox
     // PixelAspectRatioBox
 
+    // parse incomplete data if the sample has an incomplete tag
+    if(strncmp(box->box.type, "icpv", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+        const uint8_t *end = data + box->box.size;
+        BMFFCode res = _bmff_parse_incomplete_sample_entry(ctx, ptr, end-ptr, &box->incomplete_sample);
+        if(res != BMFF_OK) {
+            return res;
+        }
+    }else{
+        box->is_incomplete = eBooleanFalse;
+    }
+
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
@@ -1795,6 +1834,17 @@ BMFFCode _bmff_parse_box_audio_sample_entry(BMFFContext *ctx, const uint8_t *dat
 
     _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
 
+    // parse incomplete data if the sample has an incomplete tag
+    if(strncmp(box->box.type, "icpa", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+        BMFFCode res = _bmff_parse_incomplete_sample_entry(ctx, ptr, end-ptr, &box->incomplete_sample);
+        if(res != BMFF_OK) {
+            return res;
+        }
+    }else{
+        box->is_incomplete = eBooleanFalse;
+    }
+
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
@@ -1818,6 +1868,23 @@ BMFFCode _bmff_parse_box_hint_sample_entry(BMFFContext *ctx, const uint8_t *data
     box->data = ptr;
     box->data_size = (data + box->box.size) -  ptr;
 
+    ptr += box->data_size;
+
+    // parse incomplete data if the sample has an incomplete tag
+    if(strncmp(box->box.type, "icph", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+        // NOTE: This won't work because we can't tell where the hint data ends and the
+        //       incomplete sample data begins ?!?!?!?!
+        //
+        // const uint8_t *end = data + box->box.size;
+        // BMFFCode res = _bmff_parse_incomplete_sample_entry(ctx, ptr, end-ptr, &box->incomplete_sample);
+        // if(res != BMFF_OK) {
+        //    return res;
+        //}
+    }else{
+        box->is_incomplete = eBooleanFalse;
+    }
+
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
@@ -1840,13 +1907,23 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
 
         parse_func parser;
 
-        if(strncmp(ctx->track_sample_table_handler_type, "soun", 4) == 0) {
+        if(strncmp(ctx->track_sample_table_handler_type, "soun", 4) == 0 ||
+            strncmp(ctx->track_sample_table_handler_type, "icpa", 4) == 0 )
+        {
             parser = _bmff_parse_box_audio_sample_entry;
-        } else if(strncmp(ctx->track_sample_table_handler_type, "vide", 4) == 0) {
+        }
+        else if(strncmp(ctx->track_sample_table_handler_type, "vide", 4) == 0 ||
+            strncmp(ctx->track_sample_table_handler_type, "icpv", 4) == 0 )
+        {
             parser = _bmff_parse_box_visual_sample_entry;
-        } else if(strncmp(ctx->track_sample_table_handler_type, "hint", 4) == 0) {
+        }
+        else if(strncmp(ctx->track_sample_table_handler_type, "hint", 4) == 0 ||
+            strncmp(ctx->track_sample_table_handler_type, "icph", 4) == 0 )
+        {
             parser = _bmff_parse_box_hint_sample_entry;
-        }else{
+        }
+        else
+        {
             parser = _bmff_parse_box;
         }
 
@@ -1854,15 +1931,7 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
 
         uint32_t i = 0;
         for(; i < box->entry_count; ++i) {
-            BMFFCode res = BMFF_OK;
-
-            // if the next entry is an incomplete sample, parse it accordingly
-            if(strncmp(&ptr[4], "icp", 3) == 0) {
-                res = _bmff_parse_box_incomplete_sample_entry(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
-            }else{
-                res = parser(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
-            }
-
+            BMFFCode res = parser(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
             if(res != BMFF_OK) {
                 return res;
             }
@@ -3097,57 +3166,6 @@ BMFFCode _bmff_parse_box_complete_track_info(BMFFContext *ctx, const uint8_t *da
     ptr += parse_original_format_box(ptr, end-ptr, &box->original_format);
 
     _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
-
-    *box_ptr = (Box*)box;
-    return BMFF_OK;
-}
-
-BMFFCode _bmff_parse_box_incomplete_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
-{
-    if(!ctx)        return BMFF_INVALID_CONTEXT;
-    if(!data)       return BMFF_INVALID_DATA;
-    if(size < 20)   return BMFF_INVALID_SIZE;
-    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
-
-    BOX_MALLOC(box, IncompleteSampleEntryBox);
-
-    const uint8_t *ptr = data;
-    parse_box(data, size, &box->box);
-    const uint8_t *end = data + box->box.size;
-
-    parse_func parser;
-    // assuming the type starts with "ipc" and ends in one of the following characters
-    switch(box->box.type[3]) {
-        case 'v': parser = _bmff_parse_box_visual_sample_entry; break;
-        case 'a': parser = _bmff_parse_box_audio_sample_entry; break;
-        case 'h': parser = _bmff_parse_box_hint_sample_entry; break;
-        default: parser = _bmff_parse_box; break;
-    }
-
-    // parse the sample type
-    BMFFCode res = BMFF_OK;
-    res = parser(ctx, ptr, end-ptr, (Box**)&box->sample_entry);
-    if(res != BMFF_OK) {
-        return res;
-    }
-    ptr += box->sample_entry->box.size;
-
-    // NOTE: I can't figure out how incomplete hint samples work.
-    //       The data array goes to the end of the box, so can't tell where
-    //       the Complete Track Info box would start ?!?!?!?!
-    if(end > ptr) {
-        // parse complete track info
-        res = _bmff_parse_box_complete_track_info(ctx, ptr, end-ptr, (Box**)&box->complete_track_info);
-        if(res != BMFF_OK) {
-            return res;
-        }
-        ptr += box->complete_track_info->box.size;
-    }
-
-    // parse any other boxes
-    if(end > ptr) {
-        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
-    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

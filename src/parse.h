@@ -129,7 +129,6 @@ PARSER_FUNC(_bmff_parse_box_stereo_video);
 PARSER_FUNC(_bmff_parse_box_segment_index);
 PARSER_FUNC(_bmff_parse_box_producer_reference_time);
 PARSER_FUNC(_bmff_parse_box_complete_track_info);
-PARSER_FUNC(_bmff_parse_box_incomplete_sample_entry);
 
 typedef struct MapItem {
     union {
