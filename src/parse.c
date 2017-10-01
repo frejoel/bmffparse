@@ -1765,9 +1765,11 @@ BMFFCode _bmff_parse_box_visual_sample_entry(BMFFContext *ctx, const uint8_t *da
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, VisualSampleEntry);
+    box->is_incomplete = eBooleanFalse;
 
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
 
     // Sample Entry parsing
     ptr += 6; // reserverd (8)[6]
@@ -1793,20 +1795,31 @@ BMFFCode _bmff_parse_box_visual_sample_entry(BMFFContext *ctx, const uint8_t *da
     ADV_PARSE_U16(box->depth, ptr);
     ptr += 2; // predefined
 
-    // TODO:
     // CleanApertureBox
-    // PixelAspectRatioBox
-
-    // parse incomplete data if the sample has an incomplete tag
-    if(strncmp(box->box.type, "icpv", 4) == 0) {
-        box->is_incomplete = eBooleanTrue;
-        const uint8_t *end = data + box->box.size;
-        BMFFCode res = _bmff_parse_incomplete_sample_entry(ctx, ptr, end-ptr, &box->incomplete_sample);
+    if(ptr + 8 < end && strncmp(&ptr[4], "clap", 4) == 0) {
+        BMFFCode res = _bmff_parse_box_clean_aperture(ctx, ptr, end-ptr, (Box**)&box->clap);
         if(res != BMFF_OK) {
             return res;
         }
-    }else{
-        box->is_incomplete = eBooleanFalse;
+        ptr += box->clap->box.size;
+    }
+
+    // PixelAspectRatioBox
+    if(ptr + 8 < end && strncmp(&ptr[4], "pasp", 4) == 0) {
+        BMFFCode res = _bmff_parse_box_pixel_aspect_ratio(ctx, ptr, end-ptr, (Box**)&box->pasp);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->pasp->box.size;
+    }
+
+    // parse incomplete data if the sample has an incomplete tag
+    if(ptr + 8 < end && strncmp(box->box.type, "icpv", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+    }
+
+    if(ptr + 8 < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
     }
 
     *box_ptr = (Box*)box;

@@ -2849,14 +2849,14 @@ void test_parse_box_sample_description_vide(void)
     BMFFContext ctx;
     bmff_context_init(&ctx);
     uint8_t data[] = {
-        0, 0, 0, 0xBC,
+        0, 0, 0x01, 0x00,
         's', 't', 's', 'd',
         0x00, // version
         0xF1, 0x0F, 0xBA, // flags
         0x00, 0x00, 0x00, 0x02, // entry count
 
         // vide sample entry
-        0x00, 0x00, 0x00, 0x56, // size
+        0x00, 0x00, 0x00, 0x8E, // size
         'v','i','d','e', // coding name
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
         0x12, 0x34, // data reference index
@@ -2874,10 +2874,25 @@ void test_parse_box_sample_description_vide(void)
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0x00, 0x18, // depth
         0xFF, 0xFF, // predefined(16) = -1
+        0, 0, 0, 0x28,
+        'c', 'l', 'a', 'p',
+        0x12, 0x34, 0x56, 0x78, // width n
+        0x9A, 0xBC, 0xDE, 0xF0, // width d
+        0x01, 0x02, 0x03, 0x04, // height n
+        0x05, 0x06, 0x07, 0x08, // height d
+        0x10, 0x20, 0x30, 0x40, // horiz off N
+        0x50, 0x60, 0x70, 0x80, // horiz off D
+        0x90, 0xA0, 0xB0, 0xC0, // vert off N
+        0xD0, 0xE0, 0xF0, 0x00, // vert off D
+        // Pixel Aspect Ratio
+        0, 0, 0, 0x10,
+        'p', 'a', 's', 'p',
+        0x01, 0x02, 0x03, 0x04,
+        0x05, 0x06, 0x07, 0x08,
 
         // vide entry
-        0x00, 0x00, 0x00, 0x56, // size
-        'v','i','d','e', // coding name
+        0x00, 0x00, 0x00, 0x68, // size
+        'i','c','p','v', // coding name
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
         0x56, 0x78, // data reference index
         0x00, 0x00, 0x00, 0x00, // pre-defined[2] and reserved[2]
@@ -2895,6 +2910,10 @@ void test_parse_box_sample_description_vide(void)
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xED, 0xCB, // depth
         0xFF, 0xFF, // predefined(16) = -1
+        // Complete Track Info
+        0x00, 0x00, 0x00, 0x0C,
+        'c', 'i', 'n','f',
+        'v','i','d','e',
     };
 
     memcpy(ctx.track_sample_table_handler_type, "vide", 4);
@@ -2911,7 +2930,7 @@ void test_parse_box_sample_description_vide(void)
     test_assert_equal(box->entry_count, 2, "entry count");
 
     VisualSampleEntry *entry = (VisualSampleEntry*) box->entries[0];
-    test_assert_equal(entry->box.size, 0x56, "entry 0 size");
+    test_assert_equal(entry->box.size, 0x8E, "entry 0 size");
     test_assert_equal(strncmp(entry->box.type, "vide", 4), 0, "entry 0 coding name / type");
     test_assert_equal(entry->data_reference_index, 0x1234, "entry 0 data reference index");
     test_assert_equal(entry->width, 0x5678, "entry 0 width");
@@ -2921,10 +2940,25 @@ void test_parse_box_sample_description_vide(void)
     test_assert_equal(entry->frame_count, 0xABCD, "entry 0 frame count");
     test_assert_equal(strcmp("compressor name", entry->compressor_name), 0, "entry 0 compressor name");
     test_assert_equal(entry->depth, 0x18, "entry 0 depth");
+    test_assert_equal(entry->clap->box.size, 0x28, "clean aperture size");
+    test_assert_equal(strncmp(entry->clap->box.type, "clap", 4), 0, "clean aperture type");
+    test_assert_equal(entry->clap->clean_aperture_width_n, 0x12345678, "width n");
+    test_assert_equal(entry->clap->clean_aperture_width_d, 0x9ABCDEF0, "width d");
+    test_assert_equal(entry->clap->clean_aperture_height_n, 0x01020304, "height n");
+    test_assert_equal(entry->clap->clean_aperture_height_d, 0x05060708, "height d");
+    test_assert_equal(entry->clap->horiz_off_n, 0x10203040, "horiz off n");
+    test_assert_equal(entry->clap->horiz_off_d, 0x50607080, "horiz off d");
+    test_assert_equal(entry->clap->vert_off_n, 0x90A0B0C0, "vert off n");
+    test_assert_equal(entry->clap->vert_off_d, 0xD0E0F000, "vert off d");
+    test_assert_equal(entry->pasp->box.size, 0x10, "size");
+    test_assert_equal(strncmp(entry->pasp->box.type, "pasp", 4), 0, "type");
+    test_assert_equal(entry->pasp->h_spacing, 0x01020304, "h spacing");
+    test_assert_equal(entry->pasp->v_spacing, 0x05060708, "v spacing");
+    test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 0 is incomplete");
 
     entry = (VisualSampleEntry*) box->entries[1];
-    test_assert_equal(entry->box.size, 0x56, "entry 1 size");
-    test_assert_equal(strncmp(entry->box.type, "vide", 4), 0, "entry 1 coding name / type");
+    test_assert_equal(entry->box.size, 0x68, "entry 1 size");
+    test_assert_equal(strncmp(entry->box.type, "icpv", 4), 0, "entry 1 coding name / type");
     test_assert_equal(entry->data_reference_index, 0x5678, "entry 1 data reference index");
     test_assert_equal(entry->width, 0xDEF1, "entry 1 width");
     test_assert_equal(entry->height, 0x2345, "entry 1 height");
@@ -2933,6 +2967,8 @@ void test_parse_box_sample_description_vide(void)
     test_assert_equal(entry->frame_count, 0x1A2B, "entry 1 frame count");
     test_assert_equal(strcmp("compres", entry->compressor_name), 0, "entry 1 compressor name");
     test_assert_equal(entry->depth, 0xEDCB, "entry 1 depth");
+    test_assert_equal(entry->is_incomplete, eBooleanTrue, "entry 1 is incomplete");
+    test_assert_equal(entry->child_count, 1, "entry 1 child count");
 
     bmff_context_destroy(&ctx);
 

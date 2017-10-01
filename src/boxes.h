@@ -604,7 +604,8 @@ typedef struct VisualSampleEntry {
     CleanApertureBox        *clap;
     PixelAspectRatioBox     *pasp;
     eBoolean                is_incomplete;
-    IncompleteSampleEntry   *incomplete_sample;
+    uint32_t                child_count;
+    Box                     **children;    
 } VisualSampleEntry;
 
 typedef struct AudioSampleEntry { // v0 and v1
