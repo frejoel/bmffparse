@@ -2541,14 +2541,14 @@ void test_parse_box_sample_description_soun(void)
     BMFFContext ctx;
     bmff_context_init(&ctx);
     uint8_t data[] = {
-        0, 0, 0, 0x9C,
+        0, 0, 0x01, 0x1A,
         's', 't', 's', 'd',
         0x00, // version
         0xF1, 0x0F, 0xBA, // flags
         0x00, 0x00, 0x00, 0x03, // entry count
 
         // soun sample entry
-        0x00, 0x00, 0x00, 0x24, // size
+        0x00, 0x00, 0x00, 0x48, // size
         's','o','u','n', // coding name
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
         0x12, 0x34, // data reference index
@@ -2559,9 +2559,25 @@ void test_parse_box_sample_description_soun(void)
         0x00, 0x00, // pre defined
         0x00, 0x00, // reserved
         0x10, 0x20, 0x30, 0x40, // sample rate
+        // sample rate box
+        0x00, 0x00, 0x00, 0x10,
+        's','r','a','t',
+        0x00, 0x00, 0x00, 0x00, // version and flags
+        0x12, 0x34, 0x56, 0x78, // sample rate
+        // channel layout box
+        0x00, 0x00, 0x00, 0x14,
+        'c','h','n','l',
+        0x00, 0x00, 0x00, 0x00, // version and flags
+        0x03, // stream structure
+        0x00, // defined layout
+        0x7E, // speaker position 0
+        0x10, 0x20, // azimuth
+        0xFA, // elevation
+        0x22, // speaker position 1
+        0x11, // object count
 
         // soun sample entry
-        0x00, 0x00, 0x00, 0x24, // size
+        0x00, 0x00, 0x00, 0x48, // size
         's','o','u','n', // coding name
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
         0xAB, 0xCD, // data reference index
@@ -2572,20 +2588,55 @@ void test_parse_box_sample_description_soun(void)
         0x00, 0x00, // pre defined
         0x00, 0x00, // reserved
         0xA0, 0xB0, 0xC0, 0xD0, // sample rate
+        // sample rate box
+        0x00, 0x00, 0x00, 0x10,
+        's','r','a','t',
+        0x00, 0x00, 0x00, 0x00, // version and flags
+        0x12, 0x34, 0x56, 0x78, // sample rate
+        // channel layout box
+        0x00, 0x00, 0x00, 0x14,
+        'c','h','n','l',
+        0x00, 0x00, 0x00, 0x00, // version and flags
+        0x01, // stream structure
+        0x00, // defined layout
+        0x01, // speaker position 0
+        0x02, // speaker position 1
+        0x03, // speaker position 2
+        0x04, // speaker position 3
+        0x05, // speaker position 4
+        0x06, // speaker position 5
 
         // Incomplete soun sample entry
-        0x00, 0x00, 0x00, 0x44, // size
+        0x00, 0x00, 0x00, 0x7A, // size
         'i','c','p','a', // coding name
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
         0xAB, 0xCD, // data reference index
         0x00, 0x00, 0x00, 0x00, // reserved
         0x00, 0x00, 0x00, 0x00, // reserved
-        0x00, 0x06, // channel count
+        0x00, 0x00, // channel count
         0x01, 0x23, // samplesize
         0x00, 0x00, // pre defined
         0x00, 0x00, // reserved
         0xA0, 0xB0, 0xC0, 0xD0, // sample rate
-        // complete track info
+        // sample rate box
+        0x00, 0x00, 0x00, 0x10,
+        's','r','a','t',
+        0x00, 0x00, 0x00, 0x00, // version and flags
+        0x12, 0x34, 0x56, 0x78, // sample rate
+        // channel layout box
+        0x00, 0x00, 0x00, 0x0E,
+        'c','h','n','l',
+        0x00, 0x00, 0x00, 0x00, // version and flags
+        0x02, // stream structure
+        0xEE, // object count
+        // random boxes
+        0x00, 0x00, 0x00, 0x0C,
+        'a','b','c','d',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        0x00, 0x00, 0x00, 0x0C,
+        'a','b','c','d',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        // complete track inf
         0x00, 0x00, 0x00, 0x14,
         'c', 'i', 'n', 'f',
             // orginal format box
@@ -2599,6 +2650,7 @@ void test_parse_box_sample_description_soun(void)
     };
 
     memcpy(ctx.track_sample_table_handler_type, "soun", 4);
+    ctx.sample_description_version = 1;
 
     BMFFCode res;
     SampleDescriptionBox *box = NULL;
@@ -2612,35 +2664,64 @@ void test_parse_box_sample_description_soun(void)
     test_assert_equal(box->entry_count, 3, "entry count");
 
     AudioSampleEntry *entry = (AudioSampleEntry*) box->entries[0];
-    test_assert_equal(entry->box.size, 0x24, "entry 0 size");
+    test_assert_equal(entry->box.size, 0x48, "entry 0 size");
     test_assert_equal(strncmp(entry->box.type, "soun", 4), 0, "entry 0 coding name / type");
     test_assert_equal(entry->data_reference_index, 0x1234, "entry 0 data reference index");
     test_assert_equal(entry->channel_count, 2, "entry 0 channel count");
     test_assert_equal(entry->sample_size, 16, "entry 0 sample size");
     test_assert_equal(entry->sample_rate, 0x10203040, "entry 0 sample rate");
+    test_assert_equal(strncmp(entry->sampling_rate->box.type, "srat", 4), 0, "entry 1 sampling rate type");
+    test_assert_equal(entry->sampling_rate->box.size, 16, "entry 0 sampling rate size");
+    test_assert_equal(entry->sampling_rate->sampling_rate, 0x12345678, "entry 0 sampling rate");
+    test_assert_equal(entry->channel_layout->box.size, 20, "entry 0 channel layout size");
+    test_assert_equal(strncmp(entry->channel_layout->box.type, "chnl", 4), 0, "entry 0 channel layout type");
+    test_assert_equal(entry->channel_layout->stream_structure, 3, "entry 0 channel layout stream structure");
+    test_assert_equal(entry->channel_layout->channel.defined_layout, 0, "entry 0 channel layout channel defined lauout");
+    test_assert_equal(entry->channel_layout->channel.channel_count, 2, "entry 0 channel layout channel count");
+    test_assert_equal(entry->channel_layout->channel.speaker_positions[0], 0x7E, "entry 0 channel layout speaker position 0");
+    test_assert_equal(entry->channel_layout->channel.azimuths[0], 0x1020, "entry 0 channel layout azimuth 0");
+    test_assert_equal(entry->channel_layout->channel.elevations[0], 0xFA, "entry 0 channel layout elevation 0");
+    test_assert_equal(entry->channel_layout->channel.speaker_positions[1], 0x22, "entry 0 channel layout speaker position 1");
+    test_assert_equal(entry->channel_layout->object.object_count, 0x11, "enrtry 0 channel layout object count");
     test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 0 is incomplete");
+    test_assert_equal(entry->child_count, 0, "entry 0 child count");
 
     entry = (AudioSampleEntry*) box->entries[1];
-    test_assert_equal(entry->box.size, 0x24, "entry 1 size");
+    test_assert_equal(entry->box.size, 0x48, "entry 1 size");
     test_assert_equal(strncmp(entry->box.type, "soun", 4), 0, "entry 1 coding name / type");
     test_assert_equal(entry->data_reference_index, 0xABCD, "entry 1 data reference index");
     test_assert_equal(entry->channel_count, 6, "entry 1 channel count");
     test_assert_equal(entry->sample_size, 0x0123, "entry 1 sample size");
     test_assert_equal(entry->sample_rate, 0xA0B0C0D0, "entry 1 sample rate");
+    test_assert_equal(strncmp(entry->sampling_rate->box.type, "srat", 4), 0, "entry 1 sampling rate type");
+    test_assert_equal(entry->sampling_rate->box.size, 16, "entry 1 sampling rate size");
+    test_assert_equal(entry->sampling_rate->sampling_rate, 0x12345678, "entry 1 sampling rate");
+    test_assert_equal(entry->channel_layout->box.size, 0x14, "entry 1 channel layout size");
+    test_assert_equal(strncmp(entry->channel_layout->box.type, "chnl", 4), 0, "entry 1 channel layout type");
+    test_assert_equal(entry->channel_layout->stream_structure, 1, "entry 1 channel layout stream structure");
+    test_assert_equal(entry->channel_layout->channel.defined_layout, 0, "entry 1 channel layout channel defined lauout");
+    test_assert_equal(entry->channel_layout->channel.channel_count, 6, "entry 1 channel layout channel count");
+    test_assert_equal(entry->channel_layout->channel.speaker_positions[0], 1, "entry 1 channel layout speaker position 0");
+    test_assert_equal(entry->channel_layout->channel.speaker_positions[5], 6, "entry 1 channel layout speaker position 5");
     test_assert_equal(entry->is_incomplete, eBooleanFalse, "entry 1 is incomplete");
+    test_assert_equal(entry->child_count, 0, "entry 1 child count");
 
     entry = (AudioSampleEntry*) box->entries[2];
-    test_assert_equal(entry->box.size, 0x44, "entry 2 size");
+    test_assert_equal(entry->box.size, 0x7A, "entry 2 size");
     test_assert_equal(strncmp(entry->box.type, "icpa", 4), 0, "entry 2 coding name / type");
-    test_assert_equal(entry->is_incomplete, eBooleanTrue, "entry 2 is incomplete");
-    test_assert_equal(strncmp(entry->incomplete_sample->complete_track_info->box.type, "cinf", 4), 0, "entry complete track info type");
-    test_assert_equal(strncmp(entry->incomplete_sample->complete_track_info->original_format.data_format, "soun", 4), 0, "entry 2 original format data format");
-    test_assert_equal(entry->incomplete_sample->child_count, 1, "entry 2 child count");
-    test_assert(entry->incomplete_sample->children != NULL, "entry 2 children");
     test_assert_equal(entry->data_reference_index, 0xABCD, "entry 2 data reference index");
-    test_assert_equal(entry->channel_count, 6, "entry 2 channel count");
+    test_assert_equal(entry->channel_count, 0, "entry 2 channel count");
     test_assert_equal(entry->sample_size, 0x0123, "entry 2 sample size");
     test_assert_equal(entry->sample_rate, 0xA0B0C0D0, "entry 2 sample rate");
+    test_assert_equal(strncmp(entry->sampling_rate->box.type, "srat", 4), 0, "entry 2 sampling rate type");
+    test_assert_equal(entry->sampling_rate->box.size, 16, "entry 2 sampling rate size");
+    test_assert_equal(entry->sampling_rate->sampling_rate, 0x12345678, "entry 2 sampling rate");
+    test_assert_equal(entry->channel_layout->box.size, 0x0E, "entry 2 channel layout size");
+    test_assert_equal(strncmp(entry->channel_layout->box.type, "chnl", 4), 0, "entry 2 channel layout type");
+    test_assert_equal(entry->channel_layout->stream_structure, 2, "entry 2 channel layout stream structure");
+    test_assert_equal(entry->channel_layout->object.object_count, 0xEE, "entry 2 channel layout object count");
+    test_assert_equal(entry->is_incomplete, eBooleanTrue, "entry 2 is incomplete");
+    test_assert_equal(entry->child_count, 4, "entry 2 child count");
 
     bmff_context_destroy(&ctx);
 

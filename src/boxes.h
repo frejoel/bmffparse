@@ -520,6 +520,50 @@ typedef struct HintMediaHeaderBox { // hmhd
     uint32_t        avg_bitrate;
 } HintMediaHeaderBox;
 
+typedef struct CleanApertureBox { // clap
+    Box             box;
+    uint32_t        clean_aperture_width_n;
+    uint32_t        clean_aperture_width_d;
+    uint32_t        clean_aperture_height_n;
+    uint32_t        clean_aperture_height_d;
+    uint32_t        horiz_off_n;
+    uint32_t        horiz_off_d;
+    uint32_t        vert_off_n;
+    uint32_t        vert_off_d;
+} CleanApertureBox;
+
+typedef struct PixelAspectRatioBox { // pasp
+    Box             box;
+    uint32_t        h_spacing;
+    uint32_t        v_spacing;
+} PixelAspectRatioBox;
+
+typedef enum {
+    eStreamStructureChannel     = 1,
+    eStreamStructureObject      = 2,
+} eStreamStructure;
+
+typedef struct ChannelLayoutBox { // chnl
+    FullBox             box;
+    eStreamStructure    stream_structure;
+    struct {
+        uint8_t             defined_layout;
+        uint32_t            channel_count;
+        uint8_t             *speaker_positions;
+        uint16_t            *azimuths;
+        uint8_t             *elevations;
+        uint64_t            omitted_channels_map;
+    } channel;
+    struct {
+        uint8_t             object_count;
+    } object;
+} ChannelLayoutBox;
+
+typedef struct SamplingRateBox { // srat
+    FullBox             box;
+    uint32_t            sampling_rate;
+} SamplingRateBox;
+
 typedef struct SampleEntry {
     Box             box;
     uint16_t        data_reference_index;
@@ -557,23 +601,24 @@ typedef struct VisualSampleEntry {
     uint16_t                frame_count;
     uint8_t                 compressor_name[31];
     uint16_t                depth;
-    // TODO:
-    //CleanApertureBox        *clap;
-    //PixelAspectRatioBox     *pasp;
+    CleanApertureBox        *clap;
+    PixelAspectRatioBox     *pasp;
     eBoolean                is_incomplete;
     IncompleteSampleEntry   *incomplete_sample;
 } VisualSampleEntry;
 
-typedef struct AudioSampleEntry {
+typedef struct AudioSampleEntry { // v0 and v1
     Box                     box;
     uint16_t                data_reference_index;
+    uint16_t                entry_version;
     uint16_t                channel_count;
     uint16_t                sample_size;
     uint32_t                sample_rate;
+    SamplingRateBox         *sampling_rate;
+    ChannelLayoutBox        *channel_layout;
     Box                     **children;
     uint32_t                child_count;
     eBoolean                is_incomplete;
-    IncompleteSampleEntry   *incomplete_sample;
 } AudioSampleEntry;
 
 typedef struct SampleDescriptionBox { // stsd

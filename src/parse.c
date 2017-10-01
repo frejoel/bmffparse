@@ -125,6 +125,10 @@ const MapItem parse_map[] = {
     {"sidx", 0, _bmff_parse_box_segment_index},
     {"prft", 0, _bmff_parse_box_producer_reference_time},
     {"cinf", 0, _bmff_parse_box_complete_track_info},
+    {"clap", 0, _bmff_parse_box_clean_aperture},
+    {"pasp", 0, _bmff_parse_box_pixel_aspect_ratio},
+    {"chnl", 0, _bmff_parse_box_channel_layout},
+    {"srat", 0, _bmff_parse_box_sampling_rate},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -305,6 +309,9 @@ void _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, ui
     uint32_t count = 0;
     while(tmp + 8 < end) {
         uint32_t box_size = parse_u32(tmp);
+        if(box_size == 0) {
+            return; // something went wrong
+        }
         tmp += box_size;
         count++;
     }
@@ -1814,6 +1821,7 @@ BMFFCode _bmff_parse_box_audio_sample_entry(BMFFContext *ctx, const uint8_t *dat
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, AudioSampleEntry);
+    box->is_incomplete = eBooleanFalse;
 
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, &box->box);
@@ -1830,19 +1838,34 @@ BMFFCode _bmff_parse_box_audio_sample_entry(BMFFContext *ctx, const uint8_t *dat
     ptr += 2; // reserved
     ADV_PARSE_U32(box->sample_rate, ptr);
 
-    // TODO: parse ChannelLayout
+    // assign the channel count to the context for any child box parsing
+    ctx->channel_count = box->channel_count;
 
-    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
-
-    // parse incomplete data if the sample has an incomplete tag
-    if(strncmp(box->box.type, "icpa", 4) == 0) {
-        box->is_incomplete = eBooleanTrue;
-        BMFFCode res = _bmff_parse_incomplete_sample_entry(ctx, ptr, end-ptr, &box->incomplete_sample);
+    // Sampling Rate
+    BMFFCode res;
+    if(ctx->sample_description_version == 1 && strncmp(&ptr[4], "srat", 4) == 0) {
+        res = _bmff_parse_box_sampling_rate(ctx, ptr, end-ptr, (Box**)&box->sampling_rate);
         if(res != BMFF_OK) {
             return res;
         }
-    }else{
-        box->is_incomplete = eBooleanFalse;
+        ptr += box->sampling_rate->box.size;
+    }
+
+    // Channel Layout
+    if(strncmp(&ptr[4], "chnl", 4) == 0) {
+        res = _bmff_parse_box_channel_layout(ctx, ptr, end-ptr, (Box**)&box->channel_layout);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->channel_layout->box.size;
+    }
+
+    if(strncmp(box->box.type, "icpa", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+    }
+
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
     }
 
     *box_ptr = (Box*)box;
@@ -3166,6 +3189,113 @@ BMFFCode _bmff_parse_box_complete_track_info(BMFFContext *ctx, const uint8_t *da
     ptr += parse_original_format_box(ptr, end-ptr, &box->original_format);
 
     _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_clean_aperture(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 40)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CleanApertureBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->clean_aperture_width_n, ptr);
+    ADV_PARSE_U32(box->clean_aperture_width_d, ptr);
+    ADV_PARSE_U32(box->clean_aperture_height_n, ptr);
+    ADV_PARSE_U32(box->clean_aperture_height_d, ptr);
+    ADV_PARSE_U32(box->horiz_off_n, ptr);
+    ADV_PARSE_U32(box->horiz_off_d, ptr);
+    ADV_PARSE_U32(box->vert_off_n, ptr);
+    ADV_PARSE_U32(box->vert_off_d, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_pixel_aspect_ratio(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, PixelAspectRatioBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->h_spacing, ptr);
+    ADV_PARSE_U32(box->v_spacing, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_channel_layout(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ChannelLayoutBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U8(box->stream_structure, ptr);
+
+    if(box->stream_structure & eStreamStructureChannel == eStreamStructureChannel) {
+        ADV_PARSE_U8(box->channel.defined_layout, ptr);
+        box->channel.channel_count = ctx->channel_count;
+
+        if(box->channel.defined_layout == 0) {
+            if(ctx->channel_count > 0) {
+                BOX_MALLOCN(box->channel.speaker_positions, uint8_t, ctx->channel_count);
+                BOX_MALLOCN(box->channel.azimuths, uint16_t, ctx->channel_count);
+                BOX_MALLOCN(box->channel.elevations, uint8_t, ctx->channel_count);
+            }
+            uint32_t i = 0;
+            for(; i < ctx->channel_count; ++i) {
+                ADV_PARSE_U8(box->channel.speaker_positions[i], ptr);
+                if(box->channel.speaker_positions[i] == 126) {
+                    ADV_PARSE_U16(box->channel.azimuths[i], ptr);
+                    ADV_PARSE_U8(box->channel.elevations[i], ptr);
+                }
+            }
+        }else{
+            ADV_PARSE_U64(box->channel.omitted_channels_map, ptr);
+        }
+    }
+
+    if((box->stream_structure & eStreamStructureObject) == eStreamStructureObject) {
+        ADV_PARSE_U8(box->object.object_count, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sampling_rate(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SamplingRateBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sampling_rate, ptr);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

@@ -99,6 +99,11 @@ typedef struct BMFFContext {
     // description data.
     // this data comes from the active HandlerBox.
     uint8_t track_sample_table_handler_type[4];
+    // channel count set by the last AudioSampleEntry that was parsed.
+    // this is used by the chnl box parser.
+    uint32_t channel_count;
+    // version of the last sample description box. Used by the AudioSampleEntry box parser.
+    uint32_t sample_description_version;
 } BMFFContext;
 
 #endif // CONTEXT_H
