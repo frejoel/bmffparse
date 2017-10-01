@@ -133,6 +133,7 @@ PARSER_FUNC(_bmff_parse_box_clean_aperture);
 PARSER_FUNC(_bmff_parse_box_pixel_aspect_ratio);
 PARSER_FUNC(_bmff_parse_box_channel_layout);
 PARSER_FUNC(_bmff_parse_box_sampling_rate);
+PARSER_FUNC(_bmff_parse_box_subsegment_index);
 
 typedef struct MapItem {
     union {

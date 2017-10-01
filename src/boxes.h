@@ -956,7 +956,7 @@ typedef struct SegmentIndexBox { // sidx
 
 typedef struct SubsegmentIndexEntry {
     uint32_t                range_count;
-    uint8_t                 *range_levels;
+    uint8_t                 *levels;
     uint32_t                *range_sizes;
 } SubsegmentIndexEntry;
 

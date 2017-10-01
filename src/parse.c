@@ -129,6 +129,7 @@ const MapItem parse_map[] = {
     {"pasp", 0, _bmff_parse_box_pixel_aspect_ratio},
     {"chnl", 0, _bmff_parse_box_channel_layout},
     {"srat", 0, _bmff_parse_box_sampling_rate},
+    {"ssix", 0, _bmff_parse_box_subsegment_index},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -3303,6 +3304,41 @@ BMFFCode _bmff_parse_box_sampling_rate(BMFFContext *ctx, const uint8_t *data, si
     ptr += parse_full_box(data, size, &box->box);
 
     ADV_PARSE_U32(box->sampling_rate, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_subsegment_index(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubsegmentIndexBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->subsegment_count, ptr);
+
+    if(box->subsegment_count > 0) {
+        BOX_MALLOCN(box->subsegments, SubsegmentIndexEntry, box->subsegment_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->subsegment_count; ++i) {
+        SubsegmentIndexEntry *entry = &box->subsegments[i];
+        ADV_PARSE_U32(entry->range_count, ptr);
+
+        uint32_t j = 0;
+        for(; j < entry->range_count; ++j) {
+            entry->levels[j] = *ptr;
+            entry->range_sizes[j] = parse_u32(ptr) & 0x00FFFFFF;
+            ptr += 4;
+        }
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
