@@ -90,6 +90,8 @@ void test_parse_box_stereo_video(void);
 void test_parse_box_segment_index(void);
 void test_parse_box_producer_reference_time(void);
 void test_parse_box_complete_track_info(void);
+void test_parse_box_pixel_aspect_ratio(void);
+void test_parse_box_clean_aperture(void);
 
 int main(int argc, char** argv)
 {
@@ -180,6 +182,8 @@ int main(int argc, char** argv)
     test_parse_box_segment_index();
     test_parse_box_producer_reference_time();
     test_parse_box_complete_track_info();
+    test_parse_box_pixel_aspect_ratio();
+    test_parse_box_clean_aperture();
     return 0;
 }
 
@@ -4817,6 +4821,77 @@ void test_parse_box_complete_track_info(void)
     test_assert_equal(strncmp(box->original_format.data_format, "abcd", 4), 0, "original format data format");
     test_assert_equal(box->child_count, 2, "child count");
     test_assert(box->children != NULL, "children");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_pixel_aspect_ratio(void)
+{
+    test_start("test_parse_box_pixel_aspect_ratio");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x10,
+        'p', 'a', 's', 'p',
+        0x01, 0x02, 0x03, 0x04,
+        0x05, 0x06, 0x07, 0x08,
+    };
+
+    BMFFCode res;
+    PixelAspectRatioBox *box = NULL;
+    res = _bmff_parse_box_pixel_aspect_ratio(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "pasp", 4), 0, "type");
+    test_assert_equal(box->h_spacing, 0x01020304, "h spacing");
+    test_assert_equal(box->v_spacing, 0x05060708, "v spacing");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_clean_aperture(void)
+{
+    test_start("test_parse_box_clean_aperture");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x28,
+        'c', 'l', 'a', 'p',
+        0x12, 0x34, 0x56, 0x78, // width n
+        0x9A, 0xBC, 0xDE, 0xF0, // width d
+        0x01, 0x02, 0x03, 0x04, // height n
+        0x05, 0x06, 0x07, 0x08, // height d
+        0x10, 0x20, 0x30, 0x40, // horiz off N
+        0x50, 0x60, 0x70, 0x80, // horiz off D
+        0x90, 0xA0, 0xB0, 0xC0, // vert off N
+        0xD0, 0xE0, 0xF0, 0x00, // vert off D
+    };
+
+    BMFFCode res;
+    CleanApertureBox *box = NULL;
+    res = _bmff_parse_box_clean_aperture(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "clap", 4), 0, "type");
+    test_assert_equal(box->clean_aperture_width_n, 0x12345678, "width n");
+    test_assert_equal(box->clean_aperture_width_d, 0x9ABCDEF0, "width d");
+    test_assert_equal(box->clean_aperture_height_n, 0x01020304, "height n");
+    test_assert_equal(box->clean_aperture_height_d, 0x05060708, "height d");
+    test_assert_equal(box->horiz_off_n, 0x10203040, "horiz off n");
+    test_assert_equal(box->horiz_off_d, 0x50607080, "horiz off d");
+    test_assert_equal(box->vert_off_n, 0x90A0B0C0, "vert off n");
+    test_assert_equal(box->vert_off_d, 0xD0E0F000, "vert off d");
+
 
     bmff_context_destroy(&ctx);
 
