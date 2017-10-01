@@ -2823,7 +2823,6 @@ void test_parse_box_sample_description_hint(void)
     test_assert_equal(entry->box.size, 0x44, "entry 2 size");
     test_assert_equal(strncmp(entry->box.type, "icph", 4), 0, "entry 2 format / type");
     test_assert_equal(entry->is_incomplete, eBooleanTrue, "entry 2 is incomplete");
-    test_assert(entry->incomplete_sample == NULL, "incomplete sample is NULL");
     test_assert_equal(entry->data_reference_index, 0x0FFF, "entry 2 data reference index");
     test_assert_equal(entry->data_size, 52, "entry 2 data_size");
     test_assert_equal(entry->data[0], 0x01, "entry 2 data start");

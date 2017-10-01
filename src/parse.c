@@ -1909,14 +1909,8 @@ BMFFCode _bmff_parse_box_hint_sample_entry(BMFFContext *ctx, const uint8_t *data
     // parse incomplete data if the sample has an incomplete tag
     if(strncmp(box->box.type, "icph", 4) == 0) {
         box->is_incomplete = eBooleanTrue;
-        // NOTE: This won't work because we can't tell where the hint data ends and the
+        // NOTE: Not sure tell where the hint data ends and the
         //       incomplete sample data begins ?!?!?!?!
-        //
-        // const uint8_t *end = data + box->box.size;
-        // BMFFCode res = _bmff_parse_incomplete_sample_entry(ctx, ptr, end-ptr, &box->incomplete_sample);
-        // if(res != BMFF_OK) {
-        //    return res;
-        //}
     }else{
         box->is_incomplete = eBooleanFalse;
     }

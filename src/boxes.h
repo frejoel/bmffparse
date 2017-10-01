@@ -588,7 +588,6 @@ typedef struct HintSampleEntry {
     const uint8_t           *data;
     size_t                  data_size;
     eBoolean                is_incomplete;
-    IncompleteSampleEntry   *incomplete_sample;
 } HintSampleEntry;
 
 typedef struct VisualSampleEntry {
