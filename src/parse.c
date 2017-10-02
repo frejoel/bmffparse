@@ -3330,7 +3330,12 @@ BMFFCode _bmff_parse_box_subsegment_index(BMFFContext *ctx, const uint8_t *data,
     uint32_t i = 0;
     for(; i < box->subsegment_count; ++i) {
         SubsegmentIndexEntry *entry = &box->subsegments[i];
+
         ADV_PARSE_U32(entry->range_count, ptr);
+        if(entry->range_count > 0) {
+            BOX_MALLOCN(entry->levels, uint8_t, entry->range_count);
+            BOX_MALLOCN(entry->range_sizes, uint32_t, entry->range_count);
+        }
 
         uint32_t j = 0;
         for(; j < entry->range_count; ++j) {

@@ -92,6 +92,7 @@ void test_parse_box_producer_reference_time(void);
 void test_parse_box_complete_track_info(void);
 void test_parse_box_pixel_aspect_ratio(void);
 void test_parse_box_clean_aperture(void);
+void test_parse_box_subsegment_index(void);
 
 int main(int argc, char** argv)
 {
@@ -184,6 +185,7 @@ int main(int argc, char** argv)
     test_parse_box_complete_track_info();
     test_parse_box_pixel_aspect_ratio();
     test_parse_box_clean_aperture();
+    test_parse_box_subsegment_index();
     return 0;
 }
 
@@ -4927,6 +4929,49 @@ void test_parse_box_clean_aperture(void)
     test_assert_equal(box->vert_off_n, 0x90A0B0C0, "vert off n");
     test_assert_equal(box->vert_off_d, 0xD0E0F000, "vert off d");
 
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_subsegment_index(void)
+{
+    test_start("test_parse_box_subsegment_index");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x1C,
+        's', 's', 'i', 'x',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, 0x00, 0x00, 0x01, // subsegment count
+
+        0x00, 0x00, 0x00, 0x02, // range count
+        0x10, // level
+        0x20, 0x30, 0x40, // range size
+        0x50, // level
+        0x60, 0x70, 0x80, // range size
+    };
+
+    BMFFCode res;
+    SubsegmentIndexBox *box = NULL;
+    res = _bmff_parse_box_subsegment_index(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "ssix", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->subsegment_count, 1, "subsegment count");
+
+    SubsegmentIndexEntry *entry = &box->subsegments[0];
+    test_assert_equal(entry->range_count, 2, "entry 0 range count");
+    test_assert_equal(entry->levels[0], 0x10, "entry 0 levels");
+    test_assert_equal(entry->levels[1], 0x50, "entry 1 levels");
+    test_assert_equal(entry->range_sizes[0], 0x203040, "entry 0 range sizes");
+    test_assert_equal(entry->range_sizes[1], 0x607080, "entry 1 range sizes");
 
     bmff_context_destroy(&ctx);
 
