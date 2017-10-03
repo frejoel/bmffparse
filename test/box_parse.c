@@ -44,6 +44,7 @@ void test_parse_box_media_header(void);
 void test_parse_box_video_media_header(void);
 void test_parse_box_sound_media_header(void);
 void test_parse_box_hint_media_header(void);
+void test_parse_box_subtitle_media_header(void);
 void test_parse_box_sample_description_soun(void);
 void test_parse_box_sample_description_hint(void);
 void test_parse_box_sample_description_vide(void);
@@ -137,6 +138,7 @@ int main(int argc, char** argv)
     test_parse_box_video_media_header();
     test_parse_box_sound_media_header();
     test_parse_box_hint_media_header();
+    test_parse_box_subtitle_media_header();
     test_parse_box_sample_description_soun();
     test_parse_box_sample_description_hint();
     test_parse_box_sample_description_vide();
@@ -2537,6 +2539,34 @@ void test_parse_box_hint_media_header(void)
 
     bmff_context_destroy(&ctx);
 
+    test_end();
+}
+
+void test_parse_box_subtitle_media_header(void)
+{
+    test_start("test_parse_box_subtitle_media_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x0C,
+        's', 't', 'h', 'd',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+    };
+
+    BMFFCode res;
+    SubtitleMediaHeaderBox *box = NULL;
+    res = _bmff_parse_box_subtitle_media_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "sthd", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+
+    bmff_context_destroy(&ctx);
     test_end();
 }
 
@@ -4974,9 +5004,10 @@ void test_parse_box_subsegment_index(void)
     test_assert_equal(entry->range_sizes[1], 0x607080, "entry 1 range sizes");
 
     bmff_context_destroy(&ctx);
-
     test_end();
 }
+
+// SubtitleMediaHeaderBox
 
 /*
 void test_parse_box_(void)

@@ -520,6 +520,10 @@ typedef struct HintMediaHeaderBox { // hmhd
     uint32_t        avg_bitrate;
 } HintMediaHeaderBox;
 
+typedef struct SubtitleMediaHeaderBox { // sthd
+    FullBox         box;
+} SubtitleMediaHeaderBox;
+
 typedef struct CleanApertureBox { // clap
     Box             box;
     uint32_t        clean_aperture_width_n;
@@ -758,7 +762,6 @@ typedef struct CompositionToDecodeBox { // cslg
     int64_t     composition_start_time;
     int64_t     composition_end_time;
 } CompositionToDecodeBox;
-
 
 typedef struct SampleAuxInfoSizesBox { // saiz
     FullBox     box;

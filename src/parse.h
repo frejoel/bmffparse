@@ -86,6 +86,7 @@ PARSER_FUNC(_bmff_parse_box_media_header);
 PARSER_FUNC(_bmff_parse_box_video_media_header);
 PARSER_FUNC(_bmff_parse_box_sound_media_header);
 PARSER_FUNC(_bmff_parse_box_hint_media_header);
+PARSER_FUNC(_bmff_parse_box_subtitle_media_header);
 PARSER_FUNC(_bmff_parse_box_visual_sample_entry);
 PARSER_FUNC(_bmff_parse_box_audio_sample_entry);
 PARSER_FUNC(_bmff_parse_box_hint_sample_entry);

@@ -83,6 +83,7 @@ const MapItem parse_map[] = {
     {"vmhd", 0, _bmff_parse_box_video_media_header},
     {"smhd", 0, _bmff_parse_box_sound_media_header},
     {"hmhd", 0, _bmff_parse_box_hint_media_header},
+    {"sthd", 0, _bmff_parse_box_subtitle_media_header},
     {"stsd", 0, _bmff_parse_box_sample_description},
     {"stts", 0, _bmff_parse_box_time_to_sample},
     {"ctts", 0, _bmff_parse_box_composition_offset},
@@ -1726,6 +1727,22 @@ BMFFCode _bmff_parse_box_hint_media_header(BMFFContext *ctx, const uint8_t *data
     ADV_PARSE_U16(box->avg_pdu_size, ptr);
     ADV_PARSE_U32(box->max_bitrate, ptr);
     ADV_PARSE_U32(box->avg_bitrate, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_subtitle_media_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubtitleMediaHeaderBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
