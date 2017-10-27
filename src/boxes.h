@@ -127,6 +127,21 @@ typedef Box FreeSpaceBox; // free, skip
 typedef Box TrackReferenceBox; // tref
 typedef FullBox NullMediaHeaderBox; // nmhd
 
+typedef struct StringFullBox {
+    FullBox         box;
+    const char      *value;
+} StringFullBox;
+
+typedef StringFullBox UriBox; // uri_
+
+typedef struct DataFullBox {
+    FullBox         box;
+    const uint8_t   *data;
+    size_t          data_len;
+} DataFullBox;
+
+typedef DataFullBox UriInitBox; // uriI
+
 typedef struct FileTypeBox { // ftyp
     Box             box;
     uint8_t         major_brand[4];
@@ -568,7 +583,7 @@ typedef struct SamplingRateBox { // srat
     uint32_t            sampling_rate;
 } SamplingRateBox;
 
-typedef struct SampleEntry {
+typedef struct SampleEntry {  // abstract box
     Box             box;
     uint16_t        data_reference_index;
 } SampleEntry;
@@ -624,6 +639,75 @@ typedef struct AudioSampleEntry { // v0 and v1
     uint32_t                child_count;
     eBoolean                is_incomplete;
 } AudioSampleEntry;
+
+typedef struct RtpHintSampleEntry { // rtp_
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                hint_track_version;
+    uint16_t                highest_compatible_version;
+    uint32_t                max_packet_size;
+    Box                     **additional_data;
+    uint32_t                additional_data_count;
+} RtpHintSampleEntry;
+
+typedef RtpHintSampleEntry SrtpHintSampleEntry; // srtp
+typedef RtpHintSampleEntry ReceivedRtpHintSampleEntry; // rrtp
+typedef RtpHintSampleEntry ReceivedSrtpHintSampleEntry; // rsrp
+
+typedef struct FDHintSampleEntry { // fdp_
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                hint_track_version;
+    uint16_t                highest_compatible_version;
+    uint16_t                partition_entry_id;
+    uint16_t                fec_overhead;
+    Box                     **additional_data;
+    uint32_t                additional_data_count;
+} FDHintSampleEntry;
+
+typedef struct BitRateBox { // btrt
+    Box         box;
+    uint32_t    buffer_size_db;
+    uint32_t    max_bitrate;
+    uint32_t    avg_bitrate;
+} BitRateBox;
+
+typedef struct XMLMetaDataSampleEntry { // metx
+    Box                     box;
+    uint16_t                data_reference_index;
+    Box                     **other_boxes;
+    uint32_t                other_boxes_count;
+    const char              *content_encoding;
+    const char              *namespace;
+    const char              *schema_location;
+    BitRateBox              *bitrate;
+} XMLMetaDataSampleEntry;
+
+typedef struct TextConfigBox { // txtC
+    FullBox                 box;
+    const char              *text_config;
+} TextConfigBox;
+
+typedef struct TextMetaDataSampleEntry { // mmet
+    Box                     box;
+    uint16_t                data_reference_index;
+    Box                     **other_boxes;
+    uint32_t                other_boxes_count;
+    const char              *content_encoding;
+    const char              *mime_format;
+    BitRateBox              *bitrate;
+    TextConfigBox           *text_config;
+} TextMetaDataSampleEntry;
+
+typedef struct UriMetaSampleEntryBox { // urim
+    Box                     box;
+    uint16_t                data_reference_index;
+    Box                     **other_boxes;
+    uint32_t                other_boxes_count;
+    UriBox                  *the_label;
+    UriInitBox              *init;      // optional
+    BitRateBox              *bitrate;   // optional 
+} UriMetaSampleEntryBox;
 
 typedef struct SampleDescriptionBox { // stsd
     FullBox         box;
@@ -746,13 +830,6 @@ typedef struct ExtendedLanguageTagBox { // elng
     FullBox     box;
     const char  *extended_language;
 } ExtendedLanguageTagBox;
-
-typedef struct BitRateBox { // btrt
-    Box         box;
-    uint32_t    buffer_size_db;
-    uint32_t    max_bitrate;
-    uint32_t    avg_bitrate;
-} BitRateBox;
 
 typedef struct CompositionToDecodeBox { // cslg
     FullBox     box;
@@ -1029,7 +1106,6 @@ typedef struct ProducerReferenceTimeBox { // prft
 // rap_
 // tele
 // sap_
-// clap
 // colr
 // chn1
 // dmix
@@ -1039,7 +1115,6 @@ typedef struct ProducerReferenceTimeBox { // prft
 // txtC
 // urim
 // stxt
-// sthd
 // stpp
 // sbtt
 

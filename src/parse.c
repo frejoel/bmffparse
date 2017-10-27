@@ -131,6 +131,18 @@ const MapItem parse_map[] = {
     {"chnl", 0, _bmff_parse_box_channel_layout},
     {"srat", 0, _bmff_parse_box_sampling_rate},
     {"ssix", 0, _bmff_parse_box_subsegment_index},
+    {"rtp ", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"srtp", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"rrtp", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"rsrp", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"fdp ", 0, _bmff_parse_box_fd_hint_sample_entry},
+    {"metx", 0, _bmff_parse_box_xml_meta_data_sample_entry},
+    {"txtC", 0, _bmff_parse_box_full_string},
+    {"mett", 0, _bmff_parse_box_text_meta_data_sample_entry},
+    {"uri ", 0, _bmff_parse_box_full_string},
+    {"uriI", 0, _bmff_parse_box_full_data},
+    {"urim", 0, _bmff_parse_box_uri_meta_sample_entry},
+    //{"", 0, _bmff_parse_box_},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -303,16 +315,27 @@ BMFFCode _bmff_parse_box_file_type(BMFFContext *ctx, const uint8_t *data, size_t
     return BMFF_OK;
 }
 
-void _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, uint32_t *child_count, Box ***children)
+uint32_t _is_valid_cc4(const uint8_t *cc4) {
+    if(((cc4[0] >= 'a' && cc4[0] <= 'z') || (cc4[0] >= 'A' && cc4[0] <= 'Z') || cc4[0] == ' ') && 
+       ((cc4[1] >= 'a' && cc4[1] <= 'z') || (cc4[1] >= 'A' && cc4[1] <= 'Z') || cc4[1] == ' ') && 
+       ((cc4[2] >= 'a' && cc4[2] <= 'z') || (cc4[2] >= 'A' && cc4[2] <= 'Z') || cc4[2] == ' ') && 
+       ((cc4[3] >= 'a' && cc4[3] <= 'z') || (cc4[3] >= 'A' && cc4[3] <= 'Z') || cc4[3] == ' '))
+    {
+        return 1;
+    }
+    return 0;
+}
+
+uint32_t _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, uint32_t *child_count, Box ***children)
 {
     const uint8_t *tmp = data;
     const uint8_t *end = &data[size];
 
     uint32_t count = 0;
-    while(tmp + 8 < end) {
+    while(tmp + 8 < end && _is_valid_cc4(tmp + 4) == 1) {
         uint32_t box_size = parse_u32(tmp);
-        if(box_size == 0) {
-            return; // something went wrong
+        if(box_size == 0 || tmp + box_size > end) {
+            break; // something went wrong
         }
         tmp += box_size;
         count++;
@@ -322,13 +345,15 @@ void _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, ui
     // allocate room for the children
     if(count > 0) {
         BOX_MALLOCN(*children, Box*, count);
+    }else{
+        return 0;
     }
 
     // parse all the Boxes.
     int child_idx = 0;
 
     const uint8_t *ptr = data;
-    while(ptr + 8 < end)
+    while(ptr + 8 < end && child_idx < count)
     {
         uint32_t box_size = parse_u32(ptr);
         // get the numerical value of the type, making sure to keep the bytes in
@@ -349,7 +374,6 @@ void _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, ui
                 if(res == BMFF_OK) {
                     // add the parsed Box to the list of children.
                     (*children)[child_idx] = child_box;
-                    child_idx++;
                     //printf("%c%c%c%c, size: %d\n", child_box->type[0], child_box->type[1], child_box->type[2], child_box->type[3], child_box->size);
                 } else {
                     printf("Error paring box: %d\n", res);
@@ -363,8 +387,12 @@ void _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, ui
             printf("no box parser found %c%c%c%c\n", ptr[4], ptr[5], ptr[6], ptr[7]);
         }
 
+        child_idx++;
         ptr += box_size;
     }
+
+    // return how many bytes were parsed
+    return ptr - data;
 }
 
 BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
@@ -381,6 +409,46 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
     const uint8_t *end = data + box->box.size;
 
     _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_full_string(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 13)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, StringFullBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(ptr, size, &box->box);
+
+    ADV_PARSE_STR(box->value, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_full_data(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)    return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, DataFullBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(ptr, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    box->data_len = end-ptr;
+    if(box->data_len > 0) {
+        box->data = ptr;
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -3361,6 +3429,179 @@ BMFFCode _bmff_parse_box_subsegment_index(BMFFContext *ctx, const uint8_t *data,
             ptr += 4;
         }
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_rtp_hint_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 24)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, RtpHintSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+    ADV_PARSE_U16(box->hint_track_version, ptr);
+    ADV_PARSE_U16(box->highest_compatible_version, ptr);
+    ADV_PARSE_U32(box->max_packet_size, ptr);
+
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->additional_data_count, &box->additional_data);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_fd_hint_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 22)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FDHintSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+    ADV_PARSE_U16(box->hint_track_version, ptr);
+    ADV_PARSE_U16(box->highest_compatible_version, ptr);
+    ADV_PARSE_U16(box->partition_entry_id, ptr);
+    ADV_PARSE_U16(box->fec_overhead, ptr);
+
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->additional_data_count, &box->additional_data);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_xml_meta_data_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 19)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, XMLMetaDataSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    uint32_t c = _bmff_parse_children(ctx, ptr, end-ptr, &box->other_boxes_count, &box->other_boxes);
+    ptr += c;
+
+    ADV_PARSE_STR(box->content_encoding, ptr);
+    ADV_PARSE_STR(box->namespace, ptr);
+    ADV_PARSE_STR(box->schema_location, ptr);
+
+    if(ptr < end) {
+        _bmff_parse_box_bit_rate(ctx, ptr, end-ptr, (Box**)&box->bitrate);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_text_meta_data_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 18)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TextMetaDataSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    uint32_t c = _bmff_parse_children(ctx, ptr, end-ptr, &box->other_boxes_count, &box->other_boxes);
+    ptr += c;
+
+    ADV_PARSE_STR(box->content_encoding, ptr);
+    ADV_PARSE_STR(box->mime_format, ptr);
+
+    if(ptr < end && strncmp(&ptr[4], "btrt", 4) == 0) {
+        if(BMFF_OK == _bmff_parse_box_bit_rate(ctx, ptr, end-ptr, (Box**)&box->bitrate)) {
+            ptr += box->bitrate->box.size;
+        }
+    }
+    if(ptr < end && strncmp(&ptr[4], "txtC", 4) == 0) {
+        if(BMFF_OK == _bmff_parse_box_full_string(ctx, ptr, end-ptr, (Box**)&box->text_config)) {
+            ptr += box->text_config->box.size;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_uri_meta_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, UriMetaSampleEntryBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    uint32_t c = _bmff_parse_children(ctx, ptr, end-ptr, &box->other_boxes_count, &box->other_boxes);
+    ptr += c;
+
+    // all of the known boxes would have been parsed in the children, so we'll
+    // copy the pointers to the "box" if they exist.
+
+    uint32_t i = box->other_boxes_count;
+    for(; i > 0; --i) {
+        if(strncmp("uri ", box->other_boxes[i-1]->type, 4) == 0) {
+            --i;
+            break;
+        }
+    }
+
+    box->the_label = (UriBox*) box->other_boxes[i];
+
+    // optional boxes
+    uint32_t count = 1;
+    if(i + count < box->other_boxes_count && strncmp("uriI", box->other_boxes[i + count]->type, 4) == 0) {
+        box->init = (UriInitBox*) box->other_boxes[i + count];
+        count++;
+    }         
+    if(i + count < box->other_boxes_count && strncmp("btrt", box->other_boxes[i + count]->type, 4) == 0) {
+        box->bitrate = (BitRateBox*) box->other_boxes[i + count];
+        count++;
+    }
+
+    // adjust the count of other boxes due to reassigning pointers from "the label" box.
+    box->other_boxes_count = i;
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

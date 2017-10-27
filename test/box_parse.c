@@ -94,6 +94,14 @@ void test_parse_box_complete_track_info(void);
 void test_parse_box_pixel_aspect_ratio(void);
 void test_parse_box_clean_aperture(void);
 void test_parse_box_subsegment_index(void);
+void test_parse_box_rtp_hint_sample_entry(void);
+void test_parse_box_fd_hint_sample_entry(void);
+void test_parse_box_xml_meta_data_sample_entry(void);
+void test_parse_box_full_string(void);
+void test_parse_box_text_meta_data_sample_entry(void);
+void test_parse_box_uri_meta_sample_entry(void);
+void test_parse_box_full_data(void);
+//void test_parse_box_(void);
 
 int main(int argc, char** argv)
 {
@@ -188,6 +196,14 @@ int main(int argc, char** argv)
     test_parse_box_pixel_aspect_ratio();
     test_parse_box_clean_aperture();
     test_parse_box_subsegment_index();
+    test_parse_box_rtp_hint_sample_entry();
+    test_parse_box_fd_hint_sample_entry();
+    test_parse_box_xml_meta_data_sample_entry();
+    test_parse_box_full_string();
+    test_parse_box_text_meta_data_sample_entry();
+    test_parse_box_uri_meta_sample_entry();
+    test_parse_box_full_data();
+    //test_parse_box_();
     return 0;
 }
 
@@ -5007,7 +5023,330 @@ void test_parse_box_subsegment_index(void)
     test_end();
 }
 
-// SubtitleMediaHeaderBox
+void test_parse_box_rtp_hint_sample_entry(void)
+{
+    test_start("test_parse_box_rtp_hint_sample_entry");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x3C,
+        'r', 't', 'p', ' ',
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, // data reference index
+        0x0A, 0x0B, // hint track version
+        0x0C, 0x0D, // highest compatible version
+        0x10, 0x20, 0x30, 0x40, // max packet size
+        // additional data boxes
+        0, 0, 0, 0x0C,
+        't','i','m','s', // timescale entry box
+        0x01, 0x02, 0x03, 0x04, // timescale
+        0, 0, 0, 0x0C,
+        't','s','r','o', // timeoffset box
+        0x05, 0x06, 0x07, 0x08, // offset
+        0, 0, 0, 0x0C,
+        's','n','r','o', // sequence offset box
+        0x09, 0x0A, 0x0B, 0x0C, // offset
+    };
+
+    BMFFCode res;
+    RtpHintSampleEntry *box = NULL;
+    res = _bmff_parse_box_rtp_hint_sample_entry(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "rtp ", 4), 0, "type");
+
+    test_assert_equal(box->data_reference_index, 0x0102, "data reference index");
+    test_assert_equal(box->hint_track_version, 0x0A0B, "hint track version");
+    test_assert_equal(box->highest_compatible_version, 0x0C0D, "highest compatible version");
+    test_assert_equal(box->max_packet_size, 0x10203040, "max packet size");
+    test_assert_equal(box->additional_data_count, 3, "additional data count");
+    test_assert(box->additional_data != NULL, "additional data");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_fd_hint_sample_entry(void)
+{
+    test_start("test_parse_box_fd_hint_sample_entry");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x3C,
+        'f', 'd', 'p', ' ',
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, // data reference index
+        0x0A, 0x0B, // hint track version
+        0x0C, 0x0D, // highest compatible version
+        0x10, 0x20, // partition entry id
+        0x30, 0x40, // FEC Overhead
+        // additional data boxes
+        0, 0, 0, 0x0C,
+        't','i','m','s', // timescale entry box
+        0x01, 0x02, 0x03, 0x04, // timescale
+        0, 0, 0, 0x0C,
+        't','s','r','o', // timeoffset box
+        0x05, 0x06, 0x07, 0x08, // offset
+        0, 0, 0, 0x0C,
+        's','n','r','o', // sequence offset box
+        0x09, 0x0A, 0x0B, 0x0C, // offset
+    };
+
+    BMFFCode res;
+    FDHintSampleEntry *box = NULL;
+    res = _bmff_parse_box_fd_hint_sample_entry(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "fdp ", 4), 0, "type");
+
+    test_assert_equal(box->data_reference_index, 0x0102, "data reference index");
+    test_assert_equal(box->hint_track_version, 0x0A0B, "hint track version");
+    test_assert_equal(box->highest_compatible_version, 0x0C0D, "highest compatible version");
+    test_assert_equal(box->partition_entry_id, 0x1020, "partition entry id");
+    test_assert_equal(box->fec_overhead, 0x3040, "fec overhead");
+    test_assert_equal(box->additional_data_count, 3, "additional data count");
+    test_assert(box->additional_data != NULL, "additional data");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_xml_meta_data_sample_entry(void)
+{
+    test_start("test_parse_box_xml_meta_data_sample_entry");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x4D,
+        'm', 'e', 't', 'x',
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, // data reference index
+        // Other Boxes (1)
+        0, 0, 0, 0x0C,
+        'a','b','c','d',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        'm','i','m','e','t','y','p','e',0x00, // content encoding
+        'n','a','m','e','s','p','a','c','e',0x00, // namespace 
+        's','c','h','e','m','a','l','o','c',0x00, // schema location
+        // Bitrate Box
+        0, 0, 0, 0x14,
+        'b','t','r','t',
+        0x12, 0x34, 0x56, 0x78, // buffer size db
+        0x9A, 0xBC, 0xDE, 0xF1, // max bitrate
+        0x10, 0x20, 0x30, 0x40, // avg bitrate
+    };
+
+    BMFFCode res;
+    XMLMetaDataSampleEntry *box = NULL;
+    res = _bmff_parse_box_xml_meta_data_sample_entry(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "metx", 4), 0, "type");
+
+    test_assert_equal(box->data_reference_index, 0x0102, "data reference");
+    test_assert_equal(box->other_boxes_count, 1, "other boxes count");
+    test_assert(box->other_boxes != NULL, "other boxes");
+    test_assert_equal(strcmp(box->content_encoding, "mimetype"), 0, "content encoding");
+    test_assert_equal(strcmp(box->namespace, "namespace"), 0, "namespace");
+    test_assert_equal(strcmp(box->schema_location, "schemaloc"), 0, "schema location");
+    test_assert(box->bitrate != NULL, "bitrate box");
+    test_assert_equal(box->bitrate->buffer_size_db, 0x12345678, "buffer size db");
+    test_assert_equal(box->bitrate->max_bitrate, 0x9ABCDEF1, "max bitrate");
+    test_assert_equal(box->bitrate->avg_bitrate, 0x10203040, "avg bitrate");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_full_string(void)
+{
+    test_start("test_parse_box_full_string");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x17,
+        't', 'x', 't', 'C',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        't','e','x','t','c','o','n','f','i','g',0x00,
+    };
+
+    BMFFCode res;
+    TextConfigBox *box = NULL;
+    res = _bmff_parse_box_full_string(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "txtC", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->text_config, "textconfig"), 0, "text config");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_text_meta_data_sample_entry(void)
+{
+    test_start("test_parse_box_text_meta_data_sample_entry");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x62,
+        'm', 'e', 't', 't',
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, // data reference index
+        // Other Boxes (1)
+        0, 0, 0, 0x0C,
+        'a','b','c','d',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        'c','o','n','t','e','n','t','e','n','c','o','d','i','n','g',0x00,
+        'm','i','m','e','f','o','r','m','a','t',0x00,
+        // Bitrate Box
+        0, 0, 0, 0x14,
+        'b','t','r','t',
+        0x12, 0x34, 0x56, 0x78, // buffer size db
+        0x9A, 0xBC, 0xDE, 0xF1, // max bitrate
+        0x10, 0x20, 0x30, 0x40, // avg bitrate
+        0, 0, 0, 0x17,
+        // Text Config Box
+        't', 'x', 't', 'C',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        't','e','x','t','c','o','n','f','i','g',0x00,
+    };
+
+    BMFFCode res;
+    TextMetaDataSampleEntry *box = NULL;
+    res = _bmff_parse_box_text_meta_data_sample_entry(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "mett", 4), 0, "type");
+    test_assert_equal(box->data_reference_index, 0x0102, "data reference");
+    test_assert_equal(box->other_boxes_count, 1, "other boxes count");
+    test_assert(box->other_boxes != NULL, "other boxes");
+    test_assert_equal(strcmp(box->content_encoding, "contentencoding"), 0, "content encoding");
+    test_assert_equal(strcmp(box->mime_format, "mimeformat"), 0, "mime format");
+    test_assert(box->bitrate != NULL, "bitrate box");
+    test_assert_equal(box->bitrate->buffer_size_db, 0x12345678, "buffer size db");
+    test_assert_equal(box->bitrate->max_bitrate, 0x9ABCDEF1, "max bitrate");
+    test_assert_equal(box->bitrate->avg_bitrate, 0x10203040, "avg bitrate");
+    test_assert_equal(strcmp(box->text_config->text_config, "textconfig"), 0, "text config");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_uri_meta_sample_entry(void)
+{
+    test_start("test_parse_box_uri_meta_sample_entry");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x58,
+        'u', 'r', 'i', 'm',
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // reserved
+        0x01, 0x02, // data reference index
+        // Other Boxes (1)
+        0, 0, 0, 0x0C,
+        'a','b','c','d',
+        0xFF, 0xFF, 0xFF, 0xFF,
+        // URI Box - the label
+        0, 0, 0, 0x10,
+        'u', 'r', 'i', ' ',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'u','r','i',0x00,
+        // URI Init Box
+        0, 0, 0, 0x14,
+        'u', 'r', 'i', 'I',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        'i','n','i','t','d','a','t',0x00, //  uri initialization data
+        // Bitrate Box
+        0, 0, 0, 0x14,
+        'b','t','r','t',
+        0x12, 0x34, 0x56, 0x78, // buffer size db
+        0x9A, 0xBC, 0xDE, 0xF1, // max bitrate
+        0x10, 0x20, 0x30, 0x40, // avg bitrate
+        0, 0, 0, 0x17,
+    };
+
+    BMFFCode res;
+    UriMetaSampleEntryBox *box = NULL;
+    res = _bmff_parse_box_uri_meta_sample_entry(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "urim", 4), 0, "type");
+    test_assert_equal(box->data_reference_index, 0x0102, "data reference index");
+    test_assert_equal(box->other_boxes_count, 1, "other boxes count");
+    test_assert(box->other_boxes != NULL, "other boxes");
+    test_assert(box->the_label != NULL, "the label");
+    test_assert_equal(strcmp("uri", box->the_label->value), 0, "the label uri");
+    test_assert_equal(strcmp("initdat", box->init->data), 0, "uri init data");
+    test_assert(box->bitrate != NULL, "bitrate box");
+    test_assert_equal(box->bitrate->buffer_size_db, 0x12345678, "buffer size db");
+    test_assert_equal(box->bitrate->max_bitrate, 0x9ABCDEF1, "max bitrate");
+    test_assert_equal(box->bitrate->avg_bitrate, 0x10203040, "avg bitrate");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_full_data(void)
+{
+    test_start("test_parse_box_full_data");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x16,
+        'u', 'r', 'i', 'I',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        's','o','m','e',' ','d','a','t','a',0x00, // data
+    };
+
+    BMFFCode res;
+    UriInitBox *box = NULL;
+    res = _bmff_parse_box_full_data(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "uriI", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->data, "some data"), 0, "data");
+    test_assert_equal(box->data_len, 10, "data len");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
 
 /*
 void test_parse_box_(void)
