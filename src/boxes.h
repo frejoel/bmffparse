@@ -1054,11 +1054,9 @@ typedef struct ProducerReferenceTimeBox { // prft
 } ProducerReferenceTimeBox;
 
 // icnf
-// rtp_
 // tims
 // tsro
 // snro
-// srtp
 // srpp
 // hnti
 // sdp_
@@ -1091,11 +1089,9 @@ typedef struct ProducerReferenceTimeBox { // prft
 // tsti
 // istm
 // pm2t
-// rrtp
 // tssy
 // tssr
 // rcsr
-// rsrp
 // ccid
 // sroc
 // prtp
@@ -1112,8 +1108,6 @@ typedef struct ProducerReferenceTimeBox { // prft
 // ludt
 // alou
 // tlou
-// txtC
-// urim
 // stxt
 // stpp
 // sbtt
