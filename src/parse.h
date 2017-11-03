@@ -33,7 +33,7 @@
 #define PARSE_MAP_LEN   (122)
 
 /*
- * Box parser functioin potiner.
+ * Box parser function potiner
  */
 typedef BMFFCode (*parse_func) (BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr);
 
@@ -43,7 +43,7 @@ uint32_t parse_u32(const uint8_t *data);
 uint64_t parse_u64(const uint8_t *data);
 fxpt16_t parse_fp16(const uint8_t *data);
 
-// list of parsing functions.
+// list of box/atom parsing functions.
 PARSER_FUNC(_bmff_parse_box);
 PARSER_FUNC(_bmff_parse_box_file_type);
 PARSER_FUNC(_bmff_parse_box_generic_container);

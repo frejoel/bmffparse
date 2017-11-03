@@ -373,8 +373,8 @@ typedef struct TrackHeaderBox { // tkhd
     int16_t     alternate_group;
     fxpt8_t     volume;
     int32_t     matrix[9];
-    uint32_t    width;
-    uint32_t    height;
+    fxpt16_t    width;
+    fxpt16_t    height;
 } TrackHeaderBox;
 
 typedef struct TrackReferenceTypeBox {

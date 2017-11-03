@@ -30,9 +30,30 @@
 
 #include "boxes.h"
 
+/**
+ * Callback Event Ids.
+ */
+typedef enum BMFFEventId {
+    BMFFEventFileType,
+    BMFFEventMovieHeader,
+    BMFFEventTrackHeader,
+    BMFFEventMediaHeader,
+    BMFFEventVideoMediaHeader,
+    BMFFEventSoundMediaHeader,
+    BMFFEventSampleDescription,
+    BMFFEventVisualSample,
+    BMFFEventSampleSize,
+    BMFFEventDataReference,
+    BMFFEventHandler,
+    BMFFEventTimeToSample,
+    BMFFEventSampleToChunk,
+    BMFFEventChunkOffset,
+    BMFFEventSyncSample,
+    BMFFEventMeta,
+} BMFFEventId;
+
 // forward declarations
 typedef struct BMFFContext BMFFContext;
-typedef enum BMFFEventId BMFFEventId;
 
 /**
  * Memory Allocator.
@@ -56,16 +77,16 @@ typedef void * (*bmff_calloc) (size_t num, size_t size);
 typedef void * (*bmff_realloc) (void *ptr, size_t size);
 
 /**
- * Parse Callback.
- */
-typedef void * (bmff_on_event) (BMFFContext *ctx,
-                                BMFFEventId id,
-                                void *data);
-
-/**
  * Memory deallocator.
  */
 typedef void (*bmff_free) (void *mem);
+
+/**
+ * Parse Callback.
+ */
+typedef void (*bmff_on_event) (BMFFContext *ctx,
+                                BMFFEventId id,
+                                void *data);
 
 /**
  * Return codes.
@@ -79,13 +100,6 @@ typedef enum BMFFCode {
 } BMFFCode;
 
 /**
- * Callback Event Ids.
- */
-typedef enum BMFFEventId {
-    something,
-} BMFFEventId;
-
-/**
  * BMFF Parsing Context.
  */
 typedef struct BMFFContext {
@@ -93,6 +107,8 @@ typedef struct BMFFContext {
     bmff_realloc realloc;
     bmff_calloc calloc;
     bmff_free free;
+    // user specified callback that is called when Boxes are parsed
+    bmff_on_event callback;
     // sample count set by the stsz or stz2 parser and used by the sdtp and stdp parsers.
     uint32_t sample_count;
     // current track sampler handler type used by the stsd and sgpd boxes to parse sample

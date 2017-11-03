@@ -1749,8 +1749,8 @@ void test_parse_box_track_header(void)
     test_assert_equal(box->matrix[6], 0x00000007, "matrix 6");
     test_assert_equal(box->matrix[7], 0x00000008, "matrix 7");
     test_assert_equal(box->matrix[8], 0x40000009, "matrix 8");
-    test_assert_equal(box->width, 0x11223344, "width");
-    test_assert_equal(box->height, 0x55667788, "height");
+    test_assert_equal_f32(box->width, 4386.200195f, "width");
+    test_assert_equal_f32(box->height, 21862.466797f, "height");
 
     bmff_context_destroy(&ctx);
 

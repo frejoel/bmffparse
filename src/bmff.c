@@ -3,6 +3,8 @@
 #include "bmff.h"
 #include "parse.h"
 
+#define BOX_TYPE_IS(d,t) ((d)[0]==(t)[0] && (d)[1]==(t)[1] && (d)[2]==(t)[2] && (d)[3]==(t)[3])
+
 const char *bmff_get_version(void)
 {
     return BMFF_VERSION;
@@ -30,6 +32,8 @@ BMFFCode bmff_context_destroy(BMFFContext *ctx)
 
 BMFFCode bmff_set_event_callback(BMFFContext *ctx, bmff_on_event callback)
 {
+    if(!ctx) return BMFF_INVALID_CONTEXT;
+    ctx->callback = callback;
     return BMFF_OK;
 }
 
