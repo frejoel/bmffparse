@@ -229,7 +229,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, void *data)
         printf("####################\n");
         printf("Meta:\n");
         uint8_t *t = (uint8_t*)&box->handler->handler_type;
-        printf("    Handler Type: %c%c%c%c\n", t[3], t[2], t[1], t[0]);
+        printf("    Handler Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
         printf("    Has Primary Resource: %s\n", box->primary_resource ? "true" : "false");
         printf("    Has File Locations: %s\n", box->file_locations ? "true" : "false");
         printf("    Has Item Locations: %s\n", box->item_locations ? "true" : "false");
