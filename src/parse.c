@@ -16,8 +16,8 @@
 #define ADV_PARSE_STR(A,P)      ((A) = (P)); while(*(P) != '\0'){(P)++;}; (P)++;
 #define ADV_PARSE_MATRIX(A,P)   int i=0; for(;i<9;++i){(A)[i] = (int32_t)parse_u32(P);(P)+=4;}; 
 
-#define BOX_MALLOC(M, T)        T *M = ctx->malloc(sizeof(T)); memset(M, 0, sizeof(T));
-#define BOX_MALLOCN(M, T, N)    M = ctx->malloc(sizeof(T)*(N)); memset(M, 0, sizeof(T)*(N));      
+#define BOX_MALLOC(M, T)        T *M = bmff_context_alloc_on_stack(ctx, sizeof(T)); memset(M, 0, sizeof(T));
+#define BOX_MALLOCN(M, T, N)    M = bmff_context_alloc_on_stack(ctx, sizeof(T)*(N)); memset(M, 0, sizeof(T)*(N));      
 
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},
@@ -554,7 +554,10 @@ BMFFCode _bmff_parse_box_handler(BMFFContext *ctx, const uint8_t *data, size_t s
     ptr += parse_full_box(data, size, &box->box);
 
     ptr += 4; // pre-defined (0).
-    ADV_PARSE_U32(box->handler_type, ptr);
+    // copy the active handler type to the context
+    memcpy(ctx->handler_type, ptr, 4);
+    memcpy(box->handler_type, ptr, 4);
+    ptr += 4;
     ptr += 12; // uint32_t x 3 (12) reserved.
     box->name = ptr; // NULL terminated string.
 
@@ -1944,7 +1947,7 @@ BMFFCode _bmff_parse_box_audio_sample_entry(BMFFContext *ctx, const uint8_t *dat
     ADV_PARSE_U16(box->sample_size, ptr);
     ptr += 2; // predefined
     ptr += 2; // reserved
-    ADV_PARSE_U32(box->sample_rate, ptr);
+    ADV_PARSE_FP16(box->sample_rate, ptr);
 
     // assign the channel count to the context for any child box parsing
     ctx->channel_count = box->channel_count;
@@ -1977,6 +1980,7 @@ BMFFCode _bmff_parse_box_audio_sample_entry(BMFFContext *ctx, const uint8_t *dat
     }
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventAudioSample, (void*)box);
     return BMFF_OK;
 }
 
@@ -2011,6 +2015,7 @@ BMFFCode _bmff_parse_box_hint_sample_entry(BMFFContext *ctx, const uint8_t *data
     }
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventHintSample, (void*)box);
     return BMFF_OK;
 }
 
@@ -2032,18 +2037,20 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
 
         parse_func parser;
 
-        if(strncmp(ctx->track_sample_table_handler_type, "soun", 4) == 0 ||
-            strncmp(ctx->track_sample_table_handler_type, "icpa", 4) == 0 )
-        {
-            parser = _bmff_parse_box_audio_sample_entry;
-        }
-        else if(strncmp(ctx->track_sample_table_handler_type, "vide", 4) == 0 ||
-            strncmp(ctx->track_sample_table_handler_type, "icpv", 4) == 0)
+        BOX_MALLOCN(box->entries, SampleEntry*, box->entry_count);
+
+        if( strncmp(ctx->handler_type, "vide", 4) == 0 ||
+            strncmp(ctx->handler_type, "icpv", 4) == 0)
         {
             parser = _bmff_parse_box_visual_sample_entry;
         }
-        else if(strncmp(ctx->track_sample_table_handler_type, "hint", 4) == 0 ||
-            strncmp(ctx->track_sample_table_handler_type, "icph", 4) == 0 )
+        else if( strncmp(ctx->handler_type, "soun", 4) == 0 ||
+                 strncmp(ctx->handler_type, "icpa", 4) == 0)
+        {
+            parser = _bmff_parse_box_audio_sample_entry;
+        }
+        else if( strncmp(ctx->handler_type, "hint", 4) == 0 ||
+                 strncmp(ctx->handler_type, "icph", 4) == 0)
         {
             parser = _bmff_parse_box_hint_sample_entry;
         }
@@ -2051,8 +2058,6 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
         {
             parser = _bmff_parse_box;
         }
-
-        BOX_MALLOCN(box->entries, SampleEntry*, box->entry_count);
 
         uint32_t i = 0;
         for(; i < box->entry_count; ++i) {
@@ -2421,7 +2426,6 @@ BMFFCode _bmff_parse_box_sample_group_description(BMFFContext *ctx, const uint8_
     }
     ADV_PARSE_U32(box->entry_count, ptr);
 
-    memcpy(box->handler_type, ctx->track_sample_table_handler_type, 4);
     box->sample_group_entries = ptr;
     box->sample_group_entries_size = (data + size) - ptr;
 

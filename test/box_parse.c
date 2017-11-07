@@ -390,7 +390,7 @@ void test_parse_box_handler(void)
         0x00, // version
         0xFF, 0xFF, 0xFA, // flags
         0, 0, 0, 0, // pre_defined
-        0xEE, 0xE1, 0x45, 0x09, // handler_type
+        'a','b','c','d', // handler_type
         0, 0, 0 ,0, // reserved
         0, 0, 0 ,0, // reserved
         0, 0, 0 ,0, // reserved
@@ -406,7 +406,7 @@ void test_parse_box_handler(void)
     test_assert_equal(strncmp(box->box.type, "hdlr", 4), 0, "type");
     test_assert_equal(box->box.version, 0x00, "version");
     test_assert_equal(box->box.flags, 0xFFFFFA, "flags");
-    test_assert_equal(box->handler_type, 0xEEE14509, "handler type");
+    test_assert_equal(strncmp(box->handler_type, "abcd", 4), 0, "handler type");
     test_assert_equal(strcmp(box->name, "handler box name"), 0, "name");
 
     bmff_context_destroy(&ctx);
@@ -1089,7 +1089,7 @@ void test_parse_box_meta(void)
         0x00, // version
         0xFF, 0xFF, 0xFA, // flags
         0, 0, 0, 0, // pre_defined
-        0xEE, 0xE1, 0x45, 0x09, // handler_type
+        'v', 'i', 'd', 'e', // handler_type
         0, 0, 0 ,0, // reserved
         0, 0, 0 ,0, // reserved
         0, 0, 0 ,0, // reserved
@@ -1272,7 +1272,7 @@ void test_parse_box_meta(void)
     test_assert_equal(strncmp(hdlr->box.type, "hdlr", 4), 0, "handler box type");
     test_assert_equal(hdlr->box.version, 0x00, "handler box version");
     test_assert_equal(hdlr->box.flags, 0xFFFFFA, "handler box flags");
-    test_assert_equal(hdlr->handler_type, 0xEEE14509, "handler box handler type");
+    test_assert_equal(strncmp(hdlr->handler_type, "vide", 4), 0, "handler box handler type");
     test_assert_equal(strcmp(hdlr->name, "handler box name"), 0, "handler box name");
 
     // Primary Item
@@ -2701,7 +2701,7 @@ void test_parse_box_sample_description_soun(void)
         0xFF, 0xFF, 0xFF, 0xFF
     };
 
-    memcpy(ctx.track_sample_table_handler_type, "soun", 4);
+    memcpy(ctx.handler_type, "soun", 4);
     ctx.sample_description_version = 1;
 
     BMFFCode res;
@@ -2721,7 +2721,7 @@ void test_parse_box_sample_description_soun(void)
     test_assert_equal(entry->data_reference_index, 0x1234, "entry 0 data reference index");
     test_assert_equal(entry->channel_count, 2, "entry 0 channel count");
     test_assert_equal(entry->sample_size, 16, "entry 0 sample size");
-    test_assert_equal(entry->sample_rate, 0x10203040, "entry 0 sample rate");
+    test_assert_equal_f32(entry->sample_rate, 4128.18848, "entry 0 sample rate");
     test_assert_equal(strncmp(entry->sampling_rate->box.type, "srat", 4), 0, "entry 1 sampling rate type");
     test_assert_equal(entry->sampling_rate->box.size, 16, "entry 0 sampling rate size");
     test_assert_equal(entry->sampling_rate->sampling_rate, 0x12345678, "entry 0 sampling rate");
@@ -2744,7 +2744,7 @@ void test_parse_box_sample_description_soun(void)
     test_assert_equal(entry->data_reference_index, 0xABCD, "entry 1 data reference index");
     test_assert_equal(entry->channel_count, 6, "entry 1 channel count");
     test_assert_equal(entry->sample_size, 0x0123, "entry 1 sample size");
-    test_assert_equal(entry->sample_rate, 0xA0B0C0D0, "entry 1 sample rate");
+    test_assert_equal_f32(entry->sample_rate, -24399.2461, "entry 1 sample rate");
     test_assert_equal(strncmp(entry->sampling_rate->box.type, "srat", 4), 0, "entry 1 sampling rate type");
     test_assert_equal(entry->sampling_rate->box.size, 16, "entry 1 sampling rate size");
     test_assert_equal(entry->sampling_rate->sampling_rate, 0x12345678, "entry 1 sampling rate");
@@ -2764,7 +2764,7 @@ void test_parse_box_sample_description_soun(void)
     test_assert_equal(entry->data_reference_index, 0xABCD, "entry 2 data reference index");
     test_assert_equal(entry->channel_count, 0, "entry 2 channel count");
     test_assert_equal(entry->sample_size, 0x0123, "entry 2 sample size");
-    test_assert_equal(entry->sample_rate, 0xA0B0C0D0, "entry 2 sample rate");
+    test_assert_equal(entry->sample_rate, -24399.2461, "entry 2 sample rate");
     test_assert_equal(strncmp(entry->sampling_rate->box.type, "srat", 4), 0, "entry 2 sampling rate type");
     test_assert_equal(entry->sampling_rate->box.size, 16, "entry 2 sampling rate size");
     test_assert_equal(entry->sampling_rate->sampling_rate, 0x12345678, "entry 2 sampling rate");
@@ -2836,7 +2836,7 @@ void test_parse_box_sample_description_hint(void)
         0x01, 0x02, 0x03, // data
     };
 
-    memcpy(ctx.track_sample_table_handler_type, "hint", 4);
+    memcpy(ctx.handler_type, "hint", 4);
 
     BMFFCode res;
     SampleDescriptionBox *box = NULL;
@@ -2963,7 +2963,7 @@ void test_parse_box_sample_description_vide(void)
         'v','i','d','e',
     };
 
-    memcpy(ctx.track_sample_table_handler_type, "vide", 4);
+    memcpy(ctx.handler_type, "vide", 4);
 
     BMFFCode res;
     SampleDescriptionBox *box = NULL;
@@ -3036,7 +3036,7 @@ void test_parse_box_sample_description_zero(void)
         0x00, 0x00, 0x00, 0x00, // entry count
     };
 
-    memcpy(ctx.track_sample_table_handler_type, "vide", 4);
+    memcpy(ctx.handler_type, "vide", 4);
 
     BMFFCode res;
     SampleDescriptionBox *box = NULL;
@@ -3085,7 +3085,7 @@ void test_parse_box_sample_description_invalid_type(void)
 
     };
 
-    memcpy(ctx.track_sample_table_handler_type, "\0\0\0\0", 4);
+    memcpy(ctx.handler_type, "\0\0\0\0", 4);
 
     BMFFCode res;
     SampleDescriptionBox *box = NULL;
@@ -3662,7 +3662,7 @@ void test_parse_box_sample_group_description(void)
         0xAA, 0xBB, // data
     };
 
-    memcpy(ctx.track_sample_table_handler_type, "vide", 4);
+    memcpy(ctx.handler_type, "vide", 4);
 
     BMFFCode res;
     SampleGroupDescriptionBox *box = NULL;

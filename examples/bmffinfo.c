@@ -87,12 +87,43 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, void *data)
         VisualSampleEntry *box = (VisualSampleEntry*)data;
         printf("####################\n");
         printf("Visual Sample:\n");
+        const uint8_t *t = box->box.type;
+        printf("    Sample Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
         printf("    Width: %d pixels\n", box->width);
         printf("    Height: %d pixels\n", box->height);
         printf("    Horizontal Resolution: %f ppi\n", box->horiz_resolution);
         printf("    Vertical Resolution: %f ppi\n", box->vert_resolution);
         printf("    Frame Count: %d\n", box->frame_count);
         printf("    Compressor Name: %s\n", box->compressor_name);
+    }
+
+    if(event_id == BMFFEventAudioSample) {
+        AudioSampleEntry *box = (AudioSampleEntry*)data;
+        printf("####################\n");
+        printf("Audio Sample:\n");
+        const uint8_t *t = box->box.type;
+        printf("    Sample Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
+        printf("    Channel Count: %d\n", box->channel_count);
+        printf("    Sample Size: %d\n", box->sample_size);
+        printf("    Sample Rate: %f\n", box->sample_rate);
+        if(NULL != box->sampling_rate) {
+            printf("    Sampling Rate: %u\n", box->sampling_rate->sampling_rate);
+        }
+    }
+
+    if(event_id == BMFFEventHintSample) {
+        HintSampleEntry *box = (HintSampleEntry*)data;
+        printf("####################\n");
+        printf("Hint Sample:\n");
+        const uint8_t *t = box->box.type;
+        printf("    Sample Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
+        printf("    Data (first 10 bytes): ");
+        uint32_t c = box->data_size > 10 ? 10 : box->data_size;
+        uint32_t i = 0;
+        for(; i<c; ++i) {
+            printf("%c", box->data[i]);
+        }
+        printf("\n");
     }
 
     if(event_id == BMFFEventSampleSize) {
@@ -128,7 +159,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, void *data)
         printf("####################\n");
         printf("Handler:\n");
         uint8_t *t = (uint8_t*)&box->handler_type;
-        printf("    Handler Type: %c%c%c%c\n", t[3], t[2], t[1], t[0]);
+        printf("    Handler Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
         printf("    Handler Name: %s\n", box->name);
     }
 

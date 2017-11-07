@@ -60,13 +60,20 @@ size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *
         int i=0;
         for(; i<13; ++i) {
             uint32_t parser_box_type = parse_map[i].box_type_value;
+            uint8_t parser_is_container_type = parse_map[i].is_container_type;
             if(parser_box_type == box_type) {
+                if(parser_is_container_type == 1) {
+                    bmff_context_alloc_stack_push(ctx);
+                }
                 Box *box;
                 BMFFCode res = parse_map[i].parse_func(ctx, ptr, end-ptr, &box);
                 if(res == BMFF_OK) {
                     printf("%c%c%c%c\n", box->type[0], box->type[1], box->type[2], box->type[3]);
                 } else {
                     printf("Error paring box: %d\n", res);
+                }
+                if(parser_is_container_type) {
+                    bmff_context_alloc_stack_pop(ctx);
                 }
                 break;
             }

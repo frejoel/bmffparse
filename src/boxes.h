@@ -171,7 +171,7 @@ typedef struct MediaDataBox { // mdat
 
 typedef struct HandlerBox { // hdlr
     FullBox     box;
-    uint32_t    handler_type;
+    uint8_t     handler_type[4];
     const char  *name;
 } HandlerBox;
 
@@ -632,7 +632,7 @@ typedef struct AudioSampleEntry { // v0 and v1
     uint16_t                entry_version;
     uint16_t                channel_count;
     uint16_t                sample_size;
-    uint32_t                sample_rate;
+    fxpt16_t                sample_rate;
     SamplingRateBox         *sampling_rate;
     ChannelLayoutBox        *channel_layout;
     Box                     **children;

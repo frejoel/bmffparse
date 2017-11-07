@@ -42,6 +42,8 @@ typedef enum BMFFEventId {
     BMFFEventSoundMediaHeader,
     BMFFEventSampleDescription,
     BMFFEventVisualSample,
+    BMFFEventAudioSample,
+    BMFFEventHintSample,
     BMFFEventSampleSize,
     BMFFEventDataReference,
     BMFFEventHandler,
@@ -100,6 +102,16 @@ typedef enum BMFFCode {
 } BMFFCode;
 
 /**
+ * LinkList of pointers.
+ */
+typedef struct MemList {
+    size_t *addresses;
+    uint32_t count;
+    uint32_t used;
+    struct MemList *next;
+} MemList;
+
+/**
  * BMFF Parsing Context.
  */
 typedef struct BMFFContext {
@@ -114,12 +126,30 @@ typedef struct BMFFContext {
     // current track sampler handler type used by the stsd and sgpd boxes to parse sample
     // description data.
     // this data comes from the active HandlerBox.
-    uint8_t track_sample_table_handler_type[4];
+    uint8_t handler_type[4];
     // channel count set by the last AudioSampleEntry that was parsed.
     // this is used by the chnl box parser.
     uint32_t channel_count;
     // version of the last sample description box. Used by the AudioSampleEntry box parser.
     uint32_t sample_description_version;
+    // memory allocations stack (linked list)
+    MemList *allocs_stack;
 } BMFFContext;
+
+/**
+ * Adds a new to the stack of memory allocations.
+ */
+void bmff_context_alloc_stack_push(BMFFContext *ctx);
+
+/**
+ * Removes the last layer of the memory allocations stack freeing all
+ * allocations that were done on this layer.
+ */
+void bmff_context_alloc_stack_pop(BMFFContext *ctx);
+
+/**
+ * Allocates memory on the active stack.
+ */
+void * bmff_context_alloc_on_stack(BMFFContext *ctx, size_t size);
 
 #endif // CONTEXT_H
