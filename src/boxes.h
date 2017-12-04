@@ -26,11 +26,20 @@
 #define BOXES_H
 
 #include <stdint.h>
+#include "descriptors.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef float fxpt16_t;  // Fixed Point 16.16
+typedef float fxpt8_t;   // Fixed Point 8.8
 
 typedef enum {
     eBooleanUnknown    = 0,
     eBooleanTrue       = 1,
     eBooleanFalse      = 2,
+    eBooleanOther      = 3,
 } eBoolean;
 
 typedef enum {
@@ -50,28 +59,6 @@ typedef enum {
     eTrunSampleFlagsPresent             = 0x000400,
     eTrunSampleCompTimeOffsetsPresent   = 0x000800,
 } eTrackRunFlags;
-
-typedef float fxpt16_t;  // Fixed Point 16.16
-typedef float fxpt8_t;   // Fixed Point 8.8
-
-typedef uint8_t IPMPDescriptor;           // TODO: see 14496-1 for definition.
-
-typedef struct IPMPTool {
-    uint8_t         tool_id[16];
-    uint8_t         is_alt_group;
-    uint8_t         is_parametric;
-    uint8_t         num_alternates;
-    uint8_t         specific_tool_id[16];
-    const uint8_t   *tool_param_desc;
-    uint8_t         num_urls;
-    uint8_t         **tool_urls;
-} IPMPTool;
-
-typedef struct IPMPToolListDescriptor {
-    uint8_t     tag;
-    uint8_t     num_tools;
-    IPMPTool    *ipmp_tools;
-} IPMPToolListDescriptor;
 
 // All Boxes contain the base Box as the first item in the structure.
 typedef struct Box {
@@ -97,7 +84,7 @@ typedef struct AbstractBox {
     Box box;
 } AbstractBox;
 
-// All Boxes that can contain other Boxes inherit the ContainerBox.
+// All Boxes that can contain other Boxes "inherit" the ContainerBox.
 typedef struct ContainerBox {
     Box         box;
     uint32_t    child_count;
@@ -116,12 +103,30 @@ typedef ContainerBox TrackFragmentBox; // traf
 typedef ContainerBox UserDataBox; // udta
 typedef ContainerBox EditBox; // edts
 typedef ContainerBox MediaBox; // mdia
-typedef ContainerBox MediaInformationBox;// minf
-typedef ContainerBox SampleTableBox;// stbl
+typedef ContainerBox MediaInformationBox; // minf
+typedef ContainerBox SampleTableBox; // stbl
+typedef ContainerBox AdditionalMetadataContainerBox; // meco
+typedef ContainerBox SubTrackBox; // strk
+typedef ContainerBox SubTrackDefinitionBox; // strd
 
 typedef Box FreeSpaceBox; // free, skip
 typedef Box TrackReferenceBox; // tref
 typedef FullBox NullMediaHeaderBox; // nmhd
+
+typedef struct StringFullBox {
+    FullBox         box;
+    const char      *value;
+} StringFullBox;
+
+typedef StringFullBox UriBox; // uri_
+
+typedef struct DataFullBox {
+    FullBox         box;
+    const uint8_t   *data;
+    size_t          data_len;
+} DataFullBox;
+
+typedef DataFullBox UriInitBox; // uriI
 
 typedef struct FileTypeBox { // ftyp
     Box             box;
@@ -131,13 +136,14 @@ typedef struct FileTypeBox { // ftyp
     size_t          nb_compatible_brands;   // number of 4 character codes
 } FileTypeBox;
 
+typedef FileTypeBox SegmentTypeBox; // styp
+
 typedef struct ProgressiveDownloadBitrate {
-    FullBox     box;
     uint32_t    rate;
     uint32_t    initial_delay;
 } ProgressiveDownloadBitrate;
 
-typedef struct ProgressiveDownloadBox { //pdin
+typedef struct ProgressiveDownloadBox { // pdin
     FullBox                     box;
     size_t                      nb_bitrates;
     ProgressiveDownloadBitrate  *bitrates;
@@ -151,22 +157,24 @@ typedef struct MediaDataBox { // mdat
 
 typedef struct HandlerBox { // hdlr
     FullBox     box;
-    uint32_t    handler_type;
+    uint8_t     handler_type[4];
     const char  *name;
 } HandlerBox;
 
 typedef struct PrimaryItemBox { // pitm
     FullBox     box;
-    uint16_t    item_id;
+    uint32_t    item_id;
 } PrimaryItemBox;
 
 typedef struct Extent {
+    uint64_t    index;
     uint64_t    offset;
     uint64_t    length;
 } Extent;
 
 typedef struct ItemLocation {
-    uint16_t    item_id;
+    uint32_t    item_id;
+    uint8_t     construction_method;
     uint16_t    data_reference_index;
     uint64_t    base_offset;
     uint16_t    extent_count;
@@ -178,22 +186,38 @@ typedef struct ItemLocationBox { // iloc
     uint16_t        offset_size;
     uint16_t        length_size;
     uint16_t        base_offset_size;
-    uint16_t        item_count;
+    uint8_t         index_size;
+    uint32_t        item_count;
     ItemLocation    *items;
 } ItemLocationBox;
 
+typedef struct FDItemInfoExtension { // fdel
+    const char      *content_location;
+    const char      *content_md5;
+    uint64_t        content_length;
+    uint64_t        transfer_length;
+    uint8_t         entry_count;
+    uint32_t        *group_ids;
+} FDItemInfoExtension;
+
 typedef struct ItemInfoEntry { // infe
-    FullBox         box;
-    uint16_t        item_id;
-    uint16_t        item_protection_index;
-    const char      *item_name;
-    const char      *content_type;
-    const char      *content_encoding;  // optional
+    FullBox             box;
+    uint32_t            item_id;
+    uint16_t            item_protection_index;
+    const char          *item_name;
+    const char          *content_type;
+    const char          *content_encoding;  // optional
+    uint8_t             extension_type[4]; // optional
+    const uint8_t       *extension_bytes;
+    FDItemInfoExtension *extension;
+    uint32_t            extension_size;
+    uint8_t             item_type[4];
+    const char          *item_uri_type;
 } ItemInfoEntry;
 
 typedef struct ItemInfoBox { // iinf
     FullBox         box;
-    uint16_t        entry_count;
+    uint32_t        entry_count;
     ItemInfoEntry   **entries;
 } ItemInfoBox;
 
@@ -229,11 +253,13 @@ typedef struct SchemeInformationBox { // schi
 } SchemeInformationBox;
 
 typedef struct ProtectionSchemeInfoBox { // sinf
-    OriginalFormatBox       box;
-    IPMPInfoBox             *ipmp_descriptors;       // optional
+    Box                     box;
+    OriginalFormatBox       original_format;
     SchemeTypeBox           *scheme_type;            // optional
     SchemeInformationBox    *scheme_info;            // optional
 } ProtectionSchemeInfoBox;
+
+typedef ProtectionSchemeInfoBox RestrictedSchemeInfoBox; // rinf
 
 typedef struct ItemProtectionBox { // ipro
     FullBox                 box;
@@ -241,15 +267,36 @@ typedef struct ItemProtectionBox { // ipro
     ProtectionSchemeInfoBox **protection_info;
 } ItemProtectionBox;
 
+typedef struct SingleItemTypeReferenceBox {
+    Box         box;
+    uint32_t    from_item_id;
+    uint16_t    reference_count;
+    uint32_t    *to_item_ids;
+} SingleItemTypeReferenceBox;
+
+typedef struct ItemReferenceBox { // iref
+    FullBox                     box;
+    SingleItemTypeReferenceBox  *references;
+    uint32_t                    references_count;
+} ItemReferenceBox;
+
+typedef struct ItemDataBox { // idat
+    Box             box;
+    const uint8_t   *data;
+    uint32_t        data_size;       
+} ItemDataBox;
+
 typedef struct MetaBox { // meta
     FullBox             box;
     HandlerBox          *handler;
-    PrimaryItemBox      *primary_resource;   // optional
-    DataInformationBox  *file_locations;     // optional
-    ItemLocationBox     *item_locations;     // optional
-    ItemProtectionBox   *protections;        // optional
-    ItemInfoBox         *item_infos;         // optional
-    IPMPControlBox      *ipmp_control;       // optional
+    PrimaryItemBox      *primary_resource;  // optional
+    DataInformationBox  *file_locations;    // optional
+    ItemLocationBox     *item_locations;    // optional
+    ItemProtectionBox   *protections;       // optional
+    ItemInfoBox         *item_infos;        // optional
+    IPMPControlBox      *ipmp_control;      // optional
+    ItemReferenceBox    *item_refs;         // optional
+    ItemDataBox         *item_data;         // optional
     Box                 *other_boxes;       // optional
     size_t              other_boxes_len;
 } MetaBox;
@@ -312,8 +359,8 @@ typedef struct TrackHeaderBox { // tkhd
     int16_t     alternate_group;
     fxpt8_t     volume;
     int32_t     matrix[9];
-    uint32_t    width;
-    uint32_t    height;
+    fxpt16_t    width;
+    fxpt16_t    height;
 } TrackHeaderBox;
 
 typedef struct TrackReferenceTypeBox {
@@ -334,11 +381,12 @@ typedef struct TrackExtendsBox { // trex
     uint32_t    default_sample_duration;
     uint32_t    default_sample_size;
     // defaut sample flags
-    eBoolean   default_sample_depends_on;
-    eBoolean   default_sample_is_depended_on;
-    eBoolean   default_sample_has_redundancy;
+    eBoolean    default_sample_is_leading;
+    eBoolean    default_sample_depends_on;
+    eBoolean    default_sample_is_depended_on;
+    eBoolean    default_sample_has_redundancy;
     uint8_t     default_sample_padding_value;
-    eBoolean   default_sample_is_difference_sample;
+    eBoolean    default_sample_is_difference_sample;
     uint16_t    default_sample_degradation_priority;
 } TrackExtendsBox;
 
@@ -356,7 +404,7 @@ typedef struct TrackRunSample {
     uint32_t    duration;                   // optional
     uint32_t    size;                       // optional
     uint32_t    flags;                      // optional
-    uint32_t    composition_time_offset;
+    int64_t     composition_time_offset;    // optional
 } TrackRunSample;
 
 typedef struct TrackRunBox { // trun
@@ -368,6 +416,7 @@ typedef struct TrackRunBox { // trun
 } TrackRunBox;
 
 typedef struct SampleDependencyType {
+    uint8_t     is_leading;
     uint8_t     depends_on;
     uint8_t     is_depended_on;
     uint8_t     has_redundancy;
@@ -387,6 +436,7 @@ typedef struct SampleToGroupEntry {
 typedef struct SampleToGroupBox { //sbgp
     FullBox             box;
     uint32_t            grouping_type;
+    uint32_t            grouping_type_param;
     uint32_t            entry_count;
     SampleToGroupEntry  *entries;
 } SampleToGroupBox;
@@ -395,6 +445,7 @@ typedef struct SubSampleInformation {
     uint32_t            size;
     uint8_t             priority;
     uint8_t             discardable;
+    uint32_t            codec_specific_params;
 } SubSampleInformation;
 
 typedef struct SubSampleInformationEntry {
@@ -470,37 +521,179 @@ typedef struct HintMediaHeaderBox { // hmhd
     uint32_t        avg_bitrate;
 } HintMediaHeaderBox;
 
-typedef struct SampleEntry {
+typedef struct SubtitleMediaHeaderBox { // sthd
+    FullBox         box;
+} SubtitleMediaHeaderBox;
+
+typedef struct CleanApertureBox { // clap
+    Box             box;
+    uint32_t        clean_aperture_width_n;
+    uint32_t        clean_aperture_width_d;
+    uint32_t        clean_aperture_height_n;
+    uint32_t        clean_aperture_height_d;
+    uint32_t        horiz_off_n;
+    uint32_t        horiz_off_d;
+    uint32_t        vert_off_n;
+    uint32_t        vert_off_d;
+} CleanApertureBox;
+
+typedef struct PixelAspectRatioBox { // pasp
+    Box             box;
+    uint32_t        h_spacing;
+    uint32_t        v_spacing;
+} PixelAspectRatioBox;
+
+typedef enum {
+    eStreamStructureChannel     = 1,
+    eStreamStructureObject      = 2,
+} eStreamStructure;
+
+typedef struct ChannelLayoutBox { // chnl
+    FullBox             box;
+    eStreamStructure    stream_structure;
+    struct {
+        uint8_t             defined_layout;
+        uint32_t            channel_count;
+        uint8_t             *speaker_positions;
+        uint16_t            *azimuths;
+        uint8_t             *elevations;
+        uint64_t            omitted_channels_map;
+    } channel;
+    struct {
+        uint8_t             object_count;
+    } object;
+} ChannelLayoutBox;
+
+typedef struct SamplingRateBox { // srat
+    FullBox             box;
+    uint32_t            sampling_rate;
+} SamplingRateBox;
+
+typedef struct SampleEntry {  // abstract box
     Box             box;
     uint16_t        data_reference_index;
 } SampleEntry;
 
+typedef struct CompleteTrackInfoBox { // cinf
+    Box                     box;
+    OriginalFormatBox       original_format;
+    Box                     **children;
+    uint32_t                child_count;
+} CompleteTrackInfoBox;
+
+typedef struct IncompleteSampleEntry {
+    CompleteTrackInfoBox    *complete_track_info;
+    Box                     **children;
+    uint32_t                child_count;
+} IncompleteSampleEntry;
+
 typedef struct HintSampleEntry {
-    Box             box;
-    uint16_t        data_reference_index;
-    const uint8_t   *data;
-    size_t          data_size;
+    Box                     box;
+    uint16_t                data_reference_index;
+    const uint8_t           *data;
+    size_t                  data_size;
+    eBoolean                is_incomplete;
 } HintSampleEntry;
 
 typedef struct VisualSampleEntry {
-    Box             box;
-    uint16_t        data_reference_index;
-    uint16_t        width;
-    uint16_t        height;
-    fxpt16_t        horiz_resolution;
-    fxpt16_t        vert_resolution;
-    uint16_t        frame_count;
-    uint8_t         compressor_name[31];
-    uint16_t        depth;
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                width;
+    uint16_t                height;
+    fxpt16_t                horiz_resolution;
+    fxpt16_t                vert_resolution;
+    uint16_t                frame_count;
+    uint8_t                 compressor_name[31];
+    uint16_t                depth;
+    CleanApertureBox        *clap;
+    PixelAspectRatioBox     *pasp;
+    eBoolean                is_incomplete;
+    uint32_t                child_count;
+    Box                     **children;    
 } VisualSampleEntry;
 
-typedef struct AudioSampleEntry {
-    Box             box;
-    uint16_t        data_reference_index;
-    uint16_t        channel_count;
-    uint16_t        sample_size;
-    uint32_t        sample_rate;
+typedef struct AudioSampleEntry { // v0 and v1
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                entry_version;
+    uint16_t                channel_count;
+    uint16_t                sample_size;
+    fxpt16_t                sample_rate;
+    SamplingRateBox         *sampling_rate;
+    ChannelLayoutBox        *channel_layout;
+    Box                     **children;
+    uint32_t                child_count;
+    eBoolean                is_incomplete;
 } AudioSampleEntry;
+
+typedef struct RtpHintSampleEntry { // rtp_
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                hint_track_version;
+    uint16_t                highest_compatible_version;
+    uint32_t                max_packet_size;
+    Box                     **additional_data;
+    uint32_t                additional_data_count;
+} RtpHintSampleEntry;
+
+typedef RtpHintSampleEntry SrtpHintSampleEntry; // srtp
+typedef RtpHintSampleEntry ReceivedRtpHintSampleEntry; // rrtp
+typedef RtpHintSampleEntry ReceivedSrtpHintSampleEntry; // rsrp
+
+typedef struct FDHintSampleEntry { // fdp_
+    Box                     box;
+    uint16_t                data_reference_index;
+    uint16_t                hint_track_version;
+    uint16_t                highest_compatible_version;
+    uint16_t                partition_entry_id;
+    uint16_t                fec_overhead;
+    Box                     **additional_data;
+    uint32_t                additional_data_count;
+} FDHintSampleEntry;
+
+typedef struct BitRateBox { // btrt
+    Box         box;
+    uint32_t    buffer_size_db;
+    uint32_t    max_bitrate;
+    uint32_t    avg_bitrate;
+} BitRateBox;
+
+typedef struct XMLMetaDataSampleEntry { // metx
+    Box                     box;
+    uint16_t                data_reference_index;
+    Box                     **other_boxes;
+    uint32_t                other_boxes_count;
+    const char              *content_encoding;
+    const char              *namespace;
+    const char              *schema_location;
+    BitRateBox              *bitrate;
+} XMLMetaDataSampleEntry;
+
+typedef struct TextConfigBox { // txtC
+    FullBox                 box;
+    const char              *text_config;
+} TextConfigBox;
+
+typedef struct TextMetaDataSampleEntry { // mmet
+    Box                     box;
+    uint16_t                data_reference_index;
+    Box                     **other_boxes;
+    uint32_t                other_boxes_count;
+    const char              *content_encoding;
+    const char              *mime_format;
+    BitRateBox              *bitrate;
+    TextConfigBox           *text_config;
+} TextMetaDataSampleEntry;
+
+typedef struct UriMetaSampleEntryBox { // urim
+    Box                     box;
+    uint16_t                data_reference_index;
+    Box                     **other_boxes;
+    uint32_t                other_boxes_count;
+    UriBox                  *the_label;
+    UriInitBox              *init;      // optional
+    BitRateBox              *bitrate;   // optional 
+} UriMetaSampleEntryBox;
 
 typedef struct SampleDescriptionBox { // stsd
     FullBox         box;
@@ -521,7 +714,7 @@ typedef struct TimeToSampleBox { // stts
 
 typedef struct CompositionOffset {
     uint32_t        count;
-    uint32_t        offset;
+    int64_t         offset;
 } CompositionOffset;
 
 typedef struct CompositionOffsetBox { // ctts
@@ -533,7 +726,7 @@ typedef struct CompositionOffsetBox { // ctts
 typedef struct SampleToChunk {
     uint32_t        first_chunk;
     uint32_t        samples_per_chunk;
-    uint32_t        samples_description_index;
+    uint32_t        sample_description_index;
 } SampleToChunk;
 
 typedef struct SampleToChunkBox { // stsc
@@ -602,13 +795,316 @@ typedef struct DegradationPriorityBox { // stdp
     uint32_t        priority_count;
 } DegradationPriorityBox;
 
-typedef struct SampleGroupDescriptionBox { // sgdp
-    FullBox     box;
-    uint32_t    grouping_type;
-    uint32_t    entry_count;
-    uint8_t     handler_type[4];
-    void        *sample_group_entries; // Visual, Audio, or Hint
-    uint32_t    sample_group_entries_count;
+typedef struct SampleGroupDescriptionBox { // sgpd
+    FullBox         box;
+    uint32_t        grouping_type;
+    uint32_t        default_length;
+    uint32_t        default_sample_description_index;
+    uint32_t        entry_count;
+    uint8_t         handler_type[4];
+    const uint8_t   *sample_group_entries; // Visual, Audio, Hint, Subtitle, Text
+    uint32_t        *description_lengths; // 
+    uint32_t        sample_group_entries_size;
 } SampleGroupDescriptionBox;
+
+typedef struct TrackGroupTypeBox { // trgr -> msrc
+    FullBox     box;
+    uint32_t    track_group_id;
+} TrackGroupTypeBox;
+
+typedef struct ExtendedLanguageTagBox { // elng
+    FullBox     box;
+    const char  *extended_language;
+} ExtendedLanguageTagBox;
+
+typedef struct CompositionToDecodeBox { // cslg
+    FullBox     box;
+    int64_t     composition_to_dts_shift;
+    int64_t     least_decode_to_display_delta;
+    int64_t     greatest_decode_to_display_delta;
+    int64_t     composition_start_time;
+    int64_t     composition_end_time;
+} CompositionToDecodeBox;
+
+typedef struct SampleAuxInfoSizesBox { // saiz
+    FullBox     box;
+    uint32_t    aux_info_type;
+    uint32_t    aux_info_type_param;
+    uint8_t     default_sample_info_size;
+    uint32_t    sample_count;
+    uint8_t     *sample_info_sizes;
+} SampleAuxInfoSizesBox;
+
+typedef struct SampleAuxInfoOffsetsBox { // saio
+    FullBox     box;
+    uint32_t    aux_info_type;
+    uint32_t    aux_info_type_param;
+    uint32_t    entry_count;
+    uint64_t     *offsets;
+} SampleAuxInfoOffsetsBox;
+
+typedef struct TrackFragmentDecodeTimeBox { // tfdt
+    FullBox     box;
+    uint64_t    base_media_decode_time;
+} TrackFragmentDecodeTimeBox;
+
+typedef struct LevelAssignment {
+    uint32_t    track_id;
+    uint8_t     padding_flag;
+    uint8_t     assignment_type;
+    uint32_t    grouping_type;
+    uint32_t    grouping_type_parameter;
+    uint32_t    sub_track_id;
+} LevelAssignment;
+
+typedef struct LevelAssignmentBox { // leva
+    FullBox         box;
+    uint8_t         level_count;
+    LevelAssignment *levels;
+} LevelAssignmentBox;
+
+typedef struct TrackExtensionPropertiesBox { // trep
+    FullBox     box;
+    uint32_t    track_id;
+    uint32_t    child_count;
+    Box         **children;
+} TrackExtensionPropertiesBox;
+
+typedef struct AltStartSeqPropertiesEntry {
+    uint32_t    grouping_type_param;
+    int32_t     min_initial_alt_startup_offset;
+} AltStartSeqPropertiesEntry;
+
+typedef struct AltStartupSeqPropertiesBox { // assp 
+    FullBox                     box;
+    int32_t                     min_initial_alt_startup_offset;
+    uint32_t                    entry_count;
+    AltStartSeqPropertiesEntry  *entries;
+} AltStartupSeqPropertiesBox;
+
+typedef struct TrackSelectionBox { // tsel
+    FullBox     box;
+    int32_t     switch_group;
+    uint32_t    *attribute_list;
+    uint32_t    attribute_list_count;
+} TrackSelectionBox;
+
+typedef struct KindBox { // kind
+    FullBox     box;
+    const char  *scheme_uri;
+    const char  *value;
+} KindBox;
+
+typedef enum {
+    eMetaboxRelationUnknown            = 1,
+    eMetaboxRelationUnrelated          = 2,
+    eMetaboxRelationComplementary      = 3,
+    eMetaboxRelationOverlap            = 4,
+    eMetaboxRelationFirstPreferred     = 5,
+} eMetaboxRelation;
+
+typedef struct MetaboxRelationBox { // mere
+    FullBox             box;
+    uint8_t             first_metabox_handler_type[4];
+    uint8_t             second_metabox_handler_type[4];
+    eMetaboxRelation    metabox_relation;
+} MetaboxRelationBox;
+
+typedef struct FilePartitionBox { // fpar
+    FullBox             box;
+    uint32_t            item_id;
+    uint16_t            packet_payload_size;
+    uint8_t             fec_encoding_id;
+    uint16_t            fec_instance_id;
+    uint16_t            max_source_block_length;
+    uint16_t            encoding_symbol_length;
+    uint16_t            max_number_of_encoding_symbols;
+    const char          *scheme_specific_info;
+    uint32_t            entry_count;
+    uint16_t            *block_counts;
+    uint32_t            *block_sizes;
+} FilePartitionBox;
+
+typedef struct FECReservoirBox { // fecr
+    FullBox             box;
+    uint32_t            entry_count;
+    uint32_t            *item_ids;
+    uint32_t            *symbol_counts;
+} FECReservoirBox;
+
+typedef FECReservoirBox FileReservoirBox; // fire
+
+typedef struct PartitionEntryBox { // paen
+    Box                 box;
+    FilePartitionBox    *blocks_and_symbols;
+    FECReservoirBox     *fec_symbol_locations;   // optional
+    FileReservoirBox    *file_symbol_locations;  // optional
+} PartitionEntryBox;
+
+typedef struct FDSessionGroupEntry {
+    uint8_t             entry_count;
+    uint32_t            *group_ids;
+    uint16_t            num_channels_in_session_group;
+    uint32_t            *hint_track_ids;
+} FDSessionGroupEntry;
+
+typedef struct FDSessionGroupBox { // segr
+    Box                 box;
+    uint16_t            num_session_groups;
+    FDSessionGroupEntry *session_groups;
+} FDSessionGroupBox;
+
+typedef struct GroupIdToNameBox { // gitn
+    FullBox             box;
+    uint16_t            entry_count;
+    uint32_t            *group_ids;
+    const char          **group_names;
+} GroupIdToNameBox;
+
+typedef struct FDItemInformationBox { // fiin
+    FullBox             box;
+    uint16_t            entry_count;
+    PartitionEntryBox   **entries;
+    FDSessionGroupBox   *session_info;           // optional
+    GroupIdToNameBox    *group_id_to_name;       // optional
+} FDItemInformationBox;
+
+typedef struct SubTrackInformationBox { // stri
+    FullBox             box;
+    uint16_t            switch_group;
+    uint16_t            alternate_group;
+    uint32_t            sub_track_id;
+    uint32_t            attribute_list_count;
+    const uint8_t       **attribute_list;
+} SubTrackInformationBox;
+
+typedef struct SubTrackSampleGroupBox { // stsg
+    FullBox             box;
+    uint32_t            grouping_type;
+    uint16_t            item_count;
+    uint32_t            *group_description_indicies;
+} SubTrackSampleGroupBox;
+
+typedef enum {
+   eSingleViewModeStereoscopic      = 0,
+   eSingleViewModeMonoscopicRight   = 1,
+   eSingleViewModeMonoscopicLeft    = 2, 
+} eSingleViewMode;
+
+typedef struct StereoVideoBox { // stvi
+    FullBox             box;
+    eSingleViewMode     single_view_allowed;
+    uint32_t            stereo_scheme;
+    uint32_t            length;
+    uint64_t            stereo_indication_type;
+    uint32_t            child_count;
+    Box                 **children;
+} StereoVideoBox;
+
+typedef struct SegmentIndexRefEntry {
+    uint8_t             reference_type;
+    uint32_t            referenced_size;
+    uint32_t            subsegment_duration;
+    uint8_t             starts_with_sap;
+    uint8_t             sap_type;
+    uint32_t            sap_delta_time;
+} SegmentIndexRefEntry;
+
+typedef struct SegmentIndexBox { // sidx
+    FullBox                 box;
+    uint32_t                reference_id;
+    uint32_t                timescale;
+    uint64_t                earliest_presentation_time;
+    uint64_t                first_offset;
+    uint16_t                reference_count;
+    SegmentIndexRefEntry    *references;
+} SegmentIndexBox;
+
+typedef struct SubsegmentIndexEntry {
+    uint32_t                range_count;
+    uint8_t                 *levels;
+    uint32_t                *range_sizes;
+} SubsegmentIndexEntry;
+
+typedef struct SubsegmentIndexBox { // ssix
+    FullBox                 box;
+    uint32_t                subsegment_count;
+    SubsegmentIndexEntry    *subsegments;
+} SubsegmentIndexBox;
+
+typedef struct ProducerReferenceTimeBox { // prft
+    FullBox                 box;
+    uint32_t                reference_track_id;
+    uint64_t                ntp_timestamp;
+    uint64_t                media_time;
+} ProducerReferenceTimeBox;
+
+typedef struct ObjectDescriptorBox { // iods
+    FullBox                 box;
+    ObjectDescriptor        od;
+} ObjectDescriptorBox;
+
+// icnf
+// tims
+// tsro
+// snro
+// srpp
+// hnti
+// sdp_
+// hinf
+// trpy
+// nump
+// tpyl
+// totl
+// npck
+// tpay
+// maxr
+// dmed
+// dimm
+// drep
+// tmin
+// tmax
+// pmax
+// dmax
+// payt
+// fdp_
+// fdsa
+// fdpa
+// extr
+// feci
+// rm2t
+// sm2t
+// tPAT
+// tPMT
+// tOD
+// tsti
+// istm
+// pm2t
+// tssy
+// tssr
+// rcsr
+// ccid
+// sroc
+// prtp
+// roll
+// prol
+// rash
+// alst
+// rap_
+// tele
+// sap_
+// colr
+// chn1
+// dmix
+// ludt
+// alou
+// tlou
+// stxt
+// stpp
+// sbtt
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif // BOXES_H

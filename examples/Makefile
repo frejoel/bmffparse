@@ -1,23 +1,14 @@
 
 CC = gcc
-ODIR = bin
-CCDIR = coverage
-INSTALL_DIR = /usr/local
 CCOBJDIR = $(CCDIR)/obj
 CFLAGS = -I../bin -L../bin
 LIBS = -lbmff
 
 .SECONDEXPANSION:
-OBJ_EXAMPLES := $(patsubst %.c, %.o, $(wildcard *.c))
+OBJ_EXS := $(patsubst %.c, %.o, $(wildcard *.c))
 
 DEBUG ?= 0
-COVERAGE ?= 0
 PROFILING ?= 0
-
-ifeq ($(COVERAGE), 1)
-	CFLAGS += -fprofile-arcs -ftest-coverage -fprofile-dir=$(CCOBJDIR)
-	DEBUG = 1
-endif
 
 ifeq ($(PROFILING), 1)
 	CFLAGS += -pg
@@ -30,20 +21,20 @@ else
 	CFLAGS += -O2
 endif
 
-all: deps examples
+all: examples
+
+.PHONY: style tests check clean
+
+style:
+	astyle --style=linux -n examples/*.h examples/*.c
+
+%.o: %.c
+	$(CC) -o $@ $< $(CFLAGS) $(LIBS)
 
 deps:
 	$(MAKE) -C ../ static
 
-.PHONY: style clean
-
-style:
-	astyle --style=linux -n *.h *.c
-
-%.o: %.c
-	$(CC) -c -o $@ $< $(CFLAGS) $(LIBS)
-
-examples: deps $(OBJ_EXAMPLES)
+examples: deps $(OBJ_EXS)
 
 clean:
 	rm -f -r $(ODIR) $(CCDIR)

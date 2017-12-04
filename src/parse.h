@@ -25,29 +25,25 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-#include "context.h"
-#include "boxes.h"
+#include "bmff.h"
 
 #define PARSER_FUNC(func_name)  BMFFCode func_name(BMFFContext *ctx, const uint8_t * data, size_t size, Box **box_ptr)
 // number of items in the parse_map
-#define PARSE_MAP_LEN   (57) // 68
+#define PARSE_MAP_LEN   (123)
 
 /*
- * Box parser functioin potiner.
+ * Box parser function potiner
  */
 typedef BMFFCode (*parse_func) (BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr);
 
-// conversion functions
-uint16_t parse_u16(const uint8_t *data);
-uint32_t parse_u32(const uint8_t *data);
-uint64_t parse_u64(const uint8_t *data);
-fxpt16_t parse_fp16(const uint8_t *data);
-
-// list of parsing functions.
+// list of box/atom parsing functions.
+PARSER_FUNC(_bmff_parse_box);
 PARSER_FUNC(_bmff_parse_box_file_type);
 PARSER_FUNC(_bmff_parse_box_generic_container);
-PARSER_FUNC(_bmff_parse_box_track_reference);
+PARSER_FUNC(_bmff_parse_box_track_reference_type);
 PARSER_FUNC(_bmff_parse_box_full);
+PARSER_FUNC(_bmff_parse_box_full_string);
+PARSER_FUNC(_bmff_parse_box_full_data);
 PARSER_FUNC(_bmff_parse_box_progressive_download_info);
 PARSER_FUNC(_bmff_parse_box_media_data);
 PARSER_FUNC(_bmff_parse_box_handler);
@@ -85,7 +81,62 @@ PARSER_FUNC(_bmff_parse_box_media_header);
 PARSER_FUNC(_bmff_parse_box_video_media_header);
 PARSER_FUNC(_bmff_parse_box_sound_media_header);
 PARSER_FUNC(_bmff_parse_box_hint_media_header);
+PARSER_FUNC(_bmff_parse_box_subtitle_media_header);
+PARSER_FUNC(_bmff_parse_box_visual_sample_entry);
+PARSER_FUNC(_bmff_parse_box_audio_sample_entry);
+PARSER_FUNC(_bmff_parse_box_hint_sample_entry);
 PARSER_FUNC(_bmff_parse_box_sample_description);
+PARSER_FUNC(_bmff_parse_box_time_to_sample);
+PARSER_FUNC(_bmff_parse_box_composition_offset);
+PARSER_FUNC(_bmff_parse_box_sample_to_chunk);
+PARSER_FUNC(_bmff_parse_box_sample_size);
+PARSER_FUNC(_bmff_parse_box_compact_sample_size);
+PARSER_FUNC(_bmff_parse_box_chunk_offset);
+PARSER_FUNC(_bmff_parse_box_chunk_large_offset);
+PARSER_FUNC(_bmff_parse_box_sync_sample);
+PARSER_FUNC(_bmff_parse_box_shadow_sync_sample);
+PARSER_FUNC(_bmff_parse_box_padding_bits);
+PARSER_FUNC(_bmff_parse_box_degradation_priority);
+PARSER_FUNC(_bmff_parse_box_sample_group_description);
+PARSER_FUNC(_bmff_parse_box_track_group_type);
+PARSER_FUNC(_bmff_parse_box_extended_language_tag);
+PARSER_FUNC(_bmff_parse_box_bit_rate);
+PARSER_FUNC(_bmff_parse_box_composition_to_decode);
+PARSER_FUNC(_bmff_parse_box_sample_aux_info_sizes);
+PARSER_FUNC(_bmff_parse_box_sample_aux_info_offsets);
+PARSER_FUNC(_bmff_parse_box_track_fragment_decode_time);
+PARSER_FUNC(_bmff_parse_box_level_assignment);
+PARSER_FUNC(_bmff_parse_box_track_extension_properties);
+PARSER_FUNC(_bmff_parse_box_alt_startup_seq_properties);
+PARSER_FUNC(_bmff_parse_box_track_selection);
+PARSER_FUNC(_bmff_parse_box_kind);
+PARSER_FUNC(_bmff_parse_box_item_reference);
+PARSER_FUNC(_bmff_parse_box_item_data);
+PARSER_FUNC(_bmff_parse_box_metabox_relation);
+PARSER_FUNC(_bmff_parse_box_file_partition);
+PARSER_FUNC(_bmff_parse_box_reservoir);
+PARSER_FUNC(_bmff_parse_box_partition_entry);
+PARSER_FUNC(_bmff_parse_box_fd_session_group);
+PARSER_FUNC(_bmff_parse_box_group_id_to_name);
+PARSER_FUNC(_bmff_parse_box_fd_item_information);
+PARSER_FUNC(_bmff_parse_box_sub_track_information);
+PARSER_FUNC(_bmff_parse_box_sub_track_sample_group);
+PARSER_FUNC(_bmff_parse_box_stereo_video);
+PARSER_FUNC(_bmff_parse_box_segment_index);
+PARSER_FUNC(_bmff_parse_box_producer_reference_time);
+PARSER_FUNC(_bmff_parse_box_complete_track_info);
+PARSER_FUNC(_bmff_parse_box_clean_aperture);
+PARSER_FUNC(_bmff_parse_box_pixel_aspect_ratio);
+PARSER_FUNC(_bmff_parse_box_channel_layout);
+PARSER_FUNC(_bmff_parse_box_sampling_rate);
+PARSER_FUNC(_bmff_parse_box_subsegment_index);
+PARSER_FUNC(_bmff_parse_box_rtp_hint_sample_entry);
+PARSER_FUNC(_bmff_parse_box_fd_hint_sample_entry);
+PARSER_FUNC(_bmff_parse_box_xml_meta_data_sample_entry);
+PARSER_FUNC(_bmff_parse_box_text_meta_data_sample_entry);
+PARSER_FUNC(_bmff_parse_box_uri_meta_sample_entry);
+PARSER_FUNC(_bmff_parse_box_object_descriptor);
+//PARSER_FUNC(_bmff_parse_box_);
 
 typedef struct MapItem {
     union {
@@ -100,5 +151,25 @@ typedef struct MapItem {
  * List of functions used to parse the different ISO BMFF Boxes.
  */
 const MapItem parse_map[PARSE_MAP_LEN];
+
+// TODO: Parsers for the child descriptors
+/*
+size_t _bmff_parse_slconfig_descriptor(BMFFContext *ctx,
+                                       const uint8_t *data,
+                                       size_t size,
+                                       SLConfigDescriptor *desc);
+
+size_t _bmff_parse_es_descriptor(BMFFContext *ctx,
+                                 const uint8_t *data,
+                                 size_t size,
+                                 ESDescriptor *desc,
+                                 uint8_t od_profile_level_indicator);
+*/
+
+size_t _bmff_parse_object_descriptor(BMFFContext *ctx,
+                                     const uint8_t *data,
+                                     size_t size,
+                                     ObjectDescriptor *desc);
+
 
 #endif // PARSE_H

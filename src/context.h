@@ -28,76 +28,22 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "boxes.h"
-
-// forward declarations
-typedef struct BMFFContext BMFFContext;
-typedef enum BMFFEventId BMFFEventId;
+#include "bmff.h"
 
 /**
- * Memory Allocator.
- * Allocate memory block.
- * See malloc C90 (C++98) definition.
+ * Adds a new to the stack of memory allocations.
  */
-typedef void * (*bmff_malloc) (size_t size);
+void bmff_context_alloc_stack_push(BMFFContext *ctx);
 
 /**
- * Memory Allocator.
- * Allocate and zero initialize array.
- * See calloc C90 (C++98) definition.
+ * Removes the last layer of the memory allocations stack freeing all
+ * allocations that were done on this layer.
  */
-typedef void * (*bmff_calloc) (size_t num, size_t size);
+void bmff_context_alloc_stack_pop(BMFFContext *ctx);
 
 /**
- * Memory Allocator.
- * Changes the size of the memory block pointed at by ptr.
- * See realloc C90 (C++98) definition.
+ * Allocates memory on the active stack.
  */
-typedef void * (*bmff_realloc) (void *ptr, size_t size);
-
-/**
- * Parse Callback.
- */
-typedef void * (bmff_on_event) (BMFFContext *ctx,
-                                BMFFEventId id,
-                                void *data);
-
-/**
- * Memory deallocator.
- */
-typedef void (*bmff_free) (void *mem);
-
-/**
- * Return codes.
- */
-typedef enum BMFFCode {
-    BMFF_OK                                 = 0x0000,
-    BMFF_INVALID_CONTEXT                    = 0x0001,
-    BMFF_INVALID_DATA                       = 0x0002,
-    BMFF_INVALID_SIZE                       = 0x0003,
-    BMFF_INVALID_PARAMETER                  = 0x0004,
-} BMFFCode;
-
-/**
- * Callback Event Ids.
- */
-typedef enum BMFFEventId {
-    something,
-} BMFFEventId;
-
-/**
- * BMFF Parsing Context.
- */
-typedef struct BMFFContext {
-    bmff_malloc malloc;
-    bmff_realloc realloc;
-    bmff_calloc calloc;
-    bmff_free free;
-    // sample count set by the stsz or stz2 parser and used by the sdtp parser.
-    uint32_t sample_count;
-    // current track sampler handler type used by the stsd box to parse sample description data.
-    // this data comes from the active HandlerBox.
-    uint8_t track_sample_table_handler_type[4];
-} BMFFContext;
+void * bmff_context_alloc_on_stack(BMFFContext *ctx, size_t size);
 
 #endif // CONTEXT_H

@@ -1,31 +1,16 @@
-#include "parse.h"
-
 #include <memory.h>
 #include <stdio.h>
-
-#define ADV_PARSE_U8(A,P)      ((A) = (P)[0]); ((P)++)
-#define ADV_PARSE_S8(A,P)      ((A) = (P)[0]); ((P)++);
-#define ADV_PARSE_U16(A,P)      ((A) = parse_u16(P)); ((P)+=2);
-#define ADV_PARSE_S16(A,P)      ((A) = (int16_t)parse_u16(P)); ((P)+=2);
-#define ADV_PARSE_U32(A,P)      ((A) = parse_u32(P)); ((P)+=4);
-#define ADV_PARSE_S32(A,P)      ((A) = (int32_t)parse_u32(P)); ((P)+=4);
-#define ADV_PARSE_U64(A,P)      ((A) = parse_u64(P)); ((P)+=8);
-#define ADV_PARSE_S64(A,P)      ((A) = (int64_t)parse_u64(P)); ((P)+=8);
-#define ADV_PARSE_FP16(A,P)     ((A) = parse_fp16(P)); ((P)+=4);
-#define ADV_PARSE_FP8(A,P)      ((A) = parse_fp8(P)); ((P)+=2);
-#define ADV_PARSE_STR(A,P)      ((A) = (P)); while(*(P) != '\0'){(P)++;}; (P)++;
-#define ADV_PARSE_MATRIX(A,P)   int i=0; for(;i<9;++i){(A)[i] = (int32_t)parse_u32(P);(P)+=4;}; 
-
-#define BOX_MALLOC(M, T)        T *M = ctx->malloc(sizeof(T)); memset(M, 0, sizeof(T));
-#define BOX_MALLOCN(M, T, N)    M = ctx->malloc(sizeof(T)*(N)); memset(M, 0, sizeof(T)*(N));      
+#include "parse_common.h"
+#include "parse.h"
 
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},
+    {"styp", 1, _bmff_parse_box_file_type},
     {"moov", 1, _bmff_parse_box_generic_container},
     {"trak", 1, _bmff_parse_box_generic_container},
     {"edts", 1, _bmff_parse_box_generic_container},
     {"mdia", 1, _bmff_parse_box_generic_container},
-    {"mnif", 1, _bmff_parse_box_generic_container},
+    {"minf", 1, _bmff_parse_box_generic_container},
     {"dinf", 1, _bmff_parse_box_generic_container},
     {"stbl", 1, _bmff_parse_box_generic_container},
     {"mvex", 1, _bmff_parse_box_generic_container},
@@ -34,8 +19,15 @@ const MapItem parse_map[] = {
     {"mfra", 1, _bmff_parse_box_generic_container},
     {"udta", 1, _bmff_parse_box_generic_container},
     {"tref", 1, _bmff_parse_box_generic_container},
-    {"hint", 0, _bmff_parse_box_track_reference},
-    {"cdsc", 0, _bmff_parse_box_track_reference},
+    {"meco", 1, _bmff_parse_box_generic_container},
+    {"strk", 1, _bmff_parse_box_generic_container},
+    {"strd", 1, _bmff_parse_box_generic_container},
+    {"hint", 0, _bmff_parse_box_track_reference_type},
+    {"cdsc", 0, _bmff_parse_box_track_reference_type},
+    {"font", 0, _bmff_parse_box_track_reference_type},
+    {"vdep", 0, _bmff_parse_box_track_reference_type},
+    {"vplx", 0, _bmff_parse_box_track_reference_type},
+    {"subt", 0, _bmff_parse_box_track_reference_type},
     {"nmhd", 0, _bmff_parse_box_full},
     {"pdin", 0, _bmff_parse_box_progressive_download_info},
     {"mdat", 0, _bmff_parse_box_media_data},
@@ -75,7 +67,67 @@ const MapItem parse_map[] = {
     {"vmhd", 0, _bmff_parse_box_video_media_header},
     {"smhd", 0, _bmff_parse_box_sound_media_header},
     {"hmhd", 0, _bmff_parse_box_hint_media_header},
+    {"sthd", 0, _bmff_parse_box_subtitle_media_header},
     {"stsd", 0, _bmff_parse_box_sample_description},
+    {"stts", 0, _bmff_parse_box_time_to_sample},
+    {"ctts", 0, _bmff_parse_box_composition_offset},
+    {"stsc", 0, _bmff_parse_box_sample_to_chunk},
+    {"stsz", 0, _bmff_parse_box_sample_size},
+    {"stz2", 0, _bmff_parse_box_compact_sample_size},
+    {"stco", 0, _bmff_parse_box_chunk_offset},
+    {"co64", 0, _bmff_parse_box_chunk_large_offset},
+    {"stss", 0, _bmff_parse_box_sync_sample},
+    {"stsh", 0, _bmff_parse_box_shadow_sync_sample},
+    {"padb", 0, _bmff_parse_box_padding_bits},
+    {"stdp", 0, _bmff_parse_box_degradation_priority},
+    {"sgpd", 0, _bmff_parse_box_sample_group_description},
+    {"msrc", 0, _bmff_parse_box_track_group_type},
+    {"elng", 0, _bmff_parse_box_extended_language_tag},
+    {"btrt", 0, _bmff_parse_box_bit_rate},
+    {"cslg", 0, _bmff_parse_box_composition_to_decode},
+    {"saiz", 0, _bmff_parse_box_sample_aux_info_sizes},
+    {"saio", 0, _bmff_parse_box_sample_aux_info_offsets},
+    {"tfdt", 0, _bmff_parse_box_track_fragment_decode_time},
+    {"leva", 0, _bmff_parse_box_level_assignment},
+    {"trep", 0, _bmff_parse_box_track_extension_properties},
+    {"assp", 0, _bmff_parse_box_alt_startup_seq_properties},
+    {"tsel", 0, _bmff_parse_box_track_selection},
+    {"kind", 0, _bmff_parse_box_kind},
+    {"iref", 0, _bmff_parse_box_item_reference},
+    {"idat", 0, _bmff_parse_box_item_data},
+    {"mere", 0, _bmff_parse_box_metabox_relation},
+    {"fpar", 0, _bmff_parse_box_file_partition},
+    {"fecr", 0, _bmff_parse_box_reservoir},
+    {"fire", 0, _bmff_parse_box_reservoir},
+    {"paen", 0, _bmff_parse_box_partition_entry},
+    {"segr", 0, _bmff_parse_box_fd_session_group},
+    {"gitn", 0, _bmff_parse_box_group_id_to_name},
+    {"fiin", 0, _bmff_parse_box_fd_item_information},
+    {"stri", 0, _bmff_parse_box_sub_track_information},
+    {"stsg", 0, _bmff_parse_box_sub_track_sample_group},
+    {"rinf", 0, _bmff_parse_box_protection_scheme_info},
+    {"stvi", 0, _bmff_parse_box_stereo_video},
+    {"sidx", 0, _bmff_parse_box_segment_index},
+    {"prft", 0, _bmff_parse_box_producer_reference_time},
+    {"cinf", 0, _bmff_parse_box_complete_track_info},
+    {"clap", 0, _bmff_parse_box_clean_aperture},
+    {"pasp", 0, _bmff_parse_box_pixel_aspect_ratio},
+    {"chnl", 0, _bmff_parse_box_channel_layout},
+    {"srat", 0, _bmff_parse_box_sampling_rate},
+    {"ssix", 0, _bmff_parse_box_subsegment_index},
+    {"rtp ", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"srtp", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"rrtp", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"rsrp", 0, _bmff_parse_box_rtp_hint_sample_entry},
+    {"fdp ", 0, _bmff_parse_box_fd_hint_sample_entry},
+    {"metx", 0, _bmff_parse_box_xml_meta_data_sample_entry},
+    {"txtC", 0, _bmff_parse_box_full_string},
+    {"mett", 0, _bmff_parse_box_text_meta_data_sample_entry},
+    {"uri ", 0, _bmff_parse_box_full_string},
+    {"uriI", 0, _bmff_parse_box_full_data},
+    {"urim", 0, _bmff_parse_box_uri_meta_sample_entry},
+    {"iods", 0, _bmff_parse_box_object_descriptor},
+    //{"", 0, _bmff_parse_box_},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
@@ -91,73 +143,6 @@ void print_box(const uint8_t *data, size_t size)
     }
     printf("};\n\n");
 }
-
-uint16_t parse_u16(const uint8_t *bytes)
-{
-    uint16_t val = *((uint16_t*)bytes);
-#ifdef __BIG_ENDIAN__
-    return val;
-#else
-    return ((val >> 8) & 0x00FF) | ((val << 8) & 0xFF00);
-#endif
-}
-
-uint32_t parse_u32(const uint8_t *bytes)
-{
-    uint32_t val = *((uint32_t*)bytes);
-#ifdef __BIG_ENDIAN__
-    return val;
-#else
-    return ((val >> 24) & 0x000000FF) |
-           ((val >>  8) & 0x0000FF00) |
-           ((val <<  8) & 0x00FF0000) |
-           ((val << 24) & 0xFF000000) ;
-#endif
-}
-
-uint64_t parse_u64(const uint8_t *bytes)
-{
-    uint64_t val = *((uint64_t*)bytes);
-#ifdef __BIG_ENDIAN__
-    return val;
-#else
-    return ((val >> 56) & 0x00000000000000FFL) |
-           ((val >> 40) & 0x000000000000FF00L) |
-           ((val >> 24) & 0x0000000000FF0000L) |
-           ((val >>  8) & 0x00000000FF000000L) |
-           ((val <<  8) & 0x000000FF00000000L) |
-           ((val << 24) & 0x0000FF0000000000L) |
-           ((val << 40) & 0x00FF000000000000L) |
-           ((val << 56) & 0xFF00000000000000L) ;
-#endif
-}
-
-fxpt16_t parse_fp16(const uint8_t *bytes)
-{
-    float val = (float) ((int32_t) parse_u32(bytes));
-    return val / 65536.f;
-}
-
-fxpt8_t parse_fp8(const uint8_t *bytes)
-{
-    float val = (float) ((int16_t) parse_u16(bytes));
-    return val / 256.f;
-}
-
-uint32_t parse_var_length(const uint8_t *bytes, uint8_t length)
-{
-    uint32_t val = 0;
-
-    switch(length) {
-        case 1: val = bytes[0]; break;
-        case 2: val = (uint32_t) parse_u16(bytes); break;
-        case 3: val = (parse_u32(bytes) >> 8) & 0xFFFFFF; break;
-        case 4: val = parse_u32(bytes); break;
-    }
-
-    return val;
-}
-
 int parse_box(const uint8_t *data, size_t size, Box *box)
 {
     const uint8_t *ptr = data;
@@ -210,6 +195,22 @@ int parse_original_format_box(const uint8_t *data, size_t size, OriginalFormatBo
     return ptr - data;
 }
 
+BMFFCode _bmff_parse_box(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 8)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, AbstractBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
 BMFFCode _bmff_parse_box_file_type(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
@@ -225,47 +226,53 @@ BMFFCode _bmff_parse_box_file_type(BMFFContext *ctx, const uint8_t *data, size_t
     memcpy(&box->major_brand, ptr, 4);
     ptr += 4;
     ADV_PARSE_U32(box->minor_version, ptr);
-    box->nb_compatible_brands = (size-16) / 4;
+    box->nb_compatible_brands = (box->box.size-16) / 4;
     box->compatible_brands = ptr;
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventFileType, (void*)box);
     return BMFF_OK;
 }
 
-BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
-{
-    if(!ctx)        return BMFF_INVALID_CONTEXT;
-    if(!data)       return BMFF_INVALID_DATA;
-    if(size <= 8)   return BMFF_INVALID_SIZE;
-    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
-
-    BOX_MALLOC(box, ContainerBox);
-
-    const uint8_t *ptr = data;
-    ptr += parse_box(data, size, &box->box);
-
-    const uint8_t *end = data + box->box.size;
-
-    // count how many children Boxes there are.
-    box->child_count = 0;
-    box->children = NULL;
-
-    const uint8_t *tmp = ptr;
-    while(tmp + 8 < end) {
-        uint32_t box_size = parse_u32(tmp);
-        tmp += box_size;
-        box->child_count++;
+uint32_t _is_valid_cc4(const uint8_t *cc4) {
+    if(((cc4[0] >= 'a' && cc4[0] <= 'z') || (cc4[0] >= 'A' && cc4[0] <= 'Z') || cc4[0] == ' ') && 
+       ((cc4[1] >= 'a' && cc4[1] <= 'z') || (cc4[1] >= 'A' && cc4[1] <= 'Z') || cc4[1] == ' ') && 
+       ((cc4[2] >= 'a' && cc4[2] <= 'z') || (cc4[2] >= 'A' && cc4[2] <= 'Z') || cc4[2] == ' ') && 
+       ((cc4[3] >= 'a' && cc4[3] <= 'z') || (cc4[3] >= 'A' && cc4[3] <= 'Z') || cc4[3] == ' '))
+    {
+        return 1;
     }
+    return 0;
+}
+
+uint32_t _bmff_parse_children(BMFFContext *ctx, const uint8_t *data, size_t size, uint32_t *child_count, Box ***children)
+{
+    const uint8_t *tmp = data;
+    const uint8_t *end = &data[size];
+
+    uint32_t count = 0;
+    while(tmp + 8 < end && _is_valid_cc4(tmp + 4) == 1) {
+        uint32_t box_size = parse_u32(tmp);
+        if(box_size == 0 || tmp + box_size > end) {
+            break; // something went wrong
+        }
+        tmp += box_size;
+        count++;
+    }
+    *child_count = count;
 
     // allocate room for the children
-    if(box->child_count > 0) {
-        BOX_MALLOCN(box->children, Box*, box->child_count);
+    if(count > 0) {
+        BOX_MALLOCN(*children, Box*, count);
+    }else{
+        return 0;
     }
 
     // parse all the Boxes.
     int child_idx = 0;
 
-    while(ptr + 8 < end)
+    const uint8_t *ptr = data;
+    while(ptr + 8 < end && child_idx < count)
     {
         uint32_t box_size = parse_u32(ptr);
         // get the numerical value of the type, making sure to keep the bytes in
@@ -285,9 +292,8 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
                 BMFFCode res = parse_map[i].parse_func(ctx, ptr, end-ptr, &child_box);
                 if(res == BMFF_OK) {
                     // add the parsed Box to the list of children.
-                    box->children[child_idx] = child_box;
-                    child_idx++;
-                    printf("%c%c%c%c, size: %d\n", child_box->type[0], child_box->type[1], child_box->type[2], child_box->type[3], child_box->size);
+                    (*children)[child_idx] = child_box;
+                    //printf("%c%c%c%c, size: %d\n", child_box->type[0], child_box->type[1], child_box->type[2], child_box->type[3], child_box->size);
                 } else {
                     printf("Error paring box: %d\n", res);
                 }
@@ -300,14 +306,74 @@ BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data
             printf("no box parser found %c%c%c%c\n", ptr[4], ptr[5], ptr[6], ptr[7]);
         }
 
+        child_idx++;
         ptr += box_size;
+    }
+
+    // return how many bytes were parsed
+    return ptr - data;
+}
+
+BMFFCode _bmff_parse_box_generic_container(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size <= 8)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ContainerBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_full_string(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 13)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, StringFullBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(ptr, size, &box->box);
+
+    ADV_PARSE_STR(box->value, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_full_data(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)    return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, DataFullBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(ptr, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    box->data_len = end-ptr;
+    if(box->data_len > 0) {
+        box->data = ptr;
     }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
 }
 
-BMFFCode _bmff_parse_box_track_reference(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+BMFFCode _bmff_parse_box_track_reference_type(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
@@ -330,7 +396,6 @@ BMFFCode _bmff_parse_box_track_reference(BMFFContext *ctx, const uint8_t *data, 
     }
 
     *box_ptr = (Box*)box;
-
     return BMFF_OK;
 }
 
@@ -407,11 +472,15 @@ BMFFCode _bmff_parse_box_handler(BMFFContext *ctx, const uint8_t *data, size_t s
     ptr += parse_full_box(data, size, &box->box);
 
     ptr += 4; // pre-defined (0).
-    ADV_PARSE_U32(box->handler_type, ptr);
+    // copy the active handler type to the context
+    memcpy(ctx->handler_type, ptr, 4);
+    memcpy(box->handler_type, ptr, 4);
+    ptr += 4;
     ptr += 12; // uint32_t x 3 (12) reserved.
     box->name = ptr; // NULL terminated string.
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventHandler, (void*)box);
     return BMFF_OK;
 }
 
@@ -427,7 +496,11 @@ BMFFCode _bmff_parse_box_primary_item(BMFFContext *ctx, const uint8_t *data, siz
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_U16(box->item_id, ptr);
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->item_id, ptr);
+    }else {
+        ADV_PARSE_U32(box->item_id, ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -450,9 +523,18 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
     ptr++;
 
     box->base_offset_size = ((*ptr) >> 4) & 0x0F;
+
+    uint8_t ver = box->box.version;
+    if(ver == 1 || ver == 2) {
+        box->index_size = (*ptr) & 0x0F;
+    }
     ptr++;
 
-    ADV_PARSE_U16(box->item_count, ptr);
+    if(ver < 2) {
+        ADV_PARSE_U16(box->item_count, ptr);
+    } else if(ver == 2) {
+        ADV_PARSE_U32(box->item_count, ptr);
+    }
 
     if(box->item_count > 0) {
         BOX_MALLOCN(box->items, ItemLocation, box->item_count);
@@ -463,37 +545,54 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
         int i=0;
         for(; i < box->item_count; ++i) {
             ItemLocation *item = &box->items[i];
-            ADV_PARSE_U16(item->item_id, ptr);
+            if(ver < 2) {
+                ADV_PARSE_U16(item->item_id, ptr);
+            }else if(ver == 2) {
+                ADV_PARSE_U32(item->item_id, ptr);
+            }
+            if(ver == 1 || ver == 2) {
+                ++ptr; // (12) reserved
+                item->construction_method = (*ptr) & 0x0F;
+                ++ptr;
+            }
             ADV_PARSE_U16(item->data_reference_index, ptr);
+            
             if(box->base_offset_size == 4) {
-                uint32_t val = parse_u32(ptr);
-                item->base_offset = (uint64_t)val;
-                ptr += 4;
+                ADV_PARSE_U32(item->base_offset, ptr);
             }else if(box->base_offset_size == 8) {
                 ADV_PARSE_U64(item->base_offset, ptr);
             }else{
                 item->base_offset = 0;
             }
-            ADV_PARSE_U16(item->extent_count, ptr);
 
+            ADV_PARSE_U16(item->extent_count, ptr);
             if(item->extent_count > 0) {
                 BOX_MALLOCN(item->extents, Extent, item->extent_count);
+                
                 int j=0;
                 for(; j<item->extent_count; ++j) {
                     Extent *extent = &item->extents[j];
+                    
+                    if((ver == 1 || ver ==2) && (box->index_size > 0)) {
+                        if(box->index_size == 4) {
+                            ADV_PARSE_U32(extent->index, ptr);
+                        }else if(box->index_size == 8) {
+                            ADV_PARSE_U64(extent->index, ptr);
+                        }else{
+                            extent->index = 0;
+                        }
+                    }
+
                     if(box->offset_size == 4) {
-                        uint32_t val = parse_u32(ptr);
-                        extent->offset = (uint64_t)val;
-                        ptr += 4;
+                        ADV_PARSE_U32(extent->offset, ptr);
                     }else if(box->offset_size == 8) {
                         ADV_PARSE_U64(extent->offset, ptr);
                     }else{
                         extent->offset = 0;
                     }
+
                     if(box->length_size == 4) {
-                        uint32_t val = parse_u32(ptr);
-                        extent->length = (uint64_t)val;
-                        ptr += 4;
+                        ADV_PARSE_U32(extent->length, ptr);
                     }else if(box->length_size == 8) {
                         ADV_PARSE_U64(extent->length, ptr);
                     }else{
@@ -508,6 +607,36 @@ BMFFCode _bmff_parse_box_item_location(BMFFContext *ctx, const uint8_t *data, si
     return BMFF_OK;
 }
 
+size_t _bmff_parse_fd_item_info_extension(BMFFContext *ctx, const uint8_t *data, size_t size, FDItemInfoExtension **box_ptr)
+{
+    if(!ctx)        return 0;
+    if(!data)       return 0;
+    if(size < 27)   return 0;
+    if(!box_ptr)    return 0;
+
+    BOX_MALLOC(box, FDItemInfoExtension);
+
+    const uint8_t *ptr = data;
+
+    ADV_PARSE_STR(box->content_location, ptr);
+    ADV_PARSE_STR(box->content_md5, ptr);
+    ADV_PARSE_U64(box->content_length, ptr);
+    ADV_PARSE_U64(box->transfer_length, ptr);
+    ADV_PARSE_U8(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->group_ids, uint32_t, box->entry_count);
+    }
+
+    uint8_t i = 0;
+    for(; i < box->entry_count; ++i) {
+        ADV_PARSE_U32(box->group_ids[i], ptr);
+    }
+
+    *box_ptr = box;
+    return ptr - data;
+}
+
 BMFFCode _bmff_parse_box_item_info_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
@@ -520,11 +649,45 @@ BMFFCode _bmff_parse_box_item_info_entry(BMFFContext *ctx, const uint8_t *data, 
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_U16(box->item_id, ptr);
+    uint8_t ver = box->box.version;
+    if(ver <= 2) {
+        ADV_PARSE_U16(box->item_id, ptr);
+    }else if(ver == 3) {
+        ADV_PARSE_U32(box->item_id, ptr);
+    }
     ADV_PARSE_U16(box->item_protection_index, ptr);
+
+    if(ver >= 2) {
+        memcpy(box->item_type, ptr, 4);
+        ptr += 4;
+    }
+
     ADV_PARSE_STR(box->item_name, ptr);
-    ADV_PARSE_STR(box->content_type, ptr);
-    box->content_encoding = ptr;
+
+    if(ver == 0 || ver == 1 || memcmp(&box->item_type, "mime", 4) == 0) {
+        ADV_PARSE_STR(box->content_type, ptr);
+        ADV_PARSE_STR(box->content_encoding, ptr);
+    }
+
+    if(ver == 1) {
+        memcpy(box->extension_type, ptr, 4);
+        ptr += 4;
+        const uint8_t *end = data + box->box.size;
+        if(strcmp(box->extension_type, "fdel") == 0) {
+            BOX_MALLOC(ext, FDItemInfoExtension); 
+            box->extension_size = _bmff_parse_fd_item_info_extension(ctx, ptr, end - ptr, &ext);
+            box->extension = ext;
+            ptr += box->extension_size;
+        }else{
+            box->extension_bytes = ptr;
+            box->extension_size = end - ptr;
+            ptr = end;
+        }
+    }
+
+    if(ver >= 2 && memcmp(&box->item_type, "uri ", 4) == 0) {
+        ADV_PARSE_STR(box->item_uri_type, ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -542,10 +705,14 @@ BMFFCode _bmff_parse_box_item_info(BMFFContext *ctx, const uint8_t *data, size_t
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_U16(box->entry_count, ptr);
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->entry_count, ptr);
+    }else {
+        ADV_PARSE_U32(box->entry_count, ptr);
+    }
 
     BOX_MALLOCN(box->entries, ItemInfoEntry*, box->entry_count);
-    int i=0;
+    uint32_t i=0;
     for(; i < box->entry_count; ++i) {
         BMFFCode res = _bmff_parse_box_item_info_entry(ctx, ptr, size-(ptr-data), (Box**)&box->entries[i]);
         if(res != BMFF_OK) {
@@ -734,26 +901,18 @@ BMFFCode _bmff_parse_box_protection_scheme_info(BMFFContext *ctx, const uint8_t 
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(size < 20)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, ProtectionSchemeInfoBox);
 
     const uint8_t *ptr = data;
-    ptr += parse_original_format_box(data, size, &box->box);
+    ptr += parse_box(ptr, size, &box->box);
+    ptr += parse_original_format_box(ptr, size, &box->original_format);
 
-    const uint8_t *end = data + box->box.box.size;
+    const uint8_t *end = data + box->box.size;
 
     // parse the optional boxes
-    if(ptr < end && strncmp(ptr+4, "imif", 4) == 0) {
-        BMFFCode res = _bmff_parse_box_ipmp_info(ctx, ptr, end-ptr, (Box**)&box->ipmp_descriptors);
-        if(res != BMFF_OK) {
-            return res;
-        }
-        uint32_t box_size = parse_u32(ptr);
-        ptr += box_size;
-    }
-
     if(ptr < end && strncmp(ptr+4, "schm", 4) == 0) {
         BMFFCode res = _bmff_parse_box_scheme_type(ctx, ptr, end-ptr, (Box**)&box->scheme_type);
         if(res != BMFF_OK) {
@@ -839,14 +998,16 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
         AbstractBox **box_ptr;  // address of the pointer to the parsed box
     };
     // map of parsing functions
-    const int map_count = 6;
-    struct Map map[6] = {
+    const int map_count = 8;
+    struct Map map[8] = {
          { "pitm", _bmff_parse_box_primary_item, (AbstractBox**)&box->primary_resource },
          { "dinf", _bmff_parse_box_generic_container, (AbstractBox**)&box->file_locations },
          { "iloc", _bmff_parse_box_item_location, (AbstractBox**)&box->item_locations },
          { "ipro", _bmff_parse_box_item_protection, (AbstractBox**)&box->protections },
          { "iinf", _bmff_parse_box_item_info, (AbstractBox**)&box->item_infos },
          { "ipmc", _bmff_parse_box_ipmp_control, (AbstractBox**)&box->ipmp_control },
+         { "iref", _bmff_parse_box_item_reference, (AbstractBox**)&box->item_refs },
+         { "idat", _bmff_parse_box_item_data, (AbstractBox**)&box->item_data },
     };
 
     // Parse optional Boxes
@@ -877,11 +1038,9 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
           ptr += parse_u32(ptr);
         }
     }
-    // Item Protection Box
-    // Item Info Box
-    // IPMP Control Box
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventMeta, (void*)box);
     return BMFF_OK;
 }
 
@@ -920,6 +1079,7 @@ BMFFCode _bmff_parse_box_movie_header(BMFFContext *ctx, const uint8_t *data, siz
     ADV_PARSE_U32(box->next_track_id, ptr);
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventMovieHeader, (void*)box);
     return BMFF_OK;
 }
 
@@ -1060,10 +1220,11 @@ BMFFCode _bmff_parse_box_track_header(BMFFContext *ctx, const uint8_t *data, siz
     // reserved (16)
     ptr += 2;
     ADV_PARSE_MATRIX(box->matrix, ptr);
-    ADV_PARSE_U32(box->width, ptr);
-    ADV_PARSE_U32(box->height, ptr);
+    ADV_PARSE_FP16(box->width, ptr);
+    ADV_PARSE_FP16(box->height, ptr);
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventTrackHeader, (void*)box);
     return BMFF_OK;
 }
 
@@ -1107,7 +1268,8 @@ BMFFCode _bmff_parse_box_track_extends(BMFFContext *ctx, const uint8_t *data, si
     ADV_PARSE_U32(box->default_sample_size, ptr);
 
     // default sample flags
-    // (6) reserved
+    // (4) reserved
+    box->default_sample_is_leading = (eBoolean)((ptr[0] >> 2) & 0x03); // (2) sample is leading
     box->default_sample_depends_on = (eBoolean)(ptr[0] & 0x03); // (2) sample depends on
     box->default_sample_is_depended_on = (eBoolean)((ptr[1] >> 6) & 0x03); // (2) sample is depended on
     box->default_sample_has_redundancy = (eBoolean)((ptr[1] >> 4) & 0x03); // (2) sample has redundency
@@ -1200,7 +1362,11 @@ BMFFCode _bmff_parse_box_track_run(BMFFContext *ctx, const uint8_t *data, size_t
             ADV_PARSE_U32(sample->flags, ptr);
         }
         if(flags & eTrunSampleCompTimeOffsetsPresent == eTrunSampleCompTimeOffsetsPresent) {
-            ADV_PARSE_U32(sample->composition_time_offset, ptr);
+            if(box->box.version == 0) {
+                ADV_PARSE_U32(sample->composition_time_offset, ptr);
+            }else{
+                ADV_PARSE_S32(sample->composition_time_offset, ptr);
+            }
         }
     }
 
@@ -1229,7 +1395,7 @@ BMFFCode _bmff_parse_box_sample_dependency_type(BMFFContext *ctx, const uint8_t 
     uint32_t i=0;
     for(; i < ctx->sample_count; ++i) {
         SampleDependencyType *sample = &box->samples[i];
-        // reserved (2)
+        sample->is_leading = (eBoolean)((ptr[0] >> 6) & 0x03); // (2) is a leading sample
         sample->depends_on = (eBoolean)((ptr[0] >> 4) & 0x03); // (2) sample depends on
         sample->is_depended_on = (eBoolean)((ptr[0] >> 2) & 0x03); // (2) sample is depended on
         sample->has_redundancy = (eBoolean)(ptr[0] & 0x03); // (2) sample has redundency
@@ -1253,6 +1419,9 @@ BMFFCode _bmff_parse_box_sample_to_group(BMFFContext *ctx, const uint8_t *data, 
     ptr += parse_full_box(data, size, &box->box);
 
     ADV_PARSE_U32(box->grouping_type, ptr);
+    if(box->box.version == 1) {
+        ADV_PARSE_U32(box->grouping_type_param, ptr);
+    }
     ADV_PARSE_U32(box->entry_count, ptr);
 
     if(box->entry_count > 0) {
@@ -1307,7 +1476,7 @@ BMFFCode _bmff_parse_box_sub_sample_information(BMFFContext *ctx, const uint8_t 
                 }
                 ADV_PARSE_U8(info->priority, ptr);
                 ADV_PARSE_U8(info->discardable, ptr);
-                ptr += 4; // reserved (32)
+                ADV_PARSE_U32(info->codec_specific_params, ptr);
             }
         }
     }
@@ -1346,7 +1515,7 @@ BMFFCode _bmff_parse_box_data_entry_url(BMFFContext *ctx, const uint8_t *data, s
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
-    if(size < 13)   return BMFF_INVALID_SIZE;
+    if(size < 12)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
     BOX_MALLOC(box, DataEntryBox);
@@ -1354,7 +1523,9 @@ BMFFCode _bmff_parse_box_data_entry_url(BMFFContext *ctx, const uint8_t *data, s
     const uint8_t *ptr = data;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_STR(box->location, ptr);
+    if(ptr < data + size) {
+        ADV_PARSE_STR(box->location, ptr);
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
@@ -1401,22 +1572,27 @@ BMFFCode _bmff_parse_box_data_reference(BMFFContext *ctx, const uint8_t *data, s
         for(; i < box->entry_count; ++i) {
             // this can contain either url or urn boxes, so we just need to check for the
             // 'l' vs 'n' in to the type of the next box to identify them correctly.
+            char d[12];
             DataEntryBox **dataEntry = &box->data_entries[i];
+            BMFFCode res = BMFF_OK;
             if(ptr[6] == 'n') {
-                _bmff_parse_box_data_entry_urn(ctx, ptr, end-ptr, (Box**)dataEntry);
+                res = _bmff_parse_box_data_entry_urn(ctx, ptr, end-ptr, (Box**)dataEntry);
             }else{
-                _bmff_parse_box_data_entry_url(ctx, ptr, end-ptr, (Box**)dataEntry);
+                res = _bmff_parse_box_data_entry_url(ctx, ptr, end-ptr, (Box**)dataEntry);
             }
             // the version and flags are copied from the Data Reference Box
-            (*dataEntry)->box.version = box->box.version;
-            (*dataEntry)->box.flags = box->box.flags;
+            if(res == BMFF_OK) {
+                (*dataEntry)->box.version = box->box.version;
+                (*dataEntry)->box.flags = box->box.flags;
+            }
             // move ptr to the start of the next Data Entry box.
-            uint32_t size = parse_u32(ptr);
-            ptr += size;
+            uint32_t box_size = parse_u32(ptr);
+            ptr += box_size;
         }
     }
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventDataReference, (void*)box);
     return BMFF_OK;
 }
 
@@ -1487,6 +1663,7 @@ BMFFCode _bmff_parse_box_media_header(BMFFContext *ctx, const uint8_t *data, siz
     ptr += 2;
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventMediaHeader, (void*)box);
     return BMFF_OK;
 }
 
@@ -1508,6 +1685,7 @@ BMFFCode _bmff_parse_box_video_media_header(BMFFContext *ctx, const uint8_t *dat
     ADV_PARSE_U16(box->op_color[2], ptr);
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventVideoMediaHeader, (void*)box);
     return BMFF_OK;
 }
 
@@ -1526,6 +1704,7 @@ BMFFCode _bmff_parse_box_sound_media_header(BMFFContext *ctx, const uint8_t *dat
     ADV_PARSE_FP8(box->balance, ptr);
 
     *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventSoundMediaHeader, (void*)box);
     return BMFF_OK;
 }
 
@@ -1550,81 +1729,1837 @@ BMFFCode _bmff_parse_box_hint_media_header(BMFFContext *ctx, const uint8_t *data
     return BMFF_OK;
 }
 
+BMFFCode _bmff_parse_box_subtitle_media_header(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubtitleMediaHeaderBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_incomplete_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, IncompleteSampleEntry **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, IncompleteSampleEntry);
+
+    const uint8_t *ptr = data;
+    const uint8_t *end = data + size;
+
+    BMFFCode res = _bmff_parse_box_complete_track_info(ctx, ptr, end-ptr, (Box**)&box->complete_track_info);
+    if(res != BMFF_OK) {
+        return res;
+    }
+    ptr += box->complete_track_info->box.size;
+
+    // parse any other boxes
+    if(end > ptr) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+    }
+
+    *box_ptr = box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_visual_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 53)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, VisualSampleEntry);
+    box->is_incomplete = eBooleanFalse;
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    // Sample Entry parsing
+    ptr += 6; // reserverd (8)[6]
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    // Visual Sample Entry parsing
+    ptr += 16; // predefined(2), reserved(2), predefined(12)
+    ADV_PARSE_U16(box->width, ptr);
+    ADV_PARSE_U16(box->height, ptr);
+    ADV_PARSE_FP16(box->horiz_resolution, ptr);
+    ADV_PARSE_FP16(box->vert_resolution, ptr);
+    ptr += 4; // reserved
+    ADV_PARSE_U16(box->frame_count, ptr);
+    // the first byte contains the length of the compressor string
+    uint8_t len = *ptr;
+    if(len > 31) len = 31; // make sure the length is valid
+    ptr++;
+    // copy the string
+    strncpy(box->compressor_name, ptr, len);
+    // null terminate the string at it's length
+    box->compressor_name[len] = '\0';
+    ptr += 31;
+    ADV_PARSE_U16(box->depth, ptr);
+    ptr += 2; // predefined
+
+    // CleanApertureBox
+    if(ptr + 8 < end && strncmp(&ptr[4], "clap", 4) == 0) {
+        BMFFCode res = _bmff_parse_box_clean_aperture(ctx, ptr, end-ptr, (Box**)&box->clap);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->clap->box.size;
+    }
+
+    // PixelAspectRatioBox
+    if(ptr + 8 < end && strncmp(&ptr[4], "pasp", 4) == 0) {
+        BMFFCode res = _bmff_parse_box_pixel_aspect_ratio(ctx, ptr, end-ptr, (Box**)&box->pasp);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->pasp->box.size;
+    }
+
+    // parse incomplete data if the sample has an incomplete tag
+    if(ptr + 8 < end && strncmp(box->box.type, "icpv", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+    }
+
+    if(ptr + 8 < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventVisualSample, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_audio_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 36)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, AudioSampleEntry);
+    box->is_incomplete = eBooleanFalse;
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    // Sample Entry parsing
+    ptr += 6; // reserverd (8)[6]
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    ptr += 8; // reserved (32)[2]
+    ADV_PARSE_U16(box->channel_count, ptr);
+    ADV_PARSE_U16(box->sample_size, ptr);
+    ptr += 2; // predefined
+    ptr += 2; // reserved
+    ADV_PARSE_FP16(box->sample_rate, ptr);
+
+    // assign the channel count to the context for any child box parsing
+    ctx->channel_count = box->channel_count;
+
+    // Sampling Rate
+    BMFFCode res;
+    if(ctx->sample_description_version == 1 && strncmp(&ptr[4], "srat", 4) == 0) {
+        res = _bmff_parse_box_sampling_rate(ctx, ptr, end-ptr, (Box**)&box->sampling_rate);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->sampling_rate->box.size;
+    }
+
+    // Channel Layout
+    if(strncmp(&ptr[4], "chnl", 4) == 0) {
+        res = _bmff_parse_box_channel_layout(ctx, ptr, end-ptr, (Box**)&box->channel_layout);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->channel_layout->box.size;
+    }
+
+    if(strncmp(box->box.type, "icpa", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+    }
+
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventAudioSample, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_hint_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, HintSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    // Sample Entry parsing
+    ptr += 6; // reserverd (8)[6]
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    box->data = ptr;
+    box->data_size = (data + box->box.size) -  ptr;
+
+    ptr += box->data_size;
+
+    // parse incomplete data if the sample has an incomplete tag
+    if(strncmp(box->box.type, "icph", 4) == 0) {
+        box->is_incomplete = eBooleanTrue;
+        // NOTE: Not sure tell where the hint data ends and the
+        //       incomplete sample data begins ?!?!?!?!
+    }else{
+        box->is_incomplete = eBooleanFalse;
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventHintSample, (void*)box);
+    return BMFF_OK;
+}
+
 BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleDescriptionBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+    const uint8_t *end = ptr + box->box.size;
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+
+        parse_func parser;
+
+        BOX_MALLOCN(box->entries, SampleEntry*, box->entry_count);
+
+        if( strncmp(ctx->handler_type, "vide", 4) == 0 ||
+            strncmp(ctx->handler_type, "icpv", 4) == 0)
+        {
+            parser = _bmff_parse_box_visual_sample_entry;
+        }
+        else if( strncmp(ctx->handler_type, "soun", 4) == 0 ||
+                 strncmp(ctx->handler_type, "icpa", 4) == 0)
+        {
+            parser = _bmff_parse_box_audio_sample_entry;
+        }
+        else if( strncmp(ctx->handler_type, "hint", 4) == 0 ||
+                 strncmp(ctx->handler_type, "icph", 4) == 0)
+        {
+            parser = _bmff_parse_box_hint_sample_entry;
+        }
+        else
+        {
+            parser = _bmff_parse_box;
+        }
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            BMFFCode res = parser(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
+            if(res != BMFF_OK) {
+                return res;
+            }
+            ptr += box->entries[i]->box.size;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventSampleDescription, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_time_to_sample(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TimeToSampleBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sample_count, ptr);
+    if(box->sample_count > 0) {
+        BOX_MALLOCN(box->samples, TimeToSample, box->sample_count);
+
+        uint32_t i = 0;
+        for(; i < box->sample_count; ++i) {
+            TimeToSample *sample = &box->samples[i];
+            ADV_PARSE_U32(sample->count, ptr);
+            ADV_PARSE_U32(sample->delta, ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventTimeToSample, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_composition_offset(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompositionOffsetBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, CompositionOffset, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            CompositionOffset *entry = &box->entries[i];
+            ADV_PARSE_U32(entry->count, ptr);
+            if(box->box.version == 0) {
+                uint32_t offset;
+                ADV_PARSE_U32(offset, ptr);
+                entry->offset = (int64_t)offset;
+            }else if(box->box.version == 1) {
+                int32_t offset;
+                ADV_PARSE_S32(offset, ptr);
+                entry->offset = (int64_t)offset;
+            }
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sample_to_chunk(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleToChunkBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, SampleToChunk, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            SampleToChunk *entry = &box->entries[i];
+            ADV_PARSE_U32(entry->first_chunk, ptr);
+            ADV_PARSE_U32(entry->samples_per_chunk, ptr);
+            ADV_PARSE_U32(entry->sample_description_index, ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventSampleToChunk, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sample_size(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 24)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleSizeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sample_size, ptr);
+    ADV_PARSE_U32(box->sample_count, ptr);
+
+    if(box->sample_size == 0 && box->sample_count > 0) {
+        BOX_MALLOCN(box->entry_sizes, uint32_t, box->sample_count);
+        uint32_t i = 0;
+        for(; i < box->sample_count; ++i) {
+            ADV_PARSE_U32(box->entry_sizes[i], ptr);
+        }   
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventSampleSize, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_compact_sample_size(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompactSampleSizeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ptr += 3; // reserved
+    ADV_PARSE_U8(box->field_size, ptr);
+    ADV_PARSE_U32(box->sample_count, ptr);
+
+    if(box->sample_count > 0) {
+        BOX_MALLOCN(box->entry_sizes, uint16_t, box->sample_count);
+        uint32_t i = 0;
+        for(; i < box->sample_count; ++i) {
+            if(box->field_size == 4) {
+                uint8_t val = *ptr;
+                if(i % 2 == 0) {
+                    val = (val >> 4) & 0x0F;
+                }else{
+                    val = val & 0x0F;
+                    ptr++;
+                }
+                box->entry_sizes[i] = (uint16_t)val;
+            }else if(box->field_size == 8) {
+                box->entry_sizes[i] = (uint16_t) *ptr;
+                ptr++;
+            }else if(box->field_size == 16) {
+                ADV_PARSE_U16(box->entry_sizes[i], ptr);
+            }
+        }   
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_chunk_offset(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ChunkOffsetBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->chunk_offsets, uint32_t, box->entry_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->entry_count; ++i) {
+        ADV_PARSE_U32(box->chunk_offsets[i], ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventChunkOffset, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_chunk_large_offset(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ChunkLargeOffsetBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->chunk_offsets, uint32_t, box->entry_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->entry_count; ++i) {
+        ADV_PARSE_U64(box->chunk_offsets[i], ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sync_sample(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SyncSampleBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->sample_numbers, uint32_t, box->entry_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->entry_count; ++i) {
+        ADV_PARSE_U32(box->sample_numbers[i], ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventSyncSample, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_shadow_sync_sample(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ShadowSyncSampleBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, ShadowSyncSample, box->entry_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->entry_count; ++i) 
+    {
+        ShadowSyncSample *sample = &box->entries[i];
+        ADV_PARSE_U32(sample->shadowed_sample_number, ptr);
+        ADV_PARSE_U32(sample->sync_sample_number, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_padding_bits(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, PaddingBitsBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sample_count, ptr);
+    if(box->sample_count > 0) {
+        BOX_MALLOCN(box->samples, PaddingBits, box->sample_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->sample_count; ++i) {
+        PaddingBits *sample = &box->samples[i];
+        uint8_t val = *ptr;
+        sample->pad1 = (val >> 4) & 0x07;
+        sample->pad2 = val & 0x07;
+        ptr++;
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_degradation_priority(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, DegradationPriorityBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(ctx->sample_count > 0) {
+        BOX_MALLOCN(box->priorities, uint16_t, ctx->sample_count);
+    }
+    box->priority_count = ctx->sample_count;
+
+    uint32_t i = 0;
+    for(; i < box->priority_count; ++i) {
+        ADV_PARSE_U16(box->priorities[i], ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sample_group_description(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleGroupDescriptionBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->grouping_type, ptr);
+    if(box->box.version == 1) {
+        ADV_PARSE_U32(box->default_length, ptr);
+    } else if(box->box.version >= 2) {
+        ADV_PARSE_U32(box->default_sample_description_index, ptr);
+    }
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    box->sample_group_entries = ptr;
+    box->sample_group_entries_size = (data + size) - ptr;
+
+    if(box->box.version == 1 && box->default_length == 0 && box->entry_count > 0) {
+        BOX_MALLOCN(box->description_lengths, uint32_t, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            ADV_PARSE_U32(box->description_lengths[i], ptr);
+            ptr += box->description_lengths[i];
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_group_type(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackGroupTypeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->track_group_id, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_extended_language_tag(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ExtendedLanguageTagBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_STR(box->extended_language, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_bit_rate(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, BitRateBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->buffer_size_db, ptr);
+    ADV_PARSE_U32(box->max_bitrate, ptr);
+    ADV_PARSE_U32(box->avg_bitrate, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_composition_to_decode(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 32)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompositionToDecodeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_S32(box->composition_to_dts_shift, ptr);
+        ADV_PARSE_S32(box->least_decode_to_display_delta, ptr);
+        ADV_PARSE_S32(box->greatest_decode_to_display_delta, ptr);
+        ADV_PARSE_S32(box->composition_start_time, ptr);
+        ADV_PARSE_S32(box->composition_end_time, ptr);
+    }else if(box->box.version == 1) {
+        ADV_PARSE_S64(box->composition_to_dts_shift, ptr);
+        ADV_PARSE_S64(box->least_decode_to_display_delta, ptr);
+        ADV_PARSE_S64(box->greatest_decode_to_display_delta, ptr);
+        ADV_PARSE_S64(box->composition_start_time, ptr);
+        ADV_PARSE_S64(box->composition_end_time, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sample_aux_info_sizes(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 17)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleAuxInfoSizesBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.flags & 0x01) {
+        ADV_PARSE_U32(box->aux_info_type, ptr);
+        ADV_PARSE_U32(box->aux_info_type_param, ptr);
+    }
+    ADV_PARSE_U8(box->default_sample_info_size, ptr);
+    ADV_PARSE_U32(box->sample_count, ptr);
+
+    if(box->default_sample_info_size == 0 && box->sample_count > 0) {
+        BOX_MALLOCN(box->sample_info_sizes, uint8_t, box->sample_count);
+        uint32_t i = 0;
+        for(; i < box->sample_count; ++i) {
+            ADV_PARSE_U8(box->sample_info_sizes[i], ptr);
+        }        
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sample_aux_info_offsets(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SampleAuxInfoOffsetsBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.flags & 0x01) {
+        ADV_PARSE_U32(box->aux_info_type, ptr);
+        ADV_PARSE_U32(box->aux_info_type_param, ptr);
+    }
+    ADV_PARSE_U32(box->entry_count, ptr);
+
+    if(box->entry_count  > 0) {
+        BOX_MALLOCN(box->offsets, uint64_t, box->entry_count);
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            if(box->box.version == 0) {
+                ADV_PARSE_U32(box->offsets[i], ptr);
+            }else{
+                ADV_PARSE_U64(box->offsets[i], ptr);
+            }
+        }        
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_fragment_decode_time(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackFragmentDecodeTimeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 1) {
+        ADV_PARSE_U64(box->base_media_decode_time, ptr);
+    } else {
+        ADV_PARSE_U32(box->base_media_decode_time, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_level_assignment(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 13)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, LevelAssignmentBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U8(box->level_count, ptr);
+    if(box->level_count > 0) {
+        BOX_MALLOCN(box->levels, LevelAssignment, box->level_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->level_count; ++i) {
+        LevelAssignment *level = &box->levels[i];
+        ADV_PARSE_U32(level->track_id, ptr);
+        level->padding_flag = (ptr[0] >> 7) & 0x01;
+        level->assignment_type = ptr[0] & 0x7F;
+        ++ptr;
+        switch(level->assignment_type) {
+            case 0: {
+                ADV_PARSE_U32(level->grouping_type, ptr);
+            } break;
+            case 1: {
+                ADV_PARSE_U32(level->grouping_type, ptr);
+                ADV_PARSE_U32(level->grouping_type_parameter, ptr);
+            } break;
+            case 4: {
+                ADV_PARSE_U32(level->sub_track_id, ptr);
+            } break;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_extension_properties(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackExtensionPropertiesBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->track_id, ptr);
+
+    const uint8_t *end = data + box->box.size;
+    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_alt_startup_seq_properties(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
     if(!data)       return BMFF_INVALID_DATA;
     if(size < 012)   return BMFF_INVALID_SIZE;
     if(!box_ptr)    return BMFF_INVALID_PARAMETER;
 
-    BOX_MALLOC(box, SampleDescriptionBox);
+    BOX_MALLOC(box, AltStartupSeqPropertiesBox);
 
     const uint8_t *ptr = data;
-    const uint8_t *end = ptr + size;
     ptr += parse_full_box(data, size, &box->box);
 
-    ADV_PARSE_U32(box->entry_count, ptr);
-    if(box->entry_count > 0) {
-        BOX_MALLOCN(box->entries, SampleEntry**, box->entry_count);
-    }
-
-    uint32_t i=0;
-    for(; i<box->entry_count; ++i) {
-        // skip past the SampleEntry info.
-        const uint8_t *entry_ptr = ptr + 16;
-        SampleEntry *entry = NULL;
-
-        if(0 == strncmp(ctx->track_sample_table_handler_type,"soun",4)) {
-            BOX_MALLOC(audio_entry, AudioSampleEntry);
-            entry_ptr += 8; // reserved (32)[2]
-            ADV_PARSE_U16(audio_entry->channel_count, entry_ptr);
-            ADV_PARSE_U16(audio_entry->sample_size, entry_ptr);
-            entry_ptr += 2; // predefined
-            entry_ptr += 2; // reserved
-            ADV_PARSE_U32(audio_entry->sample_rate, entry_ptr);
-            entry = (SampleEntry*)audio_entry;
-        }else if(0 == strncmp(ctx->track_sample_table_handler_type,"vide",4)) {
-            BOX_MALLOC(visual_entry, VisualSampleEntry);
-            entry_ptr += 16; // predefined(2), reserved(2), predefined(12)
-            ADV_PARSE_U16(visual_entry->width, entry_ptr);
-            ADV_PARSE_U16(visual_entry->height, entry_ptr);
-            ADV_PARSE_FP16(visual_entry->horiz_resolution, entry_ptr);
-            ADV_PARSE_FP16(visual_entry->vert_resolution, entry_ptr);
-            entry_ptr += 4; // reserved
-            ADV_PARSE_U16(visual_entry->frame_count, entry_ptr);
-            // the first byte contains the length of the compressor string
-            uint8_t len = *entry_ptr;
-            if(len > 31) len = 31; // make sure the length is valid
-            entry_ptr++;
-            // copy the string
-            strncpy(visual_entry->compressor_name, entry_ptr, len);
-            // null terminate the string at it's length
-            visual_entry->compressor_name[len] = '\0';
-            entry_ptr += 31;
-            ADV_PARSE_U16(visual_entry->depth, entry_ptr);
-            entry_ptr += 2; // predefined
-            entry = (SampleEntry*)visual_entry;
-        }else if(0 == strncmp(ctx->track_sample_table_handler_type,"hint",4)) {
-            BOX_MALLOC(hint_entry, HintSampleEntry);
-            hint_entry->data = entry_ptr;
-            const uint8_t *entry_ptr_end = ptr + parse_u32(ptr);
-            hint_entry->data_size = entry_ptr_end - entry_ptr;
-            entry_ptr = entry_ptr_end;
-            entry = (SampleEntry*)hint_entry;
+    if(box->box.version == 0) {
+        ADV_PARSE_U32(box->min_initial_alt_startup_offset, ptr);
+    }else if(box->box.version == 1) {
+        ADV_PARSE_U32(box->entry_count, ptr);
+        if(box->entry_count > 0) {
+            BOX_MALLOCN(box->entries, AltStartSeqPropertiesEntry, box->entry_count);
         }
-        
-        // parse the SampleEntry info
-        ptr += parse_box(ptr, end-ptr, &entry->box);
-        ptr += 6; // reserved (8)[6]
-        ADV_PARSE_U16(entry->data_reference_index, ptr);
 
-        box->entries[i] = entry;
-
-        // set the ptr to the end of the current box / start of the next one.
-        ptr = entry_ptr;
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            AltStartSeqPropertiesEntry *entry = &box->entries[i];
+            ADV_PARSE_U32(entry->grouping_type_param, ptr);
+            ADV_PARSE_S32(entry->min_initial_alt_startup_offset, ptr);
+        }
     }
 
     *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_selection(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackSelectionBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->switch_group, ptr);
+
+    const uint8_t *end = data + size;
+    uint32_t count = (end - ptr) / 4;
+    box->attribute_list_count = count;
+
+    if(count > 0) {
+        BOX_MALLOCN(box->attribute_list, int32_t, count);
+        uint32_t i = 0;
+        for(; i < count; ++i) {
+            ADV_PARSE_S32(box->attribute_list[i], ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_kind(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, KindBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    const uint8_t *end = data + size;
+    if(end > ptr) {
+        ADV_PARSE_STR(box->scheme_uri, ptr);
+    }
+    if(end > ptr) {
+        ADV_PARSE_STR(box->value, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_item_reference(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ItemReferenceBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    // count the number of reference boxes coming up
+    const uint8_t *end = data + box->box.size;
+    const uint8_t *tmp = ptr;
+    uint32_t count = 0;
+    while(tmp < end) {
+        tmp += parse_u32(ptr);
+        ++count;        
+    }
+
+    box->references_count = count;
+
+    if(count > 0) {
+        BOX_MALLOCN(box->references, SingleItemTypeReferenceBox, count);
+    }
+
+    uint32_t i = 0;
+    for(; i < count; ++i) {
+        SingleItemTypeReferenceBox *ref_box = &box->references[i];
+        ptr += parse_box(data, size, &ref_box->box);
+        
+        if(box->box.version == 0) {
+            ADV_PARSE_U16(ref_box->from_item_id, ptr);
+            ADV_PARSE_U16(ref_box->reference_count, ptr);
+            
+            if(ref_box->reference_count > 0) {
+                BOX_MALLOCN(ref_box->to_item_ids, uint16_t, ref_box->reference_count);
+            }
+
+            uint16_t j = 0;
+            for(; j < ref_box->reference_count; ++j) {
+                ADV_PARSE_U16(ref_box->to_item_ids[j], ptr);
+            }
+        }else if(box->box.version == 1) {
+            // large version of the same box above
+            ADV_PARSE_U32(ref_box->from_item_id, ptr);
+            ADV_PARSE_U16(ref_box->reference_count, ptr);
+            
+            if(ref_box->reference_count > 0) {
+                BOX_MALLOCN(ref_box->to_item_ids, uint32_t, ref_box->reference_count);
+            }
+
+            uint16_t j = 0;
+            for(; j < ref_box->reference_count; ++j) {
+                ADV_PARSE_U32(ref_box->to_item_ids[j], ptr);
+            }
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_item_data(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 8)    return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ItemDataBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    box->data = ptr;
+    box->data_size = (data + box->box.size) - ptr;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_metabox_relation(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 21)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, MetaboxRelationBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    memcpy(box->first_metabox_handler_type, ptr, 4);
+    ptr += 4;
+    memcpy(box->second_metabox_handler_type, ptr, 4);
+    ptr += 4;
+    ADV_PARSE_U8(box->metabox_relation, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_file_partition(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 28)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FilePartitionBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->item_id, ptr);
+    }else{
+        ADV_PARSE_U32(box->item_id, ptr);
+    }
+
+    ADV_PARSE_U16(box->packet_payload_size, ptr);
+    ptr++; // reserved
+    ADV_PARSE_U8(box->fec_encoding_id, ptr);
+    ADV_PARSE_U16(box->fec_instance_id, ptr);
+    ADV_PARSE_U16(box->max_source_block_length, ptr);
+    ADV_PARSE_U16(box->encoding_symbol_length, ptr);
+    ADV_PARSE_U16(box->max_number_of_encoding_symbols, ptr);
+    ADV_PARSE_STR(box->scheme_specific_info, ptr);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->entry_count, ptr);
+    } else {
+        ADV_PARSE_U32(box->entry_count, ptr);
+    }
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->block_counts, uint16_t, box->entry_count);
+        BOX_MALLOCN(box->block_sizes, uint32_t, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            ADV_PARSE_U16(box->block_counts[i], ptr);
+            ADV_PARSE_U32(box->block_sizes[i], ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_reservoir(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FECReservoirBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U16(box->entry_count, ptr);
+    }else{
+        ADV_PARSE_U32(box->entry_count, ptr);
+    }
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->item_ids, uint32_t, box->entry_count);        
+        BOX_MALLOCN(box->symbol_counts, uint32_t, box->entry_count);    
+
+        uint32_t i = 0;
+        uint8_t ver = box->box.version;
+        for(; i < box->entry_count; ++i) {
+            if(ver == 0) {
+                ADV_PARSE_U16(box->item_ids[i], ptr);
+            }else{
+                ADV_PARSE_U32(box->item_ids[i], ptr);
+            }
+            ADV_PARSE_U32(box->symbol_counts[i], ptr);
+        }    
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_partition_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 30)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, PartitionEntryBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    BMFFCode res = _bmff_parse_box_file_partition(ctx, ptr, end - ptr, (Box**)&box->blocks_and_symbols);
+    if(res != BMFF_OK) {
+        return res;
+    }
+    ptr += box->blocks_and_symbols->box.size;
+
+    if(ptr + 8 < end) {
+        res = _bmff_parse_box_reservoir(ctx, ptr, end - ptr, (Box**)&box->fec_symbol_locations);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->fec_symbol_locations->box.size;
+    }
+
+    if(ptr + 8 < end) {
+        res = _bmff_parse_box_reservoir(ctx, ptr, end - ptr, (Box**)&box->file_symbol_locations);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->file_symbol_locations->box.size;
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_fd_session_group(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 10)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FDSessionGroupBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->num_session_groups, ptr);
+
+    if(box->num_session_groups > 0) {
+        BOX_MALLOCN(box->session_groups, FDSessionGroupEntry, box->num_session_groups);
+
+        uint32_t i = 0;
+        for(; i < box->num_session_groups; ++i) {
+            FDSessionGroupEntry *entry = &box->session_groups[i];
+            ADV_PARSE_U8(entry->entry_count, ptr);
+
+            if(entry->entry_count > 0) {
+                BOX_MALLOCN(entry->group_ids, uint32_t, entry->entry_count);
+                uint8_t j = 0;
+                for(; j < entry->entry_count; ++j) {
+                    ADV_PARSE_U32(entry->group_ids[j], ptr);
+                } 
+            }
+
+            ADV_PARSE_U16(entry->num_channels_in_session_group, ptr);
+            if(entry->num_channels_in_session_group) {
+                BOX_MALLOCN(entry->hint_track_ids, uint32_t, entry->num_channels_in_session_group);
+                uint16_t k = 0;
+                for(; k < entry->num_channels_in_session_group; ++k) {
+                    ADV_PARSE_U32(entry->hint_track_ids[k], ptr);
+                } 
+            }                  
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_group_id_to_name(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, GroupIdToNameBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->group_ids, uint32_t, box->entry_count);
+        BOX_MALLOCN(box->group_names, char*, box->entry_count);
+
+        uint32_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            ADV_PARSE_U32(box->group_ids[i], ptr);
+            ADV_PARSE_STR(box->group_names[i], ptr);
+        }        
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_fd_item_information(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FDItemInformationBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
+
+    ADV_PARSE_U16(box->entry_count, ptr);
+
+    if(box->entry_count > 0) {
+        BOX_MALLOCN(box->entries, PartitionEntryBox*, box->entry_count);
+        uint16_t i = 0;
+        for(; i < box->entry_count; ++i) {
+            BMFFCode res = _bmff_parse_box_partition_entry(ctx, ptr, end-ptr, (Box**)&box->entries[i]);
+            if(res != BMFF_OK) {
+                return res;
+            }
+            ptr += box->entries[i]->box.size;
+        }
+    }
+
+    if(ptr + 8 < end) {
+        BMFFCode res = _bmff_parse_box_fd_session_group(ctx, ptr, end-ptr, (Box**)&box->session_info);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->session_info->box.size;
+    }
+
+    if(ptr + 8 < end) {
+        BMFFCode res = _bmff_parse_box_group_id_to_name(ctx, ptr, end-ptr, (Box**)&box->group_id_to_name);
+        if(res != BMFF_OK) {
+            return res;
+        }
+        ptr += box->group_id_to_name->box.size;
+    }
+
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sub_track_information(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 24)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubTrackInformationBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U16(box->switch_group, ptr);
+    ADV_PARSE_U16(box->alternate_group, ptr);
+    ADV_PARSE_U32(box->sub_track_id, ptr);
+
+    const uint8_t *end = data + box->box.size;
+    box->attribute_list_count = (end - ptr) / 4;
+
+    if(box->attribute_list_count > 0) {
+        BOX_MALLOCN(box->attribute_list, uint8_t*, box->attribute_list_count);
+
+        uint32_t i = 0;
+        for(; i < box->attribute_list_count; ++i) {
+            box->attribute_list[i] = ptr;
+            ptr += 4;
+        }
+    }    
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sub_track_sample_group(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubTrackSampleGroupBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->grouping_type, ptr);
+    ADV_PARSE_U16(box->item_count, ptr);
+
+    if(box->item_count > 0) {
+        BOX_MALLOCN(box->group_description_indicies, uint32_t, box->item_count);
+        
+        uint16_t i = 0;
+        for(; i < box->item_count; ++i) {
+            ADV_PARSE_U32(box->group_description_indicies[i], ptr);
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_stereo_video(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 26)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, StereoVideoBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    box->single_view_allowed = (eSingleViewMode)(ptr[3] & 0x03);
+    ptr += 4;
+    
+    ADV_PARSE_U32(box->stereo_scheme, ptr);
+    ADV_PARSE_U32(box->length, ptr);
+
+    switch(box->length) {
+        case 1: ADV_PARSE_U8(box->stereo_indication_type, ptr); break;
+        case 2: ADV_PARSE_U16(box->stereo_indication_type, ptr); break;
+        case 4: ADV_PARSE_U32(box->stereo_indication_type, ptr); break;
+        case 8: ADV_PARSE_U64(box->stereo_indication_type, ptr); break;
+    }
+
+    const uint8_t *end = data + box->box.size;
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_segment_index(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 32)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SegmentIndexBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->reference_id, ptr);
+    ADV_PARSE_U32(box->timescale, ptr);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U32(box->earliest_presentation_time, ptr);
+        ADV_PARSE_U32(box->first_offset, ptr);
+    }else{
+        ADV_PARSE_U64(box->earliest_presentation_time, ptr);
+        ADV_PARSE_U64(box->first_offset, ptr);
+    }
+
+    ptr += 2; // reserved(16)
+    ADV_PARSE_U16(box->reference_count, ptr);
+
+    if(box->reference_count > 0) {
+        BOX_MALLOCN(box->references, SegmentIndexRefEntry, box->reference_count);
+
+        uint16_t i = 0;
+        for(; i < box->reference_count; ++i) {
+            SegmentIndexRefEntry *ref = &box->references[i];
+            ref->reference_type = ((*ptr) >> 7) & 0x01;
+            ADV_PARSE_U32(ref->referenced_size, ptr);
+            ref->referenced_size &= 0x07FFFFFFF;
+            ADV_PARSE_U32(ref->subsegment_duration, ptr);
+            ref->starts_with_sap = ((*ptr) >> 7) & 0x01;
+            ref->sap_type = ((*ptr) >> 4) & 0x07;
+            ADV_PARSE_U32(ref->sap_delta_time, ptr);
+            ref->sap_delta_time &= 0x0FFFFFFF;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_producer_reference_time(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 28)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ProducerReferenceTimeBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->reference_track_id, ptr);
+    ADV_PARSE_U64(box->ntp_timestamp, ptr);
+
+    if(box->box.version == 0) {
+        ADV_PARSE_U32(box->media_time, ptr);
+    }else{
+        ADV_PARSE_U64(box->media_time, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_complete_track_info(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 20)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CompleteTrackInfoBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    const uint8_t *end = data + box->box.size;
+    ptr += parse_original_format_box(ptr, end-ptr, &box->original_format);
+
+    _bmff_parse_children(ctx, ptr, end-ptr, &box->child_count, &box->children);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_clean_aperture(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 40)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, CleanApertureBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->clean_aperture_width_n, ptr);
+    ADV_PARSE_U32(box->clean_aperture_width_d, ptr);
+    ADV_PARSE_U32(box->clean_aperture_height_n, ptr);
+    ADV_PARSE_U32(box->clean_aperture_height_d, ptr);
+    ADV_PARSE_U32(box->horiz_off_n, ptr);
+    ADV_PARSE_U32(box->horiz_off_d, ptr);
+    ADV_PARSE_U32(box->vert_off_n, ptr);
+    ADV_PARSE_U32(box->vert_off_d, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_pixel_aspect_ratio(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, PixelAspectRatioBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->h_spacing, ptr);
+    ADV_PARSE_U32(box->v_spacing, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_channel_layout(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 14)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ChannelLayoutBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U8(box->stream_structure, ptr);
+
+    if(box->stream_structure & eStreamStructureChannel == eStreamStructureChannel) {
+        ADV_PARSE_U8(box->channel.defined_layout, ptr);
+        box->channel.channel_count = ctx->channel_count;
+
+        if(box->channel.defined_layout == 0) {
+            if(ctx->channel_count > 0) {
+                BOX_MALLOCN(box->channel.speaker_positions, uint8_t, ctx->channel_count);
+                BOX_MALLOCN(box->channel.azimuths, uint16_t, ctx->channel_count);
+                BOX_MALLOCN(box->channel.elevations, uint8_t, ctx->channel_count);
+            }
+            uint32_t i = 0;
+            for(; i < ctx->channel_count; ++i) {
+                ADV_PARSE_U8(box->channel.speaker_positions[i], ptr);
+                if(box->channel.speaker_positions[i] == 126) {
+                    ADV_PARSE_U16(box->channel.azimuths[i], ptr);
+                    ADV_PARSE_U8(box->channel.elevations[i], ptr);
+                }
+            }
+        }else{
+            ADV_PARSE_U64(box->channel.omitted_channels_map, ptr);
+        }
+    }
+
+    if((box->stream_structure & eStreamStructureObject) == eStreamStructureObject) {
+        ADV_PARSE_U8(box->object.object_count, ptr);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_sampling_rate(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SamplingRateBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->sampling_rate, ptr);
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_subsegment_index(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 16)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, SubsegmentIndexBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ADV_PARSE_U32(box->subsegment_count, ptr);
+
+    if(box->subsegment_count > 0) {
+        BOX_MALLOCN(box->subsegments, SubsegmentIndexEntry, box->subsegment_count);
+    }
+
+    uint32_t i = 0;
+    for(; i < box->subsegment_count; ++i) {
+        SubsegmentIndexEntry *entry = &box->subsegments[i];
+
+        ADV_PARSE_U32(entry->range_count, ptr);
+        if(entry->range_count > 0) {
+            BOX_MALLOCN(entry->levels, uint8_t, entry->range_count);
+            BOX_MALLOCN(entry->range_sizes, uint32_t, entry->range_count);
+        }
+
+        uint32_t j = 0;
+        for(; j < entry->range_count; ++j) {
+            entry->levels[j] = *ptr;
+            entry->range_sizes[j] = parse_u32(ptr) & 0x00FFFFFF;
+            ptr += 4;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_rtp_hint_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 24)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, RtpHintSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+    ADV_PARSE_U16(box->hint_track_version, ptr);
+    ADV_PARSE_U16(box->highest_compatible_version, ptr);
+    ADV_PARSE_U32(box->max_packet_size, ptr);
+
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->additional_data_count, &box->additional_data);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_fd_hint_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 22)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, FDHintSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+    ADV_PARSE_U16(box->hint_track_version, ptr);
+    ADV_PARSE_U16(box->highest_compatible_version, ptr);
+    ADV_PARSE_U16(box->partition_entry_id, ptr);
+    ADV_PARSE_U16(box->fec_overhead, ptr);
+
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->additional_data_count, &box->additional_data);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_xml_meta_data_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 19)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, XMLMetaDataSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    uint32_t c = _bmff_parse_children(ctx, ptr, end-ptr, &box->other_boxes_count, &box->other_boxes);
+    ptr += c;
+
+    ADV_PARSE_STR(box->content_encoding, ptr);
+    ADV_PARSE_STR(box->namespace, ptr);
+    ADV_PARSE_STR(box->schema_location, ptr);
+
+    if(ptr < end) {
+        _bmff_parse_box_bit_rate(ctx, ptr, end-ptr, (Box**)&box->bitrate);
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_text_meta_data_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 18)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TextMetaDataSampleEntry);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    uint32_t c = _bmff_parse_children(ctx, ptr, end-ptr, &box->other_boxes_count, &box->other_boxes);
+    ptr += c;
+
+    ADV_PARSE_STR(box->content_encoding, ptr);
+    ADV_PARSE_STR(box->mime_format, ptr);
+
+    if(ptr < end && strncmp(&ptr[4], "btrt", 4) == 0) {
+        if(BMFF_OK == _bmff_parse_box_bit_rate(ctx, ptr, end-ptr, (Box**)&box->bitrate)) {
+            ptr += box->bitrate->box.size;
+        }
+    }
+    if(ptr < end && strncmp(&ptr[4], "txtC", 4) == 0) {
+        if(BMFF_OK == _bmff_parse_box_full_string(ctx, ptr, end-ptr, (Box**)&box->text_config)) {
+            ptr += box->text_config->box.size;
+        }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_uri_meta_sample_entry(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, UriMetaSampleEntryBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ptr += 6; // reserved
+    ADV_PARSE_U16(box->data_reference_index, ptr);
+
+    uint32_t c = _bmff_parse_children(ctx, ptr, end-ptr, &box->other_boxes_count, &box->other_boxes);
+    ptr += c;
+
+    // all of the known boxes would have been parsed in the children, so we'll
+    // copy the pointers to the "box" if they exist.
+
+    uint32_t i = box->other_boxes_count;
+    for(; i > 0; --i) {
+        if(strncmp("uri ", box->other_boxes[i-1]->type, 4) == 0) {
+            --i;
+            break;
+        }
+    }
+
+    box->the_label = (UriBox*) box->other_boxes[i];
+
+    // optional boxes
+    uint32_t count = 1;
+    if(i + count < box->other_boxes_count && strncmp("uriI", box->other_boxes[i + count]->type, 4) == 0) {
+        box->init = (UriInitBox*) box->other_boxes[i + count];
+        count++;
+    }         
+    if(i + count < box->other_boxes_count && strncmp("btrt", box->other_boxes[i + count]->type, 4) == 0) {
+        box->bitrate = (BitRateBox*) box->other_boxes[i + count];
+        count++;
+    }
+
+    // adjust the count of other boxes due to reassigning pointers from "the label" box.
+    box->other_boxes_count = i;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_object_descriptor(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ObjectDescriptorBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ptr += _bmff_parse_object_descriptor(ctx, ptr, box->box.size, &box->od);
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventObjDescriptor, (void*)box);
     return BMFF_OK;
 }
 
