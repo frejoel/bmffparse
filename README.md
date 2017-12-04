@@ -39,7 +39,6 @@ The Makefile contains the following targets:
 - `make all` or `make` builds all of the above.
 - `make install` installs the library.
 - `make check` builds static library and unit tests, then executes the tests.
-- `make style` runs an `astyle style=linux` pass on the source code.
 
 ## Debugging
 To enable debugging add a `DEBUG=1` argument to the make target.
@@ -84,7 +83,7 @@ generate a `gmon.out` file. From there you can export the profiling report using
 `gprof`.
 
 ### Example
-This will build the examples with Profiling enabled, run the tsinfoexample,
+This will build the examples with Profiling enabled, run the bmffinfo example,
 output the profiling report to `profile_report.txt` and display the text of
 `profile_report.txt` to the screen.
 
@@ -129,22 +128,11 @@ The examples are also built when using the `all` target.
 
 The executables are built directly in the `examples` directory alongside the
 example source code.
-The examples are expecting to be run from the root project directory.
 ```
- ./examples/tsinfo.o myfile.ts
+ ./examples/bmffinfo.o myfile.mp4
 ```
 
 # Contributing
-Before making Pull Requests into this repository for review, please complete
-the following steps.
-
-## Code Style
-Run a pass on the source code to ensure basic 'linux' styling using
-`astyle`:
-```
- sudo apt-get install astyle
- make style
-```
 
 ## Unit Tests
 Make sure all unit tests are passing.
@@ -168,7 +156,7 @@ The framework is a very basic header file, `test/test.h`.
 It's generally a good idea to check for memory leaks by running the examples
 through Valgrind.
 ```
- valgrind --leak-check=yes --track-origins=yes --log-file=valgrind_report.txt examples/tsinfo.o myfile.ts`
+ valgrind --leak-check=yes --track-origins=yes --log-file=valgrind_report.txt examples/bmffinfo.o myfile.mp4`
 ```
 Not all warnings in Valgrind are valid errors, compare the results with the
 `master` branch.
