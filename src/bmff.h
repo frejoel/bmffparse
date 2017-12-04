@@ -34,11 +34,41 @@
 // Software version, format MAJOR.MINOR.PATCH
 #define BMFF_VERSION                             "0.1.0"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 const char *bmff_get_version(void);
+
+/**
+ * Initializes a Parsing Context.
+ */
 BMFFCode bmff_context_init(BMFFContext *ctx);
+
+/**
+ * Destroys an initialize Parsing Context.
+ */
 BMFFCode bmff_context_destroy(BMFFContext *ctx);
+
+/**
+ * Sets the parsing callback.
+ * The user must set the callback to retreive Box information.
+ */
 BMFFCode bmff_set_event_callback(BMFFContext *ctx, bmff_on_event callback);
+
+/**
+ * Parses ISO BMFF boxes.
+ * The data must contain complete boxes, but does not need to contain a full file.
+ */
 size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *code);
+
+/**
+ * This needs to be called to end a parsing session.
+ */
 BMFFCode bmff_parse_end(BMFFContext *ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // BMFF_H

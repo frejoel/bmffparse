@@ -1,23 +1,8 @@
 #include "parse.h"
+#include "parse_common.h"
 
 #include <memory.h>
 #include <stdio.h>
-
-#define ADV_PARSE_U8(A,P)      ((A) = (P)[0]); ((P)++)
-#define ADV_PARSE_S8(A,P)      ((A) = (P)[0]); ((P)++);
-#define ADV_PARSE_U16(A,P)      ((A) = parse_u16(P)); ((P)+=2);
-#define ADV_PARSE_S16(A,P)      ((A) = (int16_t)parse_u16(P)); ((P)+=2);
-#define ADV_PARSE_U32(A,P)      ((A) = parse_u32(P)); ((P)+=4);
-#define ADV_PARSE_S32(A,P)      ((A) = (int32_t)parse_u32(P)); ((P)+=4);
-#define ADV_PARSE_U64(A,P)      ((A) = parse_u64(P)); ((P)+=8);
-#define ADV_PARSE_S64(A,P)      ((A) = (int64_t)parse_u64(P)); ((P)+=8);
-#define ADV_PARSE_FP16(A,P)     ((A) = parse_fp16(P)); ((P)+=4);
-#define ADV_PARSE_FP8(A,P)      ((A) = parse_fp8(P)); ((P)+=2);
-#define ADV_PARSE_STR(A,P)      ((A) = (P)); while(*(P) != '\0'){(P)++;}; (P)++;
-#define ADV_PARSE_MATRIX(A,P)   int i=0; for(;i<9;++i){(A)[i] = (int32_t)parse_u32(P);(P)+=4;}; 
-
-#define BOX_MALLOC(M, T)        T *M = bmff_context_alloc_on_stack(ctx, sizeof(T)); memset(M, 0, sizeof(T));
-#define BOX_MALLOCN(M, T, N)    M = bmff_context_alloc_on_stack(ctx, sizeof(T)*(N)); memset(M, 0, sizeof(T)*(N));      
 
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},
@@ -142,6 +127,7 @@ const MapItem parse_map[] = {
     {"uri ", 0, _bmff_parse_box_full_string},
     {"uriI", 0, _bmff_parse_box_full_data},
     {"urim", 0, _bmff_parse_box_uri_meta_sample_entry},
+    {"iods", 0, _bmff_parse_box_object_descriptor},
     //{"", 0, _bmff_parse_box_},
 };
 
@@ -158,73 +144,6 @@ void print_box(const uint8_t *data, size_t size)
     }
     printf("};\n\n");
 }
-
-uint16_t parse_u16(const uint8_t *bytes)
-{
-    uint16_t val = *((uint16_t*)bytes);
-#ifdef __BIG_ENDIAN__
-    return val;
-#else
-    return ((val >> 8) & 0x00FF) | ((val << 8) & 0xFF00);
-#endif
-}
-
-uint32_t parse_u32(const uint8_t *bytes)
-{
-    uint32_t val = *((uint32_t*)bytes);
-#ifdef __BIG_ENDIAN__
-    return val;
-#else
-    return ((val >> 24) & 0x000000FF) |
-           ((val >>  8) & 0x0000FF00) |
-           ((val <<  8) & 0x00FF0000) |
-           ((val << 24) & 0xFF000000) ;
-#endif
-}
-
-uint64_t parse_u64(const uint8_t *bytes)
-{
-    uint64_t val = *((uint64_t*)bytes);
-#ifdef __BIG_ENDIAN__
-    return val;
-#else
-    return ((val >> 56) & 0x00000000000000FFL) |
-           ((val >> 40) & 0x000000000000FF00L) |
-           ((val >> 24) & 0x0000000000FF0000L) |
-           ((val >>  8) & 0x00000000FF000000L) |
-           ((val <<  8) & 0x000000FF00000000L) |
-           ((val << 24) & 0x0000FF0000000000L) |
-           ((val << 40) & 0x00FF000000000000L) |
-           ((val << 56) & 0xFF00000000000000L) ;
-#endif
-}
-
-fxpt16_t parse_fp16(const uint8_t *bytes)
-{
-    float val = (float) ((int32_t) parse_u32(bytes));
-    return val / 65536.f;
-}
-
-fxpt8_t parse_fp8(const uint8_t *bytes)
-{
-    float val = (float) ((int16_t) parse_u16(bytes));
-    return val / 256.f;
-}
-
-uint32_t parse_var_length(const uint8_t *bytes, uint8_t length)
-{
-    uint32_t val = 0;
-
-    switch(length) {
-        case 1: val = bytes[0]; break;
-        case 2: val = (uint32_t) parse_u16(bytes); break;
-        case 3: val = (parse_u32(bytes) >> 8) & 0xFFFFFF; break;
-        case 4: val = parse_u32(bytes); break;
-    }
-
-    return val;
-}
-
 int parse_box(const uint8_t *data, size_t size, Box *box)
 {
     const uint8_t *ptr = data;
@@ -3623,6 +3542,25 @@ BMFFCode _bmff_parse_box_uri_meta_sample_entry(BMFFContext *ctx, const uint8_t *
     box->other_boxes_count = i;
 
     *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_object_descriptor(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ObjectDescriptorBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ptr += _bmff_parse_object_descriptor(ctx, ptr, box->box.size, &box->od);
+
+    *box_ptr = (Box*)box;
+    if(ctx->callback) ctx->callback(ctx, BMFFEventObjDescriptor, (void*)box);
     return BMFF_OK;
 }
 

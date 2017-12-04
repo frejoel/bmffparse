@@ -35,6 +35,7 @@
  */
 typedef enum BMFFEventId {
     BMFFEventFileType,
+    BMFFEventObjDescriptor,
     BMFFEventMovieHeader,
     BMFFEventTrackHeader,
     BMFFEventMediaHeader,

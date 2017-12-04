@@ -26,6 +26,8 @@
 #define BOXES_H
 
 #include <stdint.h>
+#include "descriptors.h"
+#include "parse_common.h"
 
 typedef enum {
     eBooleanUnknown    = 0,
@@ -51,28 +53,6 @@ typedef enum {
     eTrunSampleFlagsPresent             = 0x000400,
     eTrunSampleCompTimeOffsetsPresent   = 0x000800,
 } eTrackRunFlags;
-
-typedef float fxpt16_t;  // Fixed Point 16.16
-typedef float fxpt8_t;   // Fixed Point 8.8
-
-typedef uint8_t IPMPDescriptor;           // TODO: see 14496-1 for definition.
-
-typedef struct IPMPTool {
-    uint8_t         tool_id[16];
-    uint8_t         is_alt_group;
-    uint8_t         is_parametric;
-    uint8_t         num_alternates;
-    uint8_t         specific_tool_id[16];
-    const uint8_t   *tool_param_desc;
-    uint8_t         num_urls;
-    uint8_t         **tool_urls;
-} IPMPTool;
-
-typedef struct IPMPToolListDescriptor {
-    uint8_t     tag;
-    uint8_t     num_tools;
-    IPMPTool    *ipmp_tools;
-} IPMPToolListDescriptor;
 
 // All Boxes contain the base Box as the first item in the structure.
 typedef struct Box {
@@ -1052,6 +1032,11 @@ typedef struct ProducerReferenceTimeBox { // prft
     uint64_t                ntp_timestamp;
     uint64_t                media_time;
 } ProducerReferenceTimeBox;
+
+typedef struct ObjectDescriptorBox { // iods
+    FullBox                 box;
+    ObjectDescriptor        od;
+} ObjectDescriptorBox;
 
 // icnf
 // tims

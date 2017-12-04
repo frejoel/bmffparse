@@ -14,6 +14,20 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, void *data)
         }
     }
 
+    if(event_id == BMFFEventObjDescriptor) {
+        ObjectDescriptorBox *box = (ObjectDescriptorBox*)data;
+        printf("####################\n");
+        printf("Object Descriptor:\n");
+        printf("    od tag: %d\n", box->od.od_tag);
+        printf("    od id: %d\n", box->od.od_id);
+        printf("    url flag: %d\n", box->od.url_flag);
+        printf("    include inline profile level flag: %d\n", box->od.include_inline_profile_level_flag);
+        printf("    url length: %d\n", box->od.url_length);
+        if(box->od.url) {
+            printf("    od url: %s\n", box->od.url);
+        }
+    }
+
     if(event_id == BMFFEventMovieHeader) {
         MovieHeaderBox *box = (MovieHeaderBox*)data;
         printf("####################\n");
