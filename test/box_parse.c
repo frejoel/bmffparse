@@ -1,5 +1,6 @@
 #include "test.h"
 #include <bmff.h>
+#include "../src/parse.h"
 
 #include <string.h>
 

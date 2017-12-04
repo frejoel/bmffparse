@@ -25,8 +25,7 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-#include "context.h"
-#include "boxes.h"
+#include "bmff.h"
 
 #define PARSER_FUNC(func_name)  BMFFCode func_name(BMFFContext *ctx, const uint8_t * data, size_t size, Box **box_ptr)
 // number of items in the parse_map
@@ -152,5 +151,25 @@ typedef struct MapItem {
  * List of functions used to parse the different ISO BMFF Boxes.
  */
 const MapItem parse_map[PARSE_MAP_LEN];
+
+// TODO: Parsers for the child descriptors
+/*
+size_t _bmff_parse_slconfig_descriptor(BMFFContext *ctx,
+                                       const uint8_t *data,
+                                       size_t size,
+                                       SLConfigDescriptor *desc);
+
+size_t _bmff_parse_es_descriptor(BMFFContext *ctx,
+                                 const uint8_t *data,
+                                 size_t size,
+                                 ESDescriptor *desc,
+                                 uint8_t od_profile_level_indicator);
+*/
+
+size_t _bmff_parse_object_descriptor(BMFFContext *ctx,
+                                     const uint8_t *data,
+                                     size_t size,
+                                     ObjectDescriptor *desc);
+
 
 #endif // PARSE_H

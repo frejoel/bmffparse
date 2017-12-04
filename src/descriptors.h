@@ -27,8 +27,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-// Forward declaration
-typedef struct BMFFContext BMFFContext;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Descriptor parsing from ISO/IEC 14496-1
 
@@ -189,23 +190,8 @@ typedef struct ObjectDescriptor {
     */
 } ObjectDescriptor;
 
-// TODO: Parsers for the child descriptors
-/*
-size_t _bmff_parse_slconfig_descriptor(BMFFContext *ctx,
-                                       const uint8_t *data,
-                                       size_t size,
-                                       SLConfigDescriptor *desc);
-
-size_t _bmff_parse_es_descriptor(BMFFContext *ctx,
-                                 const uint8_t *data,
-                                 size_t size,
-                                 ESDescriptor *desc,
-                                 uint8_t od_profile_level_indicator);
-*/
-
-size_t _bmff_parse_object_descriptor(BMFFContext *ctx,
-                                     const uint8_t *data,
-                                     size_t size,
-                                     ObjectDescriptor *desc);
+#ifdef __cplusplus
+}
+#endif
 
 #endif // DESCRIPTORS_H

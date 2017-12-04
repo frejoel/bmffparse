@@ -1,8 +1,7 @@
-#include "parse.h"
-#include "parse_common.h"
-
 #include <memory.h>
 #include <stdio.h>
+#include "parse_common.h"
+#include "parse.h"
 
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},

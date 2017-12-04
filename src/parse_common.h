@@ -27,6 +27,8 @@
 
 #include <stdint.h>
 #include <memory.h>
+#include "bmff.h"
+#include "context.h"
 
 #define ADV_PARSE_U8(A,P)      ((A) = (P)[0]); ((P)++)
 #define ADV_PARSE_S8(A,P)      ((A) = (P)[0]); ((P)++);
@@ -43,9 +45,6 @@
 
 #define BOX_MALLOC(M, T)        T *M = bmff_context_alloc_on_stack(ctx, sizeof(T)); memset(M, 0, sizeof(T));
 #define BOX_MALLOCN(M, T, N)    M = bmff_context_alloc_on_stack(ctx, sizeof(T)*(N)); memset(M, 0, sizeof(T)*(N));      
-
-typedef float fxpt16_t;  // Fixed Point 16.16
-typedef float fxpt8_t;   // Fixed Point 8.8
 
 // conversion functions
 uint16_t parse_u16(const uint8_t *data);

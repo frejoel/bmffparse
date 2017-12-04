@@ -27,7 +27,13 @@
 
 #include <stdint.h>
 #include "descriptors.h"
-#include "parse_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef float fxpt16_t;  // Fixed Point 16.16
+typedef float fxpt8_t;   // Fixed Point 8.8
 
 typedef enum {
     eBooleanUnknown    = 0,
@@ -1096,5 +1102,9 @@ typedef struct ObjectDescriptorBox { // iods
 // stxt
 // stpp
 // sbtt
+
+#ifdef __cplusplus
+}
+#endif 
 
 #endif // BOXES_H

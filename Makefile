@@ -7,6 +7,7 @@ INSTALL_DIR = /usr/local
 CCOBJDIR = $(CCDIR)/obj
 CFLAGS = -Ibin -Lbin
 LIBS = -lbmff
+SRC_HDRS = src/bmff.h src/boxes.h src/descriptors.h
 
 .SECONDEXPANSION:
 OBJ_SRC := $(patsubst %.c, %.o, $(wildcard src/*.c))
@@ -41,7 +42,7 @@ style:
 static: $(OBJ_SRC)
 	mkdir -p $(ODIR)
 	ar rcs $(ODIR)/$(ONAME).a $(OBJ_SRC)
-	cp src/*.h $(ODIR)/
+	cp $(SRC_HDRS) $(ODIR)/
 
 %.o: %.c
 	$(CC) -c -o $@ $< $(CFLAGS)

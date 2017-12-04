@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include <bmff.h>
+
 void on_event(BMFFContext *ctx, BMFFEventId event_id, void *data)
 {
     if(event_id == BMFFEventFileType) {
