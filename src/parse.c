@@ -129,6 +129,8 @@ const MapItem parse_map[] = {
     {"uriI", 0, _bmff_parse_box_full_data},
     {"urim", 0, _bmff_parse_box_uri_meta_sample_entry},
     {"iods", 0, _bmff_parse_box_object_descriptor},
+    {"esds", 0, _bmff_parse_box_es_descriptor},
+    {"avcC", 0, _bmff_parse_box_avc_decoder_config},
     //{"", 0, _bmff_parse_box_},
 };
 
@@ -3602,6 +3604,46 @@ BMFFCode _bmff_parse_box_object_descriptor(BMFFContext *ctx, const uint8_t *data
 
     *box_ptr = (Box*)box;
     if(ctx->callback) ctx->callback(ctx, BMFFEventObjDescriptor, (void*)box);
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_es_descriptor(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ESDescriptorBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    box->descriptor = ptr;
+    box->descriptor_size = end - ptr;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_avc_decoder_config(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 12)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, AVCDecoderConfigBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    box->config_record = ptr;
+    box->config_record_size = end - ptr;
+
+    *box_ptr = (Box*)box;
     return BMFF_OK;
 }
 

@@ -1044,6 +1044,38 @@ typedef struct ObjectDescriptorBox { // iods
     ObjectDescriptor        od;
 } ObjectDescriptorBox;
 
+typedef struct ESDescriptorBox { // esds
+    FullBox                 box;
+    const uint8_t           *descriptor;
+    size_t                  descriptor_size;
+} ESDescriptorBox;
+
+typedef struct AVCDecoderConfigBox { // avcC
+    Box                     box;
+    const uint8_t           *config_record;
+    size_t                  config_record_size;
+} AVCDecoderConfigBox;
+
+typedef struct EncryptionSubsample {
+    uint16_t                bytes_of_clear_data;
+    uint32_t                bytes_of_encrpyted_data;
+} EncryptionSubsample;
+
+typedef struct EncryptionSample {
+    uint32_t                iv_size;
+    const uint8_t           *iv;
+    uint32_t                subsample_count;
+    EncryptionSubsample     *subsamples;          
+} EncryptionSample;
+
+typedef struct SampleEncryptionBox { // senc
+    FullBox                 box;
+    uint32_t                sample_count;
+    EncryptionSample        *samples;
+} SampleEncryptionBox;
+
+// senc, free
+
 // icnf
 // tims
 // tsro
