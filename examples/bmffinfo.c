@@ -15,7 +15,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
     }
     else if(event_id == BMFFEventParseComplete)
     {
-        printf("Parsed Box Complete: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+        printf("Parsed Box Complete: %c%c%c%c, size: %d\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3], ((Box*)data)->size);
         if(strncmp("ftyp", fourCC, 4 == 0)) {
             FileTypeBox *box = (FileTypeBox*)data;
             printf("####################\n");
@@ -271,6 +271,16 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             if(box->other_boxes_len > 0) {
                 printf("    Number of Other Boxes: %d\n", box->other_boxes_len);
             }
+        }
+
+        if(strncmp("schm", fourCC, 4) == 0) {
+            SchemeTypeBox *box = (SchemeTypeBox*)data;
+            printf("####################\n");
+            printf("Scheme Type:\n");
+            const uint8_t *t = box->scheme_type;
+            printf("    Scheme Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
+            printf("    Scheme Version: %d\n", box->scheme_version);
+            printf("    Scheme Type: %s\n", box->scheme_uri ? box->scheme_uri : "NULL");
         }
     }
 }

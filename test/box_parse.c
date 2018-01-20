@@ -908,18 +908,18 @@ void test_parse_box_scheme_info(void)
 
     BMFFCode res;
     SchemeInformationBox *box = NULL;
-    res = _bmff_parse_box_scheme_info(&ctx, data, sizeof(data), (Box**)&box);
+    res = _bmff_parse_box_generic_container(&ctx, data, sizeof(data), (Box**)&box);
     test_assert_equal(BMFF_OK, res, "success");
     test_assert(box != NULL, "NULL box reference");
     test_assert_equal(box->box.size, sizeof(data), "size");
     test_assert_equal(strncmp(box->box.type, "schi", 4), 0, "type");
-    test_assert_equal(box->scheme_specific_data_count, 3, "scheme specific data count");
-    test_assert_equal(strncmp(box->scheme_specific_data[0].type, "abcd", 4), 0, "scheme specifi data 0 type");
-    test_assert_equal(box->scheme_specific_data[0].size, 0x0C, "scheme specific data 0 size");
-    test_assert_equal(strncmp(box->scheme_specific_data[1].type, "efgh", 4), 0, "scheme specifi data 1 type");
-    test_assert_equal(box->scheme_specific_data[1].size, 0x0F, "scheme specific data 1 size");
-    test_assert_equal(strncmp(box->scheme_specific_data[2].type, "ijkl", 4), 0, "scheme specifi data 2 type");
-    test_assert_equal(box->scheme_specific_data[2].size, 0x18, "scheme specific data 2 size");
+    test_assert_equal(box->child_count, 3, "scheme specific data count");
+    test_assert_equal(strncmp(box->children[0]->type, "abcd", 4), 0, "scheme specifi data 0 type");
+    test_assert_equal(box->children[0]->size, 0x0C, "scheme specific data 0 size");
+    test_assert_equal(strncmp(box->children[1]->type, "efgh", 4), 0, "scheme specifi data 1 type");
+    test_assert_equal(box->children[1]->size, 0x0F, "scheme specific data 1 size");
+    test_assert_equal(strncmp(box->children[2]->type, "ijkl", 4), 0, "scheme specifi data 2 type");
+    test_assert_equal(box->children[2]->size, 0x18, "scheme specific data 2 size");
 
     bmff_context_destroy(&ctx);
 
@@ -980,8 +980,8 @@ void test_parse_box_protection_scheme_info(void)
     SchemeInformationBox *schm_info = box->scheme_info;
     test_assert_equal(strncmp("schi", schm_info->box.type, 4), 0, "Scheme Info type");
     test_assert_equal(schm_info->box.size, 0x17, "Scheme Info size");
-    test_assert_equal(schm_info->scheme_specific_data_count, 1, "Scheme Info scheme specific count");
-    Box *ssd = &schm_info->scheme_specific_data[0];
+    test_assert_equal(schm_info->child_count, 1, "Scheme Info scheme specific count");
+    Box *ssd = schm_info->children[0];
     test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
 
@@ -1061,8 +1061,8 @@ void test_parse_box_item_protection(void)
     SchemeInformationBox *schm_info = info->scheme_info;
     test_assert_equal(strncmp("schi", schm_info->box.type, 4), 0, "Scheme Info type");
     test_assert_equal(schm_info->box.size, 0x17, "Scheme Info size");
-    test_assert_equal(schm_info->scheme_specific_data_count, 1, "Scheme Info scheme specific count");
-    Box *ssd = &schm_info->scheme_specific_data[0];
+    test_assert_equal(schm_info->child_count, 1, "Scheme Info scheme specific count");
+    Box *ssd = schm_info->children[0];
     test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
 
@@ -1341,9 +1341,9 @@ void test_parse_box_meta(void)
     SchemeInformationBox *schm_info = info->scheme_info;
     test_assert_equal(strncmp("schi", schm_info->box.type, 4), 0, "Scheme Info type");
     test_assert_equal(schm_info->box.size, 0x17, "Scheme Info size");
-    test_assert_equal(schm_info->scheme_specific_data_count, 1, "Scheme Info scheme specific count");
+    test_assert_equal(schm_info->child_count, 1, "Scheme Info scheme specific count");
 
-    Box *ssd = &schm_info->scheme_specific_data[0];
+    Box *ssd = schm_info->children[0];
     test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
 

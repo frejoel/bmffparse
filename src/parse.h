@@ -55,7 +55,6 @@ PARSER_FUNC(_bmff_parse_box_ipmp_control);
 PARSER_FUNC(_bmff_parse_box_original_format);
 PARSER_FUNC(_bmff_parse_box_ipmp_info);
 PARSER_FUNC(_bmff_parse_box_scheme_type);
-PARSER_FUNC(_bmff_parse_box_scheme_info);
 PARSER_FUNC(_bmff_parse_box_protection_scheme_info);
 PARSER_FUNC(_bmff_parse_box_item_protection);
 PARSER_FUNC(_bmff_parse_box_meta);

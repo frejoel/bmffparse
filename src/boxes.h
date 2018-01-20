@@ -108,6 +108,7 @@ typedef ContainerBox SampleTableBox; // stbl
 typedef ContainerBox AdditionalMetadataContainerBox; // meco
 typedef ContainerBox SubTrackBox; // strk
 typedef ContainerBox SubTrackDefinitionBox; // strd
+typedef ContainerBox SchemeInformationBox; // schi
 
 typedef Box FreeSpaceBox; // free, skip
 typedef Box TrackReferenceBox; // tref
@@ -245,12 +246,6 @@ typedef struct SchemeTypeBox { // schm
     uint32_t                scheme_version;
     const char              *scheme_uri;
 } SchemeTypeBox;
-
-typedef struct SchemeInformationBox { // schi
-    Box                     box;
-    Box                     *scheme_specific_data;
-    uint32_t                scheme_specific_data_count;
-} SchemeInformationBox;
 
 typedef struct ProtectionSchemeInfoBox { // sinf
     Box                     box;

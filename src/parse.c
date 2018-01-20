@@ -24,6 +24,7 @@ const MapItem parse_map[] = {
     {"meco", 1, _bmff_parse_box_generic_container},
     {"strk", 1, _bmff_parse_box_generic_container},
     {"strd", 1, _bmff_parse_box_generic_container},
+    {"schi", 1, _bmff_parse_box_generic_container},
     {"free", 0, _bmff_parse_box},
     {"hint", 0, _bmff_parse_box_track_reference_type},
     {"cdsc", 0, _bmff_parse_box_track_reference_type},
@@ -43,7 +44,6 @@ const MapItem parse_map[] = {
     {"frma", 0, _bmff_parse_box_original_format},
     {"imif", 0, _bmff_parse_box_ipmp_info},
     {"schm", 0, _bmff_parse_box_scheme_type},
-    {"schi", 0, _bmff_parse_box_scheme_info},
     {"sinf", 0, _bmff_parse_box_protection_scheme_info},
     {"ipro", 0, _bmff_parse_box_item_protection},
     {"meta", 0, _bmff_parse_box_meta},
@@ -870,45 +870,6 @@ BMFFCode _bmff_parse_box_scheme_type(BMFFContext *ctx, const uint8_t *data, size
     return BMFF_OK;
 }
 
-BMFFCode _bmff_parse_box_scheme_info(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
-{
-    if(!ctx)        return BMFF_INVALID_CONTEXT;
-    if(!data)       return BMFF_INVALID_DATA;
-    if(size < 12)   return BMFF_INVALID_SIZE;
-    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
-
-    BOX_MALLOC(box, SchemeInformationBox);
-
-    const uint8_t *ptr = data;
-    ptr += parse_box(data, size, &box->box);
-
-    const uint8_t *end = data + box->box.size;
-
-    // count the number of boxes
-    const uint8_t *ptr2 = ptr;
-    uint32_t count = 0;
-
-    while(ptr2 < (end - 4)) {
-        uint32_t size = parse_u32(ptr2);
-        count++;
-        ptr2 += size;
-    }
-
-    // allocate Box array
-    BOX_MALLOCN(box->scheme_specific_data, Box, count);
-    box->scheme_specific_data_count = count;
-
-    // parse Boxes
-    int i=0;
-    for(; i<count; ++i) {
-        parse_box(ptr, ptr-end, &box->scheme_specific_data[i]);
-        ptr += box->scheme_specific_data[i].size;
-    }
-
-    *box_ptr = (Box*)box;
-    return BMFF_OK;
-}
-
 BMFFCode _bmff_parse_box_protection_scheme_info(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
 {
     if(!ctx)        return BMFF_INVALID_CONTEXT;
@@ -935,7 +896,7 @@ BMFFCode _bmff_parse_box_protection_scheme_info(BMFFContext *ctx, const uint8_t 
     }
 
     if(ptr < end && strncmp(ptr+4, "schi", 4) == 0) {
-        BMFFCode res = _bmff_parse_child(ctx, _bmff_parse_box_scheme_info, ptr, end-ptr, (Box**)&box->scheme_info);
+        BMFFCode res = _bmff_parse_child(ctx, _bmff_parse_box_generic_container, ptr, end-ptr, (Box**)&box->scheme_info);
         if(res != BMFF_OK) {
             return res;
         }
