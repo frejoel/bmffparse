@@ -71,9 +71,15 @@ size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *
                 Box *box;
                 BMFFCode res = parse_map[i].parse_func(ctx, ptr, end-ptr, &box);
                 if(res == BMFF_OK) {
+                    if(ctx->callback) {
+                        ctx->callback(ctx, BMFFEventParsed, ptr+4, (void*)box);
+                    }
                     //printf("%c%c%c%c\n", box->type[0], box->type[1], box->type[2], box->type[3]);
                 } else {
                     fprintf(stderr, "Error paring box: %d\n", res);
+                    if(ctx->callback) {
+                        ctx->callback(ctx, BMFFEventParseError, ptr+4, (void*)ptr);
+                    }
                 }
                 if(parser_is_container_type) {
                     bmff_context_alloc_stack_pop(ctx);

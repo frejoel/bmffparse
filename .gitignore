@@ -2,3 +2,5 @@
 test/data/*
 **/*.o
 bin/*
+*.mp4
+*.mp4a

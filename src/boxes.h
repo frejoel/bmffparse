@@ -1058,7 +1058,7 @@ typedef struct AVCDecoderConfigBox { // avcC
 
 typedef struct EncryptionSubsample {
     uint16_t                bytes_of_clear_data;
-    uint32_t                bytes_of_encrpyted_data;
+    uint32_t                bytes_of_encrypted_data;
 } EncryptionSubsample;
 
 typedef struct EncryptionSample {
@@ -1073,8 +1073,6 @@ typedef struct SampleEncryptionBox { // senc
     uint32_t                sample_count;
     EncryptionSample        *samples;
 } SampleEncryptionBox;
-
-// senc, free
 
 // icnf
 // tims
