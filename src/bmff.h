@@ -40,8 +40,10 @@ extern "C" {
  * Callback Event Ids.
  */
 typedef enum BMFFEventId {
-    BMFFEventParsed,
+    BMFFEventParseStart,
+    BMFFEventParseComplete,
     BMFFEventParseError,
+    BMFFEventParserNotFound,
 } BMFFEventId;
 
 // forward declaration

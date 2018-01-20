@@ -7,6 +7,7 @@
 #include "context.h"
 
 #define BOX_TYPE_IS(d,t) ((d)[0]==(t)[0] && (d)[1]==(t)[1] && (d)[2]==(t)[2] && (d)[3]==(t)[3])
+#define CALLBACK(c, e, f, d)  if((c)->callback) { (c)->callback((c), (e), (f), (void*)(d)); }
 
 const char *bmff_get_version(void)
 {
@@ -61,31 +62,34 @@ size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *
         //printf("%c%c%c%c, size: %d\n", ptr[4], ptr[5], ptr[6], ptr[7], box_size);
 
         int i=0;
-        for(; i<13; ++i) {
+        for(; i < PARSE_MAP_LEN; ++i) {
             uint32_t parser_box_type = parse_map[i].box_type_value;
             uint8_t parser_is_container_type = parse_map[i].is_container_type;
             if(parser_box_type == box_type) {
                 if(parser_is_container_type == 1) {
                     bmff_context_alloc_stack_push(ctx);
                 }
+
                 Box *box;
+                CALLBACK(ctx, BMFFEventParseStart, ptr+4, NULL);
                 BMFFCode res = parse_map[i].parse_func(ctx, ptr, end-ptr, &box);
+                
                 if(res == BMFF_OK) {
-                    if(ctx->callback) {
-                        ctx->callback(ctx, BMFFEventParsed, ptr+4, (void*)box);
-                    }
-                    //printf("%c%c%c%c\n", box->type[0], box->type[1], box->type[2], box->type[3]);
+                    CALLBACK(ctx, BMFFEventParseComplete, ptr+4, (void*)box);
                 } else {
                     fprintf(stderr, "Error paring box: %d\n", res);
-                    if(ctx->callback) {
-                        ctx->callback(ctx, BMFFEventParseError, ptr+4, (void*)ptr);
-                    }
+                    CALLBACK(ctx, BMFFEventParseError, ptr+4, (void*)ptr);
                 }
+                
                 if(parser_is_container_type) {
                     bmff_context_alloc_stack_pop(ctx);
                 }
                 break;
             }
+        }
+
+        if(i == PARSE_MAP_LEN) {
+            CALLBACK(ctx, BMFFEventParserNotFound, ptr+4, (void*)ptr);
         }
 
         ptr += box_size;

@@ -4,12 +4,18 @@
 
 void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, void *data)
 {
-    if(event_id == BMFFEventParseError) {
-        printf("Error parsing Box: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+    if(event_id == BMFFEventParserNotFound) {
+        printf("\nXXXXXX\nParser Not Found: %c%c%c%c\n\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
-    else if(event_id == BMFFEventParsed)
+    else if(event_id == BMFFEventParseStart) {
+        printf("Parse Box Starting: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+    }
+    else if(event_id == BMFFEventParseError) {
+        printf("\nXXXXXX\nError parsing Box: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+    }
+    else if(event_id == BMFFEventParseComplete)
     {
-        printf("Parsed Box: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+        printf("Parsed Box Complete: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
         if(strncmp("ftyp", fourCC, 4 == 0)) {
             FileTypeBox *box = (FileTypeBox*)data;
             printf("####################\n");

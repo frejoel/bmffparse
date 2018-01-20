@@ -29,7 +29,7 @@
 
 #define PARSER_FUNC(func_name)  BMFFCode func_name(BMFFContext *ctx, const uint8_t * data, size_t size, Box **box_ptr)
 // number of items in the parse_map
-#define PARSE_MAP_LEN   (126)
+#define PARSE_MAP_LEN   (127)
 
 /*
  * Box parser function potiner
