@@ -282,6 +282,19 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("    Scheme Version: %d\n", box->scheme_version);
             printf("    Scheme Type: %s\n", box->scheme_uri ? box->scheme_uri : "NULL");
         }
+
+        if(strncmp("tenc", fourCC, 4) == 0) {
+            TrackEncryptionBox *box = (TrackEncryptionBox*)data;
+            printf("####################\n");
+            printf("Track Encryption:\n");
+            printf("    Default Crypt Byte Block: %d\n", box->default_crypt_byte_block);
+            printf("    Default skip Byte Block: %d\n", box->default_skip_byte_block);
+            printf("    Default Is Protected: %s\n", box->default_is_protected == eBooleanTrue ? "Yes" : "No");
+            printf("    Default Per Sample IV size: %d\n", box->default_per_sample_iv_size);
+            printf("    Default KID: 0x%02X%02X...\n", box->default_kid[0], box->default_kid[1]);
+            printf("    Default Constant IV Size: %d\n", box->default_constant_iv_size);
+            printf("    Default Constant IV: 0x%02X%02X...\n", box->default_constant_iv[0], box->default_constant_iv[1]);
+        }
     }
 }
 

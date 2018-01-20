@@ -1069,6 +1069,17 @@ typedef struct SampleEncryptionBox { // senc
     EncryptionSample        *samples;
 } SampleEncryptionBox;
 
+typedef struct TrackEncryptionBox { // tenc
+    FullBox                 box;
+    uint8_t                 default_crypt_byte_block; // when verison >= 1
+    uint8_t                 default_skip_byte_block; // when version >= 1
+    eBoolean                default_is_protected;
+    uint8_t                 default_per_sample_iv_size;
+    uint8_t                 default_kid[16];
+    uint8_t                 default_constant_iv_size;
+    const uint8_t           *default_constant_iv;
+} TrackEncryptionBox;
+
 // icnf
 // tims
 // tsro

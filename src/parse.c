@@ -133,6 +133,7 @@ const MapItem parse_map[] = {
     {"esds", 0, _bmff_parse_box_es_descriptor},
     {"avcC", 0, _bmff_parse_box_avc_decoder_config},
     {"senc", 0, _bmff_parse_box_sample_encryption},
+    {"tenc", 0, _bmff_parse_box_track_encryption},
     //{"", 0, _bmff_parse_box_},
 };
 
@@ -3578,9 +3579,11 @@ BMFFCode _bmff_parse_box_sample_encryption(BMFFContext *ctx, const uint8_t *data
     uint32_t i=0;
     for(; i<box->sample_count; ++i) {
         EncryptionSample *sample = &box->samples[i];
-        sample->iv_size = 16;
-        sample->iv = ptr;
-        ptr += 16;
+        sample->iv_size = ctx->default_iv_size;
+        if(sample->iv_size > 0) {
+            sample->iv = ptr;
+            ptr += sample->iv_size;
+        }
 
         if(box->box.flags & 0x000002 > 0) {
             ADV_PARSE_U16(sample->subsample_count, ptr);
@@ -3593,6 +3596,52 @@ BMFFCode _bmff_parse_box_sample_encryption(BMFFContext *ctx, const uint8_t *data
                 ADV_PARSE_U32(subs->bytes_of_encrypted_data, ptr);
             }
         }
+    }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_track_encryption(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, TrackEncryptionBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+
+    ptr++; // reserved
+
+    if(box->box.version > 1) {
+        uint8_t val = *ptr;
+        box->default_crypt_byte_block = (val >> 4) & 0x0F;
+        box->default_skip_byte_block = val & 0x0F;
+    }
+    ptr++; // reserved or default values above
+
+    box->default_is_protected = (*ptr)==1 ? eBooleanTrue : eBooleanFalse;
+    ptr++;
+
+    ADV_PARSE_U8(box->default_per_sample_iv_size, ptr);
+    // set the default IV size in the context.
+    // this is used by the Sample Encryption Box parser.
+    // note: this may get overwritten by the constant iv size.
+    ctx->default_iv_size = box->default_per_sample_iv_size;
+
+    memcpy(box->default_kid, ptr, 16);
+    ptr += 16;
+
+    if(box->default_is_protected == 1 && box->default_per_sample_iv_size == 0) {
+        ADV_PARSE_U8(box->default_constant_iv_size, ptr);
+        box->default_constant_iv = ptr;
+        ptr += box->default_constant_iv_size;
+        // set the default IV size in the context.
+        // this is used by the Sample Encryption Box parser.
+        ctx->default_iv_size = box->default_constant_iv_size;
     }
 
     *box_ptr = (Box*)box;

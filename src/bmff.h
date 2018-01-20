@@ -127,6 +127,8 @@ typedef struct BMFFContext {
     uint32_t sample_description_version;
     // memory allocations stack (linked list)
     MemList *allocs_stack;
+    // default IV size set by the Track Encryption Box parser. Used by the Sample Encrpytion Box Parser.
+    uint8_t default_iv_size;
 } BMFFContext;
 
 const char *bmff_get_version(void);
