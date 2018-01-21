@@ -2,151 +2,173 @@
 #include <bmff.h>
 #include <string.h>
 
+#define INDENT_TOTAL_SIZE (400)
+#define INDENT_SIZE (2)
+
+int indent_count;
+char indent[INDENT_TOTAL_SIZE];
+
+void indent_inc(void)
+{
+    indent[indent_count] = ' ';
+    indent_count += INDENT_SIZE;
+    indent[indent_count] = 0;
+}
+
+void indent_dec(void)
+{
+    indent[indent_count] = ' ';
+    indent_count -= INDENT_SIZE;
+    indent[indent_count] = 0;
+}
+
 void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, void *data)
 {
     if(event_id == BMFFEventParserNotFound) {
-        printf("\nXXXXXX\nParser Not Found: %c%c%c%c\n\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+        printf("\nParser Not Found: %c%c%c%c\n\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
     else if(event_id == BMFFEventParseStart) {
-        printf("Parse Box Starting: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+        indent_inc();
+        printf("\n%sParse Box Starting: %c%c%c%c\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
     else if(event_id == BMFFEventParseError) {
-        printf("\nXXXXXX\nError parsing Box: %c%c%c%c\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+        indent_dec();
+        printf("\nError parsing Box: %c%c%c%c\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
     else if(event_id == BMFFEventParseComplete)
     {
-        printf("Parsed Box Complete: %c%c%c%c, size: %d\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3], ((Box*)data)->size);
-        if(strncmp("ftyp", fourCC, 4 == 0)) {
+        printf("\n%sParsed Box Complete: %c%c%c%c, size: %d\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3], ((Box*)data)->size);
+        if(strncmp("ftyp", fourCC, 4) == 0) {
             FileTypeBox *box = (FileTypeBox*)data;
-            printf("####################\n");
-            printf("File Info:\n");
-            printf("    Major Brand: %c%c%c%c\n", box->major_brand[0], box->major_brand[1], box->major_brand[2], box->major_brand[3]);
-            printf("    Minor Version: %d\n", box->minor_version);
+            printf("%s####################\n", indent);
+            printf("%sFile Info:\n", indent);
+            printf("%s    Major Brand: %c%c%c%c\n", indent, box->major_brand[0], box->major_brand[1], box->major_brand[2], box->major_brand[3]);
+            printf("%s    Minor Version: %d\n", indent, box->minor_version);
             int i=0;
             for(; i < box->nb_compatible_brands; ++i) {
                 const uint8_t *b = &box->compatible_brands[i*4];
-                printf("    Compatible Brand (%d): %c%c%c%c\n", i+1, b[0], b[1], b[2], b[3]);
+                printf("%s    Compatible Brand (%d): %c%c%c%c\n", indent, i+1, b[0], b[1], b[2], b[3]);
             }
         }
 
         if(strncmp("iods", fourCC, 4) == 0) {
             ObjectDescriptorBox *box = (ObjectDescriptorBox*)data;
-            printf("####################\n");
-            printf("Object Descriptor:\n");
-            printf("    od tag: %d\n", box->od.od_tag);
-            printf("    od id: %d\n", box->od.od_id);
-            printf("    url flag: %d\n", box->od.url_flag);
-            printf("    include inline profile level flag: %d\n", box->od.include_inline_profile_level_flag);
-            printf("    url length: %d\n", box->od.url_length);
+            printf("%s####################\n", indent);
+            printf("%sObject Descriptor:\n", indent);
+            printf("%s    od tag: %d\n", indent, box->od.od_tag);
+            printf("%s    od id: %d\n", indent, box->od.od_id);
+            printf("%s    url flag: %d\n", indent, box->od.url_flag);
+            printf("%s    include inline profile level flag: %d\n", indent, box->od.include_inline_profile_level_flag);
+            printf("%s    url length: %d\n", indent, box->od.url_length);
             if(box->od.url) {
-                printf("    od url: %s\n", box->od.url);
+                printf("%s    od url: %s\n", indent, box->od.url);
             }
         }
 
         if(strncmp("mvhd", fourCC, 4) == 0) {
             MovieHeaderBox *box = (MovieHeaderBox*)data;
-            printf("####################\n");
-            printf("Movie Header:\n");
-            printf("    Timescale (units per second): %u\n", box->timescale);
-            printf("    Duration: %llu (in Timescale Units)\n", box->duration);
-            printf("    Duration: %f seconds\n", (float)box->duration / (float)box->timescale);
-            printf("    Preferred Playback Rate: %f\n", box->rate);
-            printf("    Preferred Playback Volume: %f\n", box->volume);
-            printf("    Next Track for this Presentation: %u\n", box->next_track_id);
+            printf("%s####################\n", indent);
+            printf("%sMovie Header:\n", indent);
+            printf("%s    Timescale (units per second): %u\n", indent, box->timescale);
+            printf("%s    Duration: %llu (in Timescale Units)\n", indent, box->duration);
+            printf("%s    Duration: %f seconds\n", indent, (float)box->duration / (float)box->timescale);
+            printf("%s    Preferred Playback Rate: %f\n", indent, box->rate);
+            printf("%s    Preferred Playback Volume: %f\n", indent, box->volume);
+            printf("%s    Next Track for this Presentation: %u\n", indent, box->next_track_id);
         }
 
         if(strncmp("tkhd", fourCC, 4) == 0) {
             TrackHeaderBox *box = (TrackHeaderBox*)data;
-            printf("####################\n");
-            printf("Track Header:\n");
-            printf("    Track ID: %d\n", box->track_id);
-            printf("    Duration: %llu (Timescale as specified in Movie Header)\n", box->duration);
-            printf("    Alternate Group: %d\n", box->alternate_group);
-            printf("    Enabled: %s\n", ((box->box.flags & 0x01) ? "yes" : "no"));
-            printf("    Track in Movie: %s\n", ((box->box.flags & 0x02) ? "yes" : "no"));
-            printf("    Track in Preview: %s\n", ((box->box.flags & 0x04) ? "yes" : "no"));
-            printf("    Volume: %f\n", box->volume);
+            printf("%s####################\n", indent);
+            printf("%sTrack Header:\n", indent);
+            printf("%s    Track ID: %d\n", indent, box->track_id);
+            printf("%s    Duration: %llu (Timescale as specified in Movie Header)\n", indent, box->duration);
+            printf("%s    Alternate Group: %d\n", indent, box->alternate_group);
+            printf("%s    Enabled: %s\n", indent, ((box->box.flags & 0x01) ? "yes" : "no"));
+            printf("%s    Track in Movie: %s\n", indent, ((box->box.flags & 0x02) ? "yes" : "no"));
+            printf("%s    Track in Preview: %s\n", indent, ((box->box.flags & 0x04) ? "yes" : "no"));
+            printf("%s    Volume: %f\n", indent, box->volume);
             const char *size_txt = ((box->box.flags & 0x08) ? "Aspect Ratio" : "Pixels");
-            printf("    Width: %f (%s)\n", box->width, size_txt);
-            printf("    Height: %f (%s)\n", box->height, size_txt);
+            printf("%s    Width: %f (%s)\n", indent, box->width, size_txt);
+            printf("%s    Height: %f (%s)\n", indent, box->height, size_txt);
         }
 
         static uint32_t media_timescale = 0;
         if(strncmp("mdhd", fourCC, 4) == 0) {
             MediaHeaderBox *box = (MediaHeaderBox*)data;
             media_timescale = box->timescale;
-            printf("####################\n");
-            printf("Media Header:\n");
-            printf("    Timescale (units per second): %u\n", box->timescale);
-            printf("    Duration: %llu (in Timescale units)\n", box->duration);
-            printf("    Duration: %f seconds\n", (float)box->duration / (float)box->timescale);
+            printf("%s####################\n", indent);
+            printf("%sMedia Header:\n", indent);
+            printf("%s    Timescale (units per second): %u\n", indent, box->timescale);
+            printf("%s    Duration: %llu (in Timescale units)\n", indent, box->duration);
+            printf("%s    Duration: %f seconds\n", indent, (float)box->duration / (float)box->timescale);
             const uint8_t *l = box->language;
-            printf("    Language: %c%c%c (ISO-639-2/T Language Code)\n", l[0], l[1], l[2]);
+            printf("%s    Language: %c%c%c (ISO-639-2/T Language Code)\n", indent, l[0], l[1], l[2]);
         }
 
         if(strncmp("vmhd", fourCC, 4) == 0) {
             VideoMediaHeaderBox *box = (VideoMediaHeaderBox*)data;
-            printf("####################\n");
-            printf("Video Media Header:\n");
-            printf("    Graphics Mode: %d\n", box->graphics_mode);
+            printf("%s####################\n", indent);
+            printf("%sVideo Media Header:\n", indent);
+            printf("%s    Graphics Mode: %d\n", indent, box->graphics_mode);
             const uint16_t *c = box->op_color;
-            printf("    Graphics Mode Color: RGB(%d,%d,%d)\n", c[0], c[1], c[2]);
+            printf("%s    Graphics Mode Color: RGB(%d,%d,%d)\n", indent, c[0], c[1], c[2]);
         }
 
         if(strncmp("smhd", fourCC, 4) == 0) {
             SoundMediaHeaderBox *box = (SoundMediaHeaderBox*)data;
-            printf("####################\n");
-            printf("Sound Media Header:\n");
-            printf("    Balance: %f\n", box->balance);
+            printf("%s####################\n", indent);
+            printf("%sSound Media Header:\n", indent);
+            printf("%s    Balance: %f\n", indent, box->balance);
         }
 
         if(strncmp("stsd", fourCC, 4) == 0) {
             SampleDescriptionBox *box = (SampleDescriptionBox*)data;
-            printf("####################\n");
-            printf("Sample Description:\n");
-            printf("    Entries: %d\n", box->entry_count);
+            printf("%s####################\n", indent);
+            printf("%sSample Description:\n", indent);
+            printf("%s    Entries: %d\n", indent, box->entry_count);
             uint32_t i = 0;
             for(; i < box->entry_count; ++i) {
                 const uint8_t *t = box->entries[i]->box.type;
-                printf("    Sample Type (%d): %c%c%c%c, data reference index %d\n", i, t[0], t[1], t[2], t[3], box->entries[i]->data_reference_index);
+                printf("%s    Sample Type (%d): %c%c%c%c, data reference index %d\n", indent, i, t[0], t[1], t[2], t[3], box->entries[i]->data_reference_index);
             }
         }
 
         if(strncmp("vide", fourCC, 4) == 0 || strncmp("icpv", fourCC, 4) == 0) {
             VisualSampleEntry *box = (VisualSampleEntry*)data;
-            printf("####################\n");
-            printf("Visual Sample:\n");
+            printf("%s####################\n", indent);
+            printf("%sVisual Sample:\n", indent);
             const uint8_t *t = box->box.type;
-            printf("    Sample Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
-            printf("    Width: %d pixels\n", box->width);
-            printf("    Height: %d pixels\n", box->height);
-            printf("    Horizontal Resolution: %f ppi\n", box->horiz_resolution);
-            printf("    Vertical Resolution: %f ppi\n", box->vert_resolution);
-            printf("    Frame Count: %d\n", box->frame_count);
-            printf("    Compressor Name: %s\n", box->compressor_name);
+            printf("%s    Sample Type: %c%c%c%c\n", indent, t[0], t[1], t[2], t[3]);
+            printf("%s    Width: %d pixels\n", indent, box->width);
+            printf("%s    Height: %d pixels\n", indent, box->height);
+            printf("%s    Horizontal Resolution: %f ppi\n", indent, box->horiz_resolution);
+            printf("%s    Vertical Resolution: %f ppi\n", indent, box->vert_resolution);
+            printf("%s    Frame Count: %d\n", indent, box->frame_count);
+            printf("%s    Compressor Name: %s\n", indent, box->compressor_name);
         }
 
         if(strncmp("soun", fourCC, 4) == 0 || strncmp("icpa", fourCC, 4) == 0) {
             AudioSampleEntry *box = (AudioSampleEntry*)data;
-            printf("####################\n");
-            printf("Audio Sample:\n");
+            printf("%s####################\n", indent);
+            printf("%sAudio Sample:\n", indent);
             const uint8_t *t = box->box.type;
-            printf("    Sample Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
-            printf("    Channel Count: %d\n", box->channel_count);
-            printf("    Sample Size: %d\n", box->sample_size);
-            printf("    Sample Rate: %f\n", box->sample_rate);
+            printf("%s    Sample Type: %c%c%c%c\n", indent, t[0], t[1], t[2], t[3]);
+            printf("%s    Channel Count: %d\n", indent, box->channel_count);
+            printf("%s    Sample Size: %d\n", indent, box->sample_size);
+            printf("%s    Sample Rate: %f\n", indent, box->sample_rate);
             if(NULL != box->sampling_rate) {
-                printf("    Sampling Rate: %u\n", box->sampling_rate->sampling_rate);
+                printf("%s    Sampling Rate: %u\n", indent, box->sampling_rate->sampling_rate);
             }
         }
 
         if(strncmp("hint", fourCC, 4) == 0 || strncmp("icph", fourCC, 4) == 0) {
             HintSampleEntry *box = (HintSampleEntry*)data;
-            printf("####################\n");
-            printf("Hint Sample:\n");
+            printf("%s####################\n", indent);
+            printf("%sHint Sample:\n", indent);
             const uint8_t *t = box->box.type;
-            printf("    Sample Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
-            printf("    Data (first 10 bytes): ");
+            printf("%s    Sample Type: %c%c%c%c\n", indent, t[0], t[1], t[2], t[3]);
+            printf("%s    Data (first 10 bytes): ", indent);
             uint32_t c = box->data_size > 10 ? 10 : box->data_size;
             uint32_t i = 0;
             for(; i<c; ++i) {
@@ -157,82 +179,87 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
 
         if(strncmp("stsz", fourCC, 4) == 0) {
             SampleSizeBox *box = (SampleSizeBox*)data;
-            printf("####################\n");
-            printf("Sample Size:\n");
-            printf("    Default Sample Size: %d\n", box->sample_size);
-            printf("    Sample Count: %d\n", box->sample_count);
-            printf("    Sample Entry Sizes (first 10): ");
-            uint32_t i=0;
+            printf("%s####################\n", indent);
+            printf("%Sample Size:\n", indent);
+            printf("%s    Default Sample Size: %d\n", indent, box->sample_size);
+            printf("%s    Sample Count: %d\n", indent, box->sample_count);
+
             uint32_t c = box->sample_count > 10 ? 10 : box->sample_count;
-            for(; i<c; ++i) {
-                printf("%d, ", box->entry_sizes[i]);
+            if(c > 0) {
+                printf("%s    Sample Entry Sizes (first 10): ", indent);
+                uint32_t i=0;
+                for(; i<c; ++i) {
+                    printf("%d, ", box->entry_sizes[i]);
+                }
+                printf("...\n");
             }
-            printf("...\n");
         }
 
         if(strncmp("dref", fourCC, 4) == 0) {
             DataReferenceBox *box = (DataReferenceBox*)data;
-            printf("####################\n");
-            printf("Data Reference:\n");
-            printf("    Entry Count: %d\n", box->entry_count);
+            printf("%s####################\n", indent);
+            printf("%sData Reference:\n", indent);
+            printf("%s    Entry Count: %d\n", indent, box->entry_count);
             uint32_t i=0;
             for(;i<box->entry_count; ++i) {
                 DataEntryBox *e = box->data_entries[i];
-                printf("    Entry Name (%d): \"%s\"\n", e->name);
-                printf("    Entry Location (%d): \"%s\"\n", e->location);
+                printf("%s    Entry Name (%d): \"%s\"\n", indent, i, (e->name ? e->name : ""));
+                printf("%s    Entry Location (%d): \"%s\"\n", indent, i, (e->location ? e->location : ""));
             }
         }
 
         if(strncmp("hdlr", fourCC, 4) == 0) {
             HandlerBox *box = (HandlerBox*)data;
-            printf("####################\n");
-            printf("Handler:\n");
+            printf("%s####################\n", indent);
+            printf("%sHandler:\n", indent);
             uint8_t *t = (uint8_t*)&box->handler_type;
-            printf("    Handler Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
-            printf("    Handler Name: %s\n", box->name);
+            printf("%s    Handler Type: %c%c%c%c\n", indent, t[0], t[1], t[2], t[3]);
+            printf("%s    Handler Name: %s\n", indent, box->name);
         }
 
         if(strncmp("stts", fourCC, 4) == 0) {
             TimeToSampleBox *box = (TimeToSampleBox*)data;
-            printf("####################\n");
-            printf("Time To Sample:\n");
-            printf("    Sample Count: %d\n", box->sample_count);
+            printf("%s####################\n", indent);
+            printf("%sTime To Sample:\n", indent);
+            printf("%s    Sample Count: %d\n", indent, box->sample_count);
             uint32_t i=0;
             for(;i<box->sample_count; ++i) {
                 TimeToSample *e = &box->samples[i];
-                printf("    Count of conseq samples with this duration (%d): %d\n", i, e->count);
-                printf("    Delta of these samples in time-scale (%d): %d\n", i, e->delta);
-                printf("    Delta in media timescale (%d): %f (samples per sec)\n", i, (float)media_timescale / (float)e->delta);
+                printf("%s    Count of conseq samples with this duration (%d): %d\n", indent, i, e->count);
+                printf("%s    Delta of these samples in time-scale (%d): %d\n", indent, i, e->delta);
+                printf("%s    Delta in media timescale (%d): %f (samples per sec)\n", indent, i, (float)media_timescale / (float)e->delta);
             }
         }
 
         if(strncmp("stsc", fourCC, 4) == 0) {
             SampleToChunkBox *box = (SampleToChunkBox*)data;
-            printf("####################\n");
-            printf("Sample To Chunk:\n");
-            printf("    Entry Count: %d\n", box->entry_count);
+            printf("%s####################\n", indent);
+            printf("%sSample To Chunk:\n", indent);
+            printf("%s    Entry Count: %d\n", indent, box->entry_count);
             uint32_t i=0;
             uint32_t c = box->entry_count > 5 ? 5 : box->entry_count;
-            printf("    Entires (first 5):\n");
-            for(;i<c; ++i) {
-                SampleToChunk *e = &box->entries[i];
-                printf("        First Chunk Index (%d): %d\n", i, e->first_chunk);
-                printf("        Samples per Chunk (%d): %d\n", i, e->samples_per_chunk);
-                printf("        Sample Description Index (%d): %d\n", i, e->sample_description_index);
-            }
-            if(c < box->entry_count) {
-                printf("...\n");
+            if(c > 0) {
+                printf("%s    Entires (first 5):\n", indent);
+                for(;i<c; ++i) {
+                    SampleToChunk *e = &box->entries[i];
+                    printf("%s        First Chunk Index (%d): %d\n", indent, i, e->first_chunk);
+                    printf("%s        Samples per Chunk (%d): %d\n", indent, i, e->samples_per_chunk);
+                    printf("%s        Sample Description Index (%d): %d\n", indent, i, e->sample_description_index);
+                }
+                if(c < box->entry_count) {
+                    printf("%s...\n", indent);
+                }
             }
         }
 
         if(strncmp("stco", fourCC, 4 == 0)) {
             ChunkOffsetBox *box = (ChunkOffsetBox*)data;
-            printf("####################\n");
-            printf("Chunk Offset:\n");
-            printf("    Entry Count: %d\n", box->entry_count);
+            printf("%s####################\n", indent);
+            printf("%sChunk Offset:\n", indent);
+            printf("%s    Entry Count: %d\n", indent, box->entry_count);
             uint32_t i=0;
             uint32_t c = box->entry_count > 10 ? 10 : box->entry_count;
-            printf("    Chunk Offsets into the file (first 10): ");
+            printf("%s    Chunk Offsets into the file (first 10): ", indent);
             for(;i<c; ++i) {
                 printf("%d, ", box->chunk_offsets[i]);
             }
@@ -241,71 +268,76 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
 
         if(strncmp("stss", fourCC, 4) == 0) {
             SyncSampleBox *box = (SyncSampleBox*)data;
-            printf("####################\n");
-            printf("Sync Sample:\n");
-            printf("    Entry Count: %d\n", box->entry_count);
+            printf("%s####################\n", indent);
+            printf("%sSync Sample:\n", indent);
+            printf("%s    Entry Count: %d\n", indent, box->entry_count);
             uint32_t i=0;
             uint32_t c = box->entry_count > 10 ? 10 : box->entry_count;
-            printf("    Sample Numbers of Sync Samples (first 10): ");
+            printf("%s    Sample Numbers of Sync Samples (first 10): ", indent);
             for(;i<c; ++i) {
                 printf("%d, ", box->sample_numbers[i]);
             }
-            printf("...\n");
+            printf(".\n");
         }
 
         if(strncmp("meta", fourCC, 4) == 0) {
             MetaBox *box = (MetaBox*)data;
-            printf("####################\n");
-            printf("Meta:\n");
+            printf("%s####################\n", indent);
+            printf("%sMeta:\n", indent);
             uint8_t *t = (uint8_t*)&box->handler->handler_type;
-            printf("    Handler Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
-            printf("    Has Primary Resource: %s\n", box->primary_resource ? "true" : "false");
-            printf("    Has File Locations: %s\n", box->file_locations ? "true" : "false");
-            printf("    Has Item Locations: %s\n", box->item_locations ? "true" : "false");
-            printf("    Has Protections: %s\n", box->protections ? "true" : "false");
-            printf("    Has Item Info: %s\n", box->item_infos ? "true" : "false");
-            printf("    Has IPMP Control: %s\n", box->ipmp_control ? "true" : "false");
-            printf("    Has Item References: %s\n", box->item_refs ? "true" : "false");
-            printf("    Has Item Data: %s\n", box->item_data ? "true" : "false");
-            printf("    Has Other Data: %s\n", box->other_boxes ? "true" : "false");
+            printf("%s    Handler Type: %c%c%c%c\n", indent, t[0], t[1], t[2], t[3]);
+            printf("%s    Has Primary Resource: %s\n", indent, box->primary_resource ? "true" : "false");
+            printf("%s    Has File Locations: %s\n", indent, box->file_locations ? "true" : "false");
+            printf("%s    Has Item Locations: %s\n", indent, box->item_locations ? "true" : "false");
+            printf("%s    Has Protections: %s\n", indent, box->protections ? "true" : "false");
+            printf("%s    Has Item Info: %s\n", indent, box->item_infos ? "true" : "false");
+            printf("%s    Has IPMP Control: %s\n", indent, box->ipmp_control ? "true" : "false");
+            printf("%s    Has Item References: %s\n", indent, box->item_refs ? "true" : "false");
+            printf("%s    Has Item Data: %s\n", indent, box->item_data ? "true" : "false");
+            printf("%s    Has Other Data: %s\n", indent, box->other_boxes ? "true" : "false");
             if(box->other_boxes_len > 0) {
-                printf("    Number of Other Boxes: %d\n", box->other_boxes_len);
+                printf("%s    Number of Other Boxes: %d\n", indent, box->other_boxes_len);
             }
         }
 
         if(strncmp("schm", fourCC, 4) == 0) {
             SchemeTypeBox *box = (SchemeTypeBox*)data;
-            printf("####################\n");
-            printf("Scheme Type:\n");
+            printf("%s####################\n", indent);
+            printf("%sScheme Type:\n", indent);
             const uint8_t *t = box->scheme_type;
-            printf("    Scheme Type: %c%c%c%c\n", t[0], t[1], t[2], t[3]);
-            printf("    Scheme Version: %d\n", box->scheme_version);
-            printf("    Scheme Type: %s\n", box->scheme_uri ? box->scheme_uri : "NULL");
+            printf("%s    Scheme Type: %c%c%c%c\n", indent, t[0], t[1], t[2], t[3]);
+            printf("%s    Scheme Version: 0x%08X\n", indent, box->scheme_version);
+            printf("%s    Scheme Type: \"%s\"\n", indent, box->scheme_uri ? box->scheme_uri : "NULL");
         }
 
         if(strncmp("tenc", fourCC, 4) == 0) {
             TrackEncryptionBox *box = (TrackEncryptionBox*)data;
-            printf("####################\n");
-            printf("Track Encryption:\n");
-            printf("    Default Crypt Byte Block: %d\n", box->default_crypt_byte_block);
-            printf("    Default skip Byte Block: %d\n", box->default_skip_byte_block);
-            printf("    Default Is Protected: %s\n", box->default_is_protected == eBooleanTrue ? "Yes" : "No");
-            printf("    Default Per Sample IV size: %d\n", box->default_per_sample_iv_size);
-            printf("    Default KID: 0x%02X%02X...\n", box->default_kid[0], box->default_kid[1]);
-            printf("    Default Constant IV Size: %d\n", box->default_constant_iv_size);
-            printf("    Default Constant IV: 0x%02X%02X...\n", box->default_constant_iv[0], box->default_constant_iv[1]);
+            printf("%s####################\n", indent);
+            printf("%sTrack Encryption:\n", indent);
+            printf("%s    Default Crypt Byte Block: %d\n", indent, box->default_crypt_byte_block);
+            printf("%s    Default skip Byte Block: %d\n", indent, box->default_skip_byte_block);
+            printf("%s    Default Is Protected: %s\n", indent, box->default_is_protected == eBooleanTrue ? "Yes" : "No");
+            printf("%s    Default Per Sample IV size: %d\n", indent, box->default_per_sample_iv_size);
+            printf("%s    Default KID: 0x%02X%02X...\n", indent, box->default_kid[0], box->default_kid[1]);
+            printf("%s    Default Constant IV Size: %d\n", indent, box->default_constant_iv_size);
+            printf("%s    Default Constant IV: 0x%02X%02X...\n", indent, box->default_constant_iv[0], box->default_constant_iv[1]);
         }
+
+        indent_dec();
     }
 }
 
 int main(int argc, char** argv)
 {
+    indent_count = 0;
+    memset(indent, ' ', INDENT_TOTAL_SIZE);
+    
     BMFFContext ctx;
     BMFFCode res;
 
     bmff_context_init(&ctx);
 
-    printf("opening file: %s\n", argv[1]);
+    printf("opening file:%s\n", argv[1]);
 
     FILE *fp = fopen(argv[1], "rb");
     if(!fp) {
