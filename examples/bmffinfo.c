@@ -2,12 +2,15 @@
 #include <bmff.h>
 #include <string.h>
 
+// indenting defines
 #define INDENT_TOTAL_SIZE (400)
 #define INDENT_SIZE (2)
 
+// indenting info
 int indent_count;
 char indent[INDENT_TOTAL_SIZE];
 
+// increases indentation
 void indent_inc(void)
 {
     indent[indent_count] = ' ';
@@ -15,6 +18,7 @@ void indent_inc(void)
     indent[indent_count] = 0;
 }
 
+// decreases indentation
 void indent_dec(void)
 {
     indent[indent_count] = ' ';
@@ -22,25 +26,45 @@ void indent_dec(void)
     indent[indent_count] = 0;
 }
 
+// Callback that is fired during the parsing process
 void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, void *data)
 {
+    // every box in the file will have this callback triggered during the
+    // parsing process (including free and container Boxes)
+
+    // the event_id tells us which event is being triggered.
     if(event_id == BMFFEventParserNotFound) {
+        // a parsing function of the box in question is not specified.
+        // data contains the raw box data in this scenario.
+        // fourCC is the character code of the box.
         printf("\nParser Not Found: %c%c%c%c\n\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
     else if(event_id == BMFFEventParseStart) {
+        // a parsing function was found, and it will now start parsing.
+        // data will be NULL in this scenario.
+        // fourCC is the character code of the box to be parsed.
         indent_inc();
         printf("\n%sParse Box Starting: %c%c%c%c\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
     else if(event_id == BMFFEventParseError) {
+        // a parsing function was found, but it encountered a parsing error.
+        // data will be the raw bod data in this scenario.
+        // fourCC is the character code of the box that was being parsed.
+        // a BMFFEventParseComplete will NOT be triggered for this box.
         indent_dec();
         printf("\nError parsing Box: %c%c%c%c\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
     else if(event_id == BMFFEventParseComplete)
     {
+        // a parsing function was found, and it completed parsing successfully.
+        // data will be parsed box, it will need to be cast to the correct type.
+        // fourCC is the character code of the box that was parsed.
         printf("\n%sParsed Box Complete: %c%c%c%c, size: %d\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3], ((Box*)data)->size);
         
+        // variable for keeping track of timescales
         static uint32_t media_timescale = 0;
 
+        // print out the Box information for a number of different boxes.
         if(strncmp("ftyp", fourCC, 4) == 0) {
             FileTypeBox *box = (FileTypeBox*)data;
             printf("%s####################\n", indent);
@@ -358,12 +382,17 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
 
 int main(int argc, char** argv)
 {
+    // indent initialization
     indent_count = 0;
     memset(indent, ' ', INDENT_TOTAL_SIZE);
     
+    // Parsing Context.
     BMFFContext ctx;
+    // Return code.
     BMFFCode res;
 
+    // initialize the parsing context.
+    // this MUST be done prior to parsing.
     bmff_context_init(&ctx);
 
     printf("opening file:%s\n", argv[1]);
@@ -376,8 +405,17 @@ int main(int argc, char** argv)
     uint8_t *buffer = (uint8_t*)malloc(1024*1024*5);
     size_t size = fread(buffer, 1, 1024*1024*5, fp);
 
+    // the callback can be set at any time and gets called during bmff_parse.
     bmff_set_event_callback(&ctx, on_event);
-    bmff_parse(&ctx, buffer, size, &res);
+    // parse our file which will trigger the callback.
+    size_t parsed = bmff_parse(&ctx, buffer, size, &res);
+    // it's possible to continue parsing parts of the file.
+    // a complete Box must be parsed though, you cannot send in partial boxes to the parser.
+    // bmff_parse returns the number of bytes that were sucessfully parsed.
+
+    // end the parsing, do NOT start parsing data using the context after parse end
+    // has been called.
+    bmff_parse_end(&ctx);
 
     fclose(fp);
 
