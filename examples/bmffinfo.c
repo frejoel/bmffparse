@@ -38,6 +38,9 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
     else if(event_id == BMFFEventParseComplete)
     {
         printf("\n%sParsed Box Complete: %c%c%c%c, size: %d\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3], ((Box*)data)->size);
+        
+        static uint32_t media_timescale = 0;
+
         if(strncmp("ftyp", fourCC, 4) == 0) {
             FileTypeBox *box = (FileTypeBox*)data;
             printf("%s####################\n", indent);
@@ -51,7 +54,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("iods", fourCC, 4) == 0) {
+        else if(strncmp("iods", fourCC, 4) == 0) {
             ObjectDescriptorBox *box = (ObjectDescriptorBox*)data;
             printf("%s####################\n", indent);
             printf("%sObject Descriptor:\n", indent);
@@ -65,7 +68,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("mvhd", fourCC, 4) == 0) {
+        else if(strncmp("mvhd", fourCC, 4) == 0) {
             MovieHeaderBox *box = (MovieHeaderBox*)data;
             printf("%s####################\n", indent);
             printf("%sMovie Header:\n", indent);
@@ -77,7 +80,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Next Track for this Presentation: %u\n", indent, box->next_track_id);
         }
 
-        if(strncmp("tkhd", fourCC, 4) == 0) {
+        else if(strncmp("tkhd", fourCC, 4) == 0) {
             TrackHeaderBox *box = (TrackHeaderBox*)data;
             printf("%s####################\n", indent);
             printf("%sTrack Header:\n", indent);
@@ -93,8 +96,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Height: %f (%s)\n", indent, box->height, size_txt);
         }
 
-        static uint32_t media_timescale = 0;
-        if(strncmp("mdhd", fourCC, 4) == 0) {
+        else if(strncmp("mdhd", fourCC, 4) == 0) {
             MediaHeaderBox *box = (MediaHeaderBox*)data;
             media_timescale = box->timescale;
             printf("%s####################\n", indent);
@@ -106,7 +108,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Language: %c%c%c (ISO-639-2/T Language Code)\n", indent, l[0], l[1], l[2]);
         }
 
-        if(strncmp("vmhd", fourCC, 4) == 0) {
+        else if(strncmp("vmhd", fourCC, 4) == 0) {
             VideoMediaHeaderBox *box = (VideoMediaHeaderBox*)data;
             printf("%s####################\n", indent);
             printf("%sVideo Media Header:\n", indent);
@@ -115,14 +117,14 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Graphics Mode Color: RGB(%d,%d,%d)\n", indent, c[0], c[1], c[2]);
         }
 
-        if(strncmp("smhd", fourCC, 4) == 0) {
+        else if(strncmp("smhd", fourCC, 4) == 0) {
             SoundMediaHeaderBox *box = (SoundMediaHeaderBox*)data;
             printf("%s####################\n", indent);
             printf("%sSound Media Header:\n", indent);
             printf("%s    Balance: %f\n", indent, box->balance);
         }
 
-        if(strncmp("stsd", fourCC, 4) == 0) {
+        else if(strncmp("stsd", fourCC, 4) == 0) {
             SampleDescriptionBox *box = (SampleDescriptionBox*)data;
             printf("%s####################\n", indent);
             printf("%sSample Description:\n", indent);
@@ -134,7 +136,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("vide", fourCC, 4) == 0 || strncmp("icpv", fourCC, 4) == 0) {
+        else if(strncmp("vide", fourCC, 4) == 0 || strncmp("icpv", fourCC, 4) == 0) {
             VisualSampleEntry *box = (VisualSampleEntry*)data;
             printf("%s####################\n", indent);
             printf("%sVisual Sample:\n", indent);
@@ -148,7 +150,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Compressor Name: %s\n", indent, box->compressor_name);
         }
 
-        if(strncmp("soun", fourCC, 4) == 0 || strncmp("icpa", fourCC, 4) == 0) {
+        else if(strncmp("soun", fourCC, 4) == 0 || strncmp("icpa", fourCC, 4) == 0) {
             AudioSampleEntry *box = (AudioSampleEntry*)data;
             printf("%s####################\n", indent);
             printf("%sAudio Sample:\n", indent);
@@ -162,7 +164,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("hint", fourCC, 4) == 0 || strncmp("icph", fourCC, 4) == 0) {
+        else if(strncmp("hint", fourCC, 4) == 0 || strncmp("icph", fourCC, 4) == 0) {
             HintSampleEntry *box = (HintSampleEntry*)data;
             printf("%s####################\n", indent);
             printf("%sHint Sample:\n", indent);
@@ -177,10 +179,10 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("\n");
         }
 
-        if(strncmp("stsz", fourCC, 4) == 0) {
+        else if(strncmp("stsz", fourCC, 4) == 0) {
             SampleSizeBox *box = (SampleSizeBox*)data;
             printf("%s####################\n", indent);
-            printf("%Sample Size:\n", indent);
+            printf("%sSample Size:\n", indent);
             printf("%s    Default Sample Size: %d\n", indent, box->sample_size);
             printf("%s    Sample Count: %d\n", indent, box->sample_count);
 
@@ -195,7 +197,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("dref", fourCC, 4) == 0) {
+        else if(strncmp("dref", fourCC, 4) == 0) {
             DataReferenceBox *box = (DataReferenceBox*)data;
             printf("%s####################\n", indent);
             printf("%sData Reference:\n", indent);
@@ -208,7 +210,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("hdlr", fourCC, 4) == 0) {
+        else if(strncmp("hdlr", fourCC, 4) == 0) {
             HandlerBox *box = (HandlerBox*)data;
             printf("%s####################\n", indent);
             printf("%sHandler:\n", indent);
@@ -217,7 +219,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Handler Name: %s\n", indent, box->name);
         }
 
-        if(strncmp("stts", fourCC, 4) == 0) {
+        else if(strncmp("stts", fourCC, 4) == 0) {
             TimeToSampleBox *box = (TimeToSampleBox*)data;
             printf("%s####################\n", indent);
             printf("%sTime To Sample:\n", indent);
@@ -231,7 +233,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("stsc", fourCC, 4) == 0) {
+        else if(strncmp("stsc", fourCC, 4) == 0) {
             SampleToChunkBox *box = (SampleToChunkBox*)data;
             printf("%s####################\n", indent);
             printf("%sSample To Chunk:\n", indent);
@@ -252,7 +254,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("stco", fourCC, 4 == 0)) {
+        else if(strncmp("stco", fourCC, 4 == 0)) {
             ChunkOffsetBox *box = (ChunkOffsetBox*)data;
             printf("%s####################\n", indent);
             printf("%sChunk Offset:\n", indent);
@@ -266,7 +268,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("...\n");
         }
 
-        if(strncmp("stss", fourCC, 4) == 0) {
+        else if(strncmp("stss", fourCC, 4) == 0) {
             SyncSampleBox *box = (SyncSampleBox*)data;
             printf("%s####################\n", indent);
             printf("%sSync Sample:\n", indent);
@@ -280,7 +282,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf(".\n");
         }
 
-        if(strncmp("meta", fourCC, 4) == 0) {
+        else if(strncmp("meta", fourCC, 4) == 0) {
             MetaBox *box = (MetaBox*)data;
             printf("%s####################\n", indent);
             printf("%sMeta:\n", indent);
@@ -300,7 +302,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        if(strncmp("schm", fourCC, 4) == 0) {
+        else if(strncmp("schm", fourCC, 4) == 0) {
             SchemeTypeBox *box = (SchemeTypeBox*)data;
             printf("%s####################\n", indent);
             printf("%sScheme Type:\n", indent);
@@ -310,7 +312,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Scheme Type: \"%s\"\n", indent, box->scheme_uri ? box->scheme_uri : "NULL");
         }
 
-        if(strncmp("tenc", fourCC, 4) == 0) {
+        else if(strncmp("tenc", fourCC, 4) == 0) {
             TrackEncryptionBox *box = (TrackEncryptionBox*)data;
             printf("%s####################\n", indent);
             printf("%sTrack Encryption:\n", indent);
@@ -321,6 +323,33 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("%s    Default KID: 0x%02X%02X...\n", indent, box->default_kid[0], box->default_kid[1]);
             printf("%s    Default Constant IV Size: %d\n", indent, box->default_constant_iv_size);
             printf("%s    Default Constant IV: 0x%02X%02X...\n", indent, box->default_constant_iv[0], box->default_constant_iv[1]);
+        }
+
+        else if(strncmp("senc", fourCC, 4) == 0) {
+            SampleEncryptionBox *box = (SampleEncryptionBox*)data;
+            printf("%s####################\n", indent);
+            printf("%sSample Encryption:\n", indent);
+            printf("%s    Sample Count: %d\n", indent, box->sample_count);
+            printf("%s    Samples (first 3):\n", indent);
+            int i=0;
+            int ic = box->sample_count > 3 ? 3 : box->sample_count;
+            if(ic > 0) {
+                for(; i<ic; ++i) {
+                    EncryptionSample *s = &box->samples[i];
+                    printf("%s      Sample %d: IV Size: %d\n", indent, i, s->iv_size);
+                    printf("%s      Sample %d: Subsample count: %d\n", indent, i, s->subsample_count);
+                    int j=0;
+                    int jc = s->subsample_count > 3 ? 3 : s->subsample_count;
+                    if(jc > 0) {
+                        printf("%s      Subsamples (first 3):\n", indent);
+                        for(; j<jc; ++j) {
+                            EncryptionSubsample *ss = &s->subsamples[j];
+                            printf("%s        Subsample %d: Bytes of Clear Data: %d\n", indent, j, ss->bytes_of_clear_data);
+                            printf("%s        Subsample %d: Bytes of Encrypted Data: %d\n", indent, j, ss->bytes_of_encrypted_data);
+                        }
+                    }
+                }
+            }
         }
 
         indent_dec();

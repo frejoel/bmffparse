@@ -3585,7 +3585,7 @@ BMFFCode _bmff_parse_box_sample_encryption(BMFFContext *ctx, const uint8_t *data
             ptr += sample->iv_size;
         }
 
-        if(box->box.flags & 0x000002 > 0) {
+        if((box->box.flags & 0x02) == 0x02) {
             ADV_PARSE_U16(sample->subsample_count, ptr);
             BOX_MALLOCN(sample->subsamples, EncryptionSubsample, sample->subsample_count);
 
