@@ -134,12 +134,12 @@ typedef struct BMFFContext {
 const char *bmff_get_version(void);
 
 /**
- * Initializes a Parsing Context.
+ * Initializes a parsing context.
  */
 BMFFCode bmff_context_init(BMFFContext *ctx);
 
 /**
- * Destroys an initialize Parsing Context.
+ * Destroys an initialized parsing Context.
  */
 BMFFCode bmff_context_destroy(BMFFContext *ctx);
 

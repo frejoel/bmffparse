@@ -102,6 +102,7 @@ void test_parse_box_full_string(void);
 void test_parse_box_text_meta_data_sample_entry(void);
 void test_parse_box_uri_meta_sample_entry(void);
 void test_parse_box_full_data(void);
+
 //void test_parse_box_(void);
 
 int main(int argc, char** argv)
@@ -895,7 +896,7 @@ void test_parse_box_scheme_info(void)
         's', 'c', 'h', 'i',
         // scheme specific Boxes
         0, 0, 0, 0x0C,
-        'a','b','c','d',
+        'f','r','e','e',
         0xFF, 0xFF, 0xFF, 0xFF,
         0, 0, 0, 0x0F,
         'e','f','g','h',
@@ -914,12 +915,10 @@ void test_parse_box_scheme_info(void)
     test_assert_equal(box->box.size, sizeof(data), "size");
     test_assert_equal(strncmp(box->box.type, "schi", 4), 0, "type");
     test_assert_equal(box->child_count, 3, "scheme specific data count");
-    test_assert_equal(strncmp(box->children[0]->type, "abcd", 4), 0, "scheme specifi data 0 type");
+    test_assert_equal(strncmp(box->children[0]->type, "free", 4), 0, "scheme specifi data 0 type");
     test_assert_equal(box->children[0]->size, 0x0C, "scheme specific data 0 size");
-    test_assert_equal(strncmp(box->children[1]->type, "efgh", 4), 0, "scheme specifi data 1 type");
-    test_assert_equal(box->children[1]->size, 0x0F, "scheme specific data 1 size");
-    test_assert_equal(strncmp(box->children[2]->type, "ijkl", 4), 0, "scheme specifi data 2 type");
-    test_assert_equal(box->children[2]->size, 0x18, "scheme specific data 2 size");
+    test_assert(box->children[1] == NULL, "unknown box should return NULL");
+    test_assert(box->children[2] == NULL, "unknown box should return NULL");
 
     bmff_context_destroy(&ctx);
 
@@ -951,7 +950,7 @@ void test_parse_box_protection_scheme_info(void)
         's', 'c', 'h', 'i',
             // scheme specific Boxes
         0, 0, 0, 0x0F,
-        'a','b','c','d',
+        'f','r','e','e',
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     };
 
@@ -982,7 +981,7 @@ void test_parse_box_protection_scheme_info(void)
     test_assert_equal(schm_info->box.size, 0x17, "Scheme Info size");
     test_assert_equal(schm_info->child_count, 1, "Scheme Info scheme specific count");
     Box *ssd = schm_info->children[0];
-    test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
+    test_assert_equal(strncmp("free", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
 
     bmff_context_destroy(&ctx);
@@ -1023,7 +1022,7 @@ void test_parse_box_item_protection(void)
         's', 'c', 'h', 'i',
             // scheme specific Boxes
         0, 0, 0, 0x0F,
-        'a','b','c','d',
+        'f','r','e','e',
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     };
 
@@ -1063,7 +1062,7 @@ void test_parse_box_item_protection(void)
     test_assert_equal(schm_info->box.size, 0x17, "Scheme Info size");
     test_assert_equal(schm_info->child_count, 1, "Scheme Info scheme specific count");
     Box *ssd = schm_info->children[0];
-    test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
+    test_assert_equal(strncmp("free", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
 
     bmff_context_destroy(&ctx);
@@ -1160,7 +1159,7 @@ void test_parse_box_meta(void)
         's', 'c', 'h', 'i',
         // scheme specific Boxes
         0, 0, 0, 0x0F,
-        'a','b','c','d',
+        'f','r','e','e',
         0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 
         // Item Information (iinf)
@@ -1250,7 +1249,7 @@ void test_parse_box_meta(void)
 
         // "Other" Boxes
         0x00, 0x00, 0x00, 0x0C,
-        'a', 'b', 'c', 'd',
+        'f', 'r', 'e', 'e',
         0xFF, 0xFF, 0xFF, 0xFF,
         0x00, 0x00, 0x00, 0x0E,
         'e', 'f', 'g', 'h',
@@ -1344,7 +1343,7 @@ void test_parse_box_meta(void)
     test_assert_equal(schm_info->child_count, 1, "Scheme Info scheme specific count");
 
     Box *ssd = schm_info->children[0];
-    test_assert_equal(strncmp("abcd", ssd->type, 4), 0, "Scheme specific data type");
+    test_assert_equal(strncmp("free", ssd->type, 4), 0, "Scheme specific data type");
     test_assert_equal(ssd->size, 0x0F, "Scheme specific data size");
 
     ItemInfoBox *iinf = box->item_infos;
