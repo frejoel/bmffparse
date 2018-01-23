@@ -1080,6 +1080,15 @@ typedef struct TrackEncryptionBox { // tenc
     const uint8_t           *default_constant_iv;
 } TrackEncryptionBox;
 
+typedef struct ProtectionSystemSpecificHeaderBox { // pssh
+    FullBox                 box;
+    uint8_t                 system_id[16];
+    uint32_t                kid_count;
+    const uint8_t           *kids; // kid_count * 16
+    uint32_t                data_size;
+    const uint8_t           *data;
+} ProtectionSystemSpecificHeaderBox;
+
 // icnf
 // tims
 // tsro

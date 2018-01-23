@@ -102,6 +102,7 @@ void test_parse_box_full_string(void);
 void test_parse_box_text_meta_data_sample_entry(void);
 void test_parse_box_uri_meta_sample_entry(void);
 void test_parse_box_full_data(void);
+void test_parse_box_protection_system_specific_header(void);
 
 //void test_parse_box_(void);
 
@@ -205,6 +206,7 @@ int main(int argc, char** argv)
     test_parse_box_text_meta_data_sample_entry();
     test_parse_box_uri_meta_sample_entry();
     test_parse_box_full_data();
+    test_parse_box_protection_system_specific_header();
     //test_parse_box_();
     return 0;
 }
@@ -5342,6 +5344,54 @@ void test_parse_box_full_data(void)
     test_assert_equal(box->box.flags, 0xF10FBA, "flags");
     test_assert_equal(strcmp(box->data, "some data"), 0, "data");
     test_assert_equal(box->data_len, 10, "data len");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_protection_system_specific_header(void)
+{
+    test_start("test_parse_box_protection_system_specific_header");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x49,
+        'p', 's', 's', 'h',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, // system id
+        0x00, 0x00, 0x00, 0x02, // kid count
+        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+        0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, // kid 0
+        0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+        0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30, // kid 1
+        0x00, 0x00, 0x00, 0x05,
+        0x11, 0x22, 0x33, 0x44, 0x55,
+    };
+
+    BMFFCode res;
+    ProtectionSystemSpecificHeaderBox *box = NULL;
+    res = _bmff_parse_box_protection_system_specific_header(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "pssh", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->system_id[0], 0x01, "system id 0");
+    test_assert_equal(box->system_id[15], 0x10, "system id 15");
+    test_assert_equal(box->kid_count, 2, "kid count");
+    test_assert_equal(box->kids[0], 0x11, "kids byte 0");
+    test_assert_equal(box->kids[15], 0x20, "kids byte 15");
+    test_assert_equal(box->kids[16], 0x21, "kids byte 16");
+    test_assert_equal(box->kids[31], 0x30, "kids byte 31");
+    test_assert_equal(box->data_size, 5, "data size 5");
+    test_assert_equal(box->data[0], 0x11, "data[0]");
+    test_assert_equal(box->data[4], 0x55, "data[4]");
 
     bmff_context_destroy(&ctx);
 
