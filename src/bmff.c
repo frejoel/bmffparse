@@ -60,9 +60,6 @@ size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *
             break;
         }
 
-        uint32_t next_box_size = parse_u32(ptr+box_size);
-        printf("%d\n", next_box_size);
-
         // get the numerical value of the type, making sure to keep the bytes in
         // the correct order.
         uint32_t box_type = *((uint32_t*)(ptr+4));

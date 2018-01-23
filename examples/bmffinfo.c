@@ -402,20 +402,31 @@ int main(int argc, char** argv)
         fprintf(stderr, "failed to open file: %s\n", argv[1]);
         return 1;
     }
-    uint8_t *buffer = (uint8_t*)malloc(1024*1024*5);
-    size_t size = fread(buffer, 1, 1024*1024*5, fp);
 
     // the callback can be set at any time and gets called during bmff_parse.
     bmff_set_event_callback(&ctx, on_event);
-    // parse our file which will trigger the callback.
-    size_t parsed = bmff_parse(&ctx, buffer, size, &res);
-    // it's possible to continue parsing parts of the file.
-    // a complete Box must be parsed though, you cannot send in partial boxes to the parser.
-    // bmff_parse returns the number of bytes that were sucessfully parsed.
+
+    size_t buffer_size = 1024*1024;
+    uint8_t *buffer = (uint8_t*)malloc(buffer_size);
+    size_t size = fread(buffer, 1, buffer_size, fp);
+
+    while(size > 0) {
+        // parse our file which will trigger the callback.
+        size_t parsed = bmff_parse(&ctx, buffer, size, &res);
+        // it's possible to continue parsing parts of the file.
+        // a complete Box must be parsed though, you cannot send in partial boxes to the parser.
+        // bmff_parse returns the number of bytes that were sucessfully parsed.
+        if(parsed < size) {
+            memmove(buffer, &buffer[parsed], size-parsed);
+        }
+        size = fread(&buffer[parsed], 1, buffer_size-parsed, fp);
+    };
 
     // end the parsing, do NOT start parsing data using the context after parse end
     // has been called.
     bmff_parse_end(&ctx);
+    // destroy the context
+    bmff_context_destroy(&ctx);
 
     fclose(fp);
 
