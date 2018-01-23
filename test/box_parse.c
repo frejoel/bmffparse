@@ -103,6 +103,7 @@ void test_parse_box_text_meta_data_sample_entry(void);
 void test_parse_box_uri_meta_sample_entry(void);
 void test_parse_box_full_data(void);
 void test_parse_box_protection_system_specific_header(void);
+void test_parse_box_track_encryption(void);
 
 //void test_parse_box_(void);
 
@@ -207,6 +208,7 @@ int main(int argc, char** argv)
     test_parse_box_uri_meta_sample_entry();
     test_parse_box_full_data();
     test_parse_box_protection_system_specific_header();
+    test_parse_box_track_encryption();
     //test_parse_box_();
     return 0;
 }
@@ -5392,6 +5394,52 @@ void test_parse_box_protection_system_specific_header(void)
     test_assert_equal(box->data_size, 5, "data size 5");
     test_assert_equal(box->data[0], 0x11, "data[0]");
     test_assert_equal(box->data[4], 0x55, "data[4]");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_track_encryption(void)
+{
+    test_start("test_parse_box_track_encryption");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x25,
+        't', 'e', 'n', 'c',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x00, // reserved
+        0x24, // default crypt byte block(4), default skip byte block(4)
+        0x01, // default is protected
+        0x00, // default per sample iv size
+        0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80,
+        0x90, 0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xF0, 0x12, // default kid
+        0x04, // default constant iv size
+        0x01, 0x02, 0x03, 0x04, // default constant Iv
+    };
+
+    BMFFCode res;
+    TrackEncryptionBox *box = NULL;
+    res = _bmff_parse_box_track_encryption(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "tenc", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(box->default_crypt_byte_block, 0x02, "default crypt byte block");
+    test_assert_equal(box->default_skip_byte_block, 0x04, "default skip byte block");
+    test_assert_equal(box->default_is_protected, eBooleanTrue, "default is protected");
+    test_assert_equal(box->default_per_sample_iv_size, 0, "default per sample iv size");
+    test_assert_equal(box->default_kid[0], 0x10, "default kid byte 0");
+    test_assert_equal(box->default_kid[15], 0x12, "default kid byte 15");
+    test_assert_equal(box->default_constant_iv_size, 4, "default constant iv size");
+    test_assert_equal(box->default_constant_iv[0], 0x01, "default constant iv 0");
+    test_assert_equal(box->default_constant_iv[3], 0x04, "default constant iv 3");
 
     bmff_context_destroy(&ctx);
 

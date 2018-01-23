@@ -3617,7 +3617,7 @@ BMFFCode _bmff_parse_box_track_encryption(BMFFContext *ctx, const uint8_t *data,
 
     ptr++; // reserved
 
-    if(box->box.version > 1) {
+    if(box->box.version >= 1) {
         uint8_t val = *ptr;
         box->default_crypt_byte_block = (val >> 4) & 0x0F;
         box->default_skip_byte_block = val & 0x0F;
