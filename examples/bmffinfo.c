@@ -37,7 +37,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
         // a parsing function of the box in question is not specified.
         // data contains the raw box data in this scenario.
         // fourCC is the character code of the box.
-        printf("\nParser Not Found: %c%c%c%c\n\n", indent, fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
+        printf("\nParser Not Found: %c%c%c%c\n\n", fourCC[0], fourCC[1], fourCC[2], fourCC[3]);
     }
     else if(event_id == BMFFEventParseStart) {
         // a parsing function was found, and it will now start parsing.
@@ -374,6 +374,27 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
                     }
                 }
             }
+        }
+
+        else if(strncmp("pssh", fourCC, 4) == 0) {
+            ProtectionSystemSpecificHeaderBox *box = (ProtectionSystemSpecificHeaderBox*)data;
+            printf("%s####################\n", indent);
+            printf("%sProtection System Specific Header:\n", indent);
+            printf("%s    system id: 0x", indent);
+            int i=0;
+            for(;i<16;++i) {
+                printf("%02X", box->system_id[i]);
+            }
+            printf("\n%s    kid count: %d\n", indent, box->kid_count);
+            for(i=0;i<box->kid_count;++i) {
+                printf("%s    kid %d: ", indent, i);
+                int j=0;
+                for(;j<16;++j) {
+                    printf("%02X", box->kids[(i*16)+j]);
+                }
+                printf("\n");
+            }
+            printf("%s    data size: %d\n", indent, box->data_size);
         }
 
         indent_dec();

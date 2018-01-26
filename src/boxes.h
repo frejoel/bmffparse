@@ -292,8 +292,8 @@ typedef struct MetaBox { // meta
     IPMPControlBox      *ipmp_control;      // optional
     ItemReferenceBox    *item_refs;         // optional
     ItemDataBox         *item_data;         // optional
-    Box                 *other_boxes;       // optional
-    size_t              other_boxes_len;
+    Box                 **other_boxes;      // optional
+    uint32_t            other_boxes_len;
 } MetaBox;
 
 typedef struct MovieHeaderBox { // mvhd
@@ -1088,6 +1088,13 @@ typedef struct ProtectionSystemSpecificHeaderBox { // pssh
     uint32_t                data_size;
     const uint8_t           *data;
 } ProtectionSystemSpecificHeaderBox;
+
+typedef struct ID3v2MetadataBox { // ID32
+    FullBox                 box;
+    uint8_t                 language[3]; // ISO 639-2/T
+    uint32_t                data_size;
+    const uint8_t           *data;
+} ID3v2MetadataBox;
 
 // icnf
 // tims

@@ -104,6 +104,7 @@ void test_parse_box_uri_meta_sample_entry(void);
 void test_parse_box_full_data(void);
 void test_parse_box_protection_system_specific_header(void);
 void test_parse_box_track_encryption(void);
+void test_parse_box_id3_metadata(void);
 
 //void test_parse_box_(void);
 
@@ -209,6 +210,7 @@ int main(int argc, char** argv)
     test_parse_box_full_data();
     test_parse_box_protection_system_specific_header();
     test_parse_box_track_encryption();
+    test_parse_box_id3_metadata();
     //test_parse_box_();
     return 0;
 }
@@ -5440,6 +5442,39 @@ void test_parse_box_track_encryption(void)
     test_assert_equal(box->default_constant_iv_size, 4, "default constant iv size");
     test_assert_equal(box->default_constant_iv[0], 0x01, "default constant iv 0");
     test_assert_equal(box->default_constant_iv[3], 0x04, "default constant iv 3");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+void test_parse_box_id3_metadata(void)
+{
+    test_start("test_parse_box_id3_metadata");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x16,
+        'I', 'D', '3', '2',
+        0x01, // version
+        0xF1, 0x0F, 0xBA, // flags
+        0x04, 0xD2, // 1-bit pad, (5)[3] ISO 639-2/T "afr"
+        'i','d','3',' ','d','a','t','a',
+    };
+
+    BMFFCode res;
+    ID3v2MetadataBox *box = NULL;
+    res = _bmff_parse_box_id3v2_metadata(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "ID32", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x01, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strncmp(box->language, "afr", 3), 0, "language");
+    test_assert(box->data != NULL, "data");
+    test_assert_equal(box->data_size, 8, "data size");
 
     bmff_context_destroy(&ctx);
 

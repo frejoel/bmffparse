@@ -129,6 +129,8 @@ typedef struct BMFFContext {
     MemList *allocs_stack;
     // default IV size set by the Track Encryption Box parser. Used by the Sample Encrpytion Box Parser.
     uint8_t default_iv_size;
+    // indicates whether the default_iv_size is taken from the default_constant_iv_size from the Track Encryption Box parse.
+    eBoolean is_constant_iv;
 } BMFFContext;
 
 const char *bmff_get_version(void);

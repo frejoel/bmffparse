@@ -135,22 +135,11 @@ const MapItem parse_map[] = {
     {"senc", 0, _bmff_parse_box_sample_encryption},
     {"tenc", 0, _bmff_parse_box_track_encryption},
     {"pssh", 0, _bmff_parse_box_protection_system_specific_header},
+    {"ID32", 0, _bmff_parse_box_id3v2_metadata},
     //{"", 0, _bmff_parse_box_},
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);
-
-void print_box(const uint8_t *data, size_t size)
-{
-    const uint8_t *ptr = data;
-    const uint8_t *end = data + size;
-    printf("uint8_t data[] = {\n");
-    while(ptr < end) {
-        printf("    %02X (%c), %02X (%c), %02X (%c), %02X (%c),\n", ptr[0], ptr[0], ptr[1], ptr[1], ptr[2], ptr[2], ptr[3], ptr[3]);
-        ptr += 4;
-    }
-    printf("};\n\n");
-}
 
 int parse_box(const uint8_t *data, size_t size, Box *box)
 {
@@ -191,6 +180,13 @@ int parse_full_box(const uint8_t *data, size_t size, FullBox *box)
     ptr += 3;
 
     return ptr - data;
+}
+
+void parse_iso639_2_lang(uint16_t value, uint8_t *output)
+{
+    output[0] = (uint8_t)(0x0060 + ((value >> 10) & 0x001F));
+    output[1] = (uint8_t)(0x0060 + ((value >> 5) & 0x001F));
+    output[2] = (uint8_t)(0x0060 + (value & 0x001F));
 }
 
 int parse_original_format_box(const uint8_t *data, size_t size, OriginalFormatBox *box)
@@ -243,10 +239,10 @@ BMFFCode _bmff_parse_box_file_type(BMFFContext *ctx, const uint8_t *data, size_t
 }
 
 uint32_t _is_valid_cc4(const uint8_t *cc4) {
-    if(((cc4[0] >= 'a' && cc4[0] <= 'z') || (cc4[0] >= 'A' && cc4[0] <= 'Z') || cc4[0] == ' ') && 
-       ((cc4[1] >= 'a' && cc4[1] <= 'z') || (cc4[1] >= 'A' && cc4[1] <= 'Z') || cc4[1] == ' ') && 
-       ((cc4[2] >= 'a' && cc4[2] <= 'z') || (cc4[2] >= 'A' && cc4[2] <= 'Z') || cc4[2] == ' ') && 
-       ((cc4[3] >= 'a' && cc4[3] <= 'z') || (cc4[3] >= 'A' && cc4[3] <= 'Z') || cc4[3] == ' '))
+    if( (cc4[0] >= 0x20 && cc4[0] <= 0x7E) &&
+        (cc4[1] >= 0x20 && cc4[1] <= 0x7E) &&
+        (cc4[2] >= 0x20 && cc4[2] <= 0x7E) &&
+        (cc4[3] >= 0x20 && cc4[3] <= 0x7E) )
     {
         return 1;
     }
@@ -988,13 +984,13 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
     // Parse optional Boxes
     while(ptr < end) {
         int i=0;
-        // find the parser for the next box keeping track of whether we found a parser.
-        int found=0;
+        // find the parser for the next box
         const char *_t = &ptr[4];
+        int found = 0;
         int _s = parse_u32(ptr);
         for(; i<map_count; ++i) {
             if(memcmp(&ptr[4], map[i].type, 4) == 0) {
-                found=1;
+                found = 1;
                 res = _bmff_parse_child(ctx, map[i].func, ptr, end-ptr, (Box**)map[i].box_ptr);
                 if(res != BMFF_OK) {
                     return res;
@@ -1003,17 +999,15 @@ BMFFCode _bmff_parse_box_meta(BMFFContext *ctx, const uint8_t *data, size_t size
                 break;
             }
         }
-
-        // if no parser was found, we must be parsing one of the "other" boxes.
-        // Don't parse the "other" boxes, just assign the data to the MetaBox
-        // when we reach the first Box, and keep track of how many there are.
-        if(!found) {
-          box->other_boxes_len++;
-          if(!box->other_boxes) {
-            box->other_boxes = (Box*)ptr;
-          }
-          ptr += parse_u32(ptr);
+        // if we see any box we don't recognize, just assume everything else
+        // is an "other" box.
+        if(found == 0) {
+            break;
         }
+    }
+
+    if(ptr < end) {
+        _bmff_parse_children(ctx, ptr, end-ptr, &box->other_boxes_len, &box->other_boxes);
     }
 
     *box_ptr = (Box*)box;
@@ -1472,9 +1466,7 @@ BMFFCode _bmff_parse_box_copyright(BMFFContext *ctx, const uint8_t *data, size_t
     ptr += parse_full_box(data, size, &box->box);
 
     uint16_t val = parse_u16(ptr);
-    box->language[0] = (uint8_t)(0x0060 + ((val >> 10) & 0x001F));
-    box->language[1] = (uint8_t)(0x0060 + ((val >> 5) & 0x001F));
-    box->language[2] = (uint8_t)(0x0060 + (val & 0x001F));
+    parse_iso639_2_lang(val, box->language);
     ptr += 2;
 
     if(ptr < &data[size]) {
@@ -1630,9 +1622,7 @@ BMFFCode _bmff_parse_box_media_header(BMFFContext *ctx, const uint8_t *data, siz
     }
 
     uint16_t val = parse_u16(ptr);
-    box->language[0] = (uint8_t)(0x0060 + ((val >> 10) & 0x001F));
-    box->language[1] = (uint8_t)(0x0060 + ((val >> 5) & 0x001F));
-    box->language[2] = (uint8_t)(0x0060 + (val & 0x001F));
+    parse_iso639_2_lang(val, box->language);
     ptr += 2;
 
     *box_ptr = (Box*)box;
@@ -3581,7 +3571,7 @@ BMFFCode _bmff_parse_box_sample_encryption(BMFFContext *ctx, const uint8_t *data
     for(; i<box->sample_count; ++i) {
         EncryptionSample *sample = &box->samples[i];
         sample->iv_size = ctx->default_iv_size;
-        if(sample->iv_size > 0) {
+        if(sample->iv_size > 0 && ctx->is_constant_iv == eBooleanFalse) {
             sample->iv = ptr;
             ptr += sample->iv_size;
         }
@@ -3643,6 +3633,7 @@ BMFFCode _bmff_parse_box_track_encryption(BMFFContext *ctx, const uint8_t *data,
         // set the default IV size in the context.
         // this is used by the Sample Encryption Box parser.
         ctx->default_iv_size = box->default_constant_iv_size;
+        ctx->is_constant_iv = eBooleanTrue;
     }
 
     *box_ptr = (Box*)box;
@@ -3676,6 +3667,30 @@ BMFFCode _bmff_parse_box_protection_system_specific_header(BMFFContext *ctx, con
     if(box->data_size > 0) {
         box->data = ptr;
     }
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_id3v2_metadata(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 012)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, ID3v2MetadataBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    uint16_t val = parse_u16(ptr);
+    parse_iso639_2_lang(val, box->language);
+    ptr += 2;
+
+    box->data = ptr;
+    box->data_size = end - ptr;
 
     *box_ptr = (Box*)box;
     return BMFF_OK;
