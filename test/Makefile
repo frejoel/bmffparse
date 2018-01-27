@@ -1,7 +1,6 @@
 
 CC = gcc
-CCDIR = coverage
-CCOBJDIR = $(CCDIR)/obj
+CCOBJDIR = coverage/obj
 CFLAGS = -I../bin -L../bin
 LIBS = -lbmff
 
@@ -45,19 +44,11 @@ tests: deps $(OBJ_TESTS)
 
 check: tests
 	./test-runner.sh
-ifeq ($(COVERAGE), 1)
-	mkdir -p $(CCDIR)
-	rm -f *.gcno
-	rm -f $(CCOBJDIR)/*.gcda
-	mv bin/*.gcno $(CCOBJDIR)/bin/
-	lcov --directory $(CCOBJDIR) --capture --output-file $(CCDIR)/coverage.info
-	genhtml --output-directory $(CCDIR)/html $(CCDIR)/coverage.info
-endif
 
 clean:
-	rm -f -r $(ODIR) $(CCDIR)
+	rm -f -r $(ODIR)
+	rm -f -r *.dSYM
 	find . -type f -name '*.o' -exec rm {} \;
-	find . -type f -name '*.o.dSYM' -exec rm {} \;
-	find . -type f -name '*.o.gcno' -exec rm {} \;
-	find . -type f -name '*.o.gcda' -exec rm {} \;
-	find . -type f -name 'gmon.out' -exec rm {} \;
+	find . -type f -name '*.dSYM' -exec rm {} \;
+	find . -type f -name '*.gcno' -exec rm {} \;
+	find . -type f -name '*.gcda' -exec rm {} \;
