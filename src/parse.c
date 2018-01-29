@@ -136,6 +136,7 @@ const MapItem parse_map[] = {
     {"tenc", 0, _bmff_parse_box_track_encryption},
     {"pssh", 0, _bmff_parse_box_protection_system_specific_header},
     {"ID32", 0, _bmff_parse_box_id3v2_metadata},
+    {"emsg", 0, _bmff_parse_box_event_message},
     //{"", 0, _bmff_parse_box_},
 };
 
@@ -3691,6 +3692,35 @@ BMFFCode _bmff_parse_box_id3v2_metadata(BMFFContext *ctx, const uint8_t *data, s
 
     box->data = ptr;
     box->data_size = end - ptr;
+
+    *box_ptr = (Box*)box;
+    return BMFF_OK;
+}
+
+BMFFCode _bmff_parse_box_event_message(BMFFContext *ctx, const uint8_t *data, size_t size, Box **box_ptr)
+{
+    if(!ctx)        return BMFF_INVALID_CONTEXT;
+    if(!data)       return BMFF_INVALID_DATA;
+    if(size < 19)   return BMFF_INVALID_SIZE;
+    if(!box_ptr)    return BMFF_INVALID_PARAMETER;
+
+    BOX_MALLOC(box, EventMessageBox);
+
+    const uint8_t *ptr = data;
+    ptr += parse_full_box(data, size, &box->box);
+    const uint8_t *end = data + box->box.size;
+
+    ADV_PARSE_STR(box->scheme_id_uri, ptr);
+    ADV_PARSE_STR(box->value, ptr);
+    ADV_PARSE_U32(box->timescale, ptr);
+    ADV_PARSE_U32(box->presentation_time_delta, ptr);
+    ADV_PARSE_U32(box->event_duration, ptr);
+    ADV_PARSE_U32(box->id, ptr);
+
+    if(ptr < end) {
+        box->message_data = ptr;
+        box->message_data_size = end - ptr;
+    }
 
     *box_ptr = (Box*)box;
     return BMFF_OK;

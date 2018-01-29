@@ -1096,6 +1096,18 @@ typedef struct ID3v2MetadataBox { // ID32
     const uint8_t           *data;
 } ID3v2MetadataBox;
 
+typedef struct EventMessageBox { // emsg
+    FullBox                 box;
+    const char              *scheme_id_uri;
+    const char              *value;
+    uint32_t                timescale;
+    uint32_t                presentation_time_delta;
+    uint32_t                event_duration;
+    uint32_t                id;
+    const uint8_t           *message_data;
+    uint32_t                message_data_size;
+} EventMessageBox;
+
 // icnf
 // tims
 // tsro

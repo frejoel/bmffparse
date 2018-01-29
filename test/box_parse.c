@@ -105,6 +105,7 @@ void test_parse_box_full_data(void);
 void test_parse_box_protection_system_specific_header(void);
 void test_parse_box_track_encryption(void);
 void test_parse_box_id3_metadata(void);
+void test_parse_box_event_message(void);
 
 //void test_parse_box_(void);
 
@@ -211,6 +212,7 @@ int main(int argc, char** argv)
     test_parse_box_protection_system_specific_header();
     test_parse_box_track_encryption();
     test_parse_box_id3_metadata();
+    test_parse_box_event_message();
     //test_parse_box_();
     return 0;
 }
@@ -5447,6 +5449,7 @@ void test_parse_box_track_encryption(void)
 
     test_end();
 }
+
 void test_parse_box_id3_metadata(void)
 {
     test_start("test_parse_box_id3_metadata");
@@ -5475,6 +5478,50 @@ void test_parse_box_id3_metadata(void)
     test_assert_equal(strncmp(box->language, "afr", 3), 0, "language");
     test_assert(box->data != NULL, "data");
     test_assert_equal(box->data_size, 8, "data size");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
+}
+
+void test_parse_box_event_message(void)
+{
+    test_start("test_parse_box_event_message");
+
+    BMFFContext ctx;
+    bmff_context_init(&ctx);
+
+    uint8_t data[] = {
+        0, 0, 0, 0x35,
+        'e', 'm', 's', 'g',
+        0x00, // version
+        0xF1, 0x0F, 0xBA, // flags
+        's','c','h','e','m','e',' ','i','d',' ','u','r','i',0x00,
+        'v','a','l','u','e',0x00,
+        0x01, 0x02, 0x03, 0x04, // timescale
+        0x05, 0x06, 0x07, 0x08, // presentation time delta
+        0x09, 0x0A, 0x0B, 0x0C, // event duration
+        0x0D, 0x0E, 0x0F, 0x10, // id
+        0x99, 0x88, 0x77, 0x66, 0x55, // message data
+    };
+
+    BMFFCode res;
+    EventMessageBox *box = NULL;
+    res = _bmff_parse_box_event_message(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(BMFF_OK, res, "success");
+    test_assert(box != NULL, "NULL box reference");
+    test_assert_equal(box->box.size, sizeof(data), "size");
+    test_assert_equal(strncmp(box->box.type, "emsg", 4), 0, "type");
+    test_assert_equal(box->box.version, 0x00, "version");
+    test_assert_equal(box->box.flags, 0xF10FBA, "flags");
+    test_assert_equal(strcmp(box->scheme_id_uri, "scheme id uri"), 0, "scheme id uri");
+    test_assert_equal(strcmp(box->value, "value"), 0, "value");
+    test_assert_equal(box->timescale, 0x01020304, "timescale");
+    test_assert_equal(box->presentation_time_delta, 0x05060708, "presentation time delta");
+    test_assert_equal(box->event_duration, 0x090A0B0C, "event duration");
+    test_assert_equal(box->id, 0x0D0E0F10, "id");
+    test_assert(box->message_data != NULL, "message data");
+    test_assert_equal(box->message_data_size, 5, "message data size");
 
     bmff_context_destroy(&ctx);
 
