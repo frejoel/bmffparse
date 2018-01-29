@@ -1,4 +1,5 @@
 .vscode/*
 test/data/*
+test/coverage
 **/*.o
 bin/*

@@ -1,4 +1,3 @@
-
 CC = gcc
 ODIR = bin
 CCDIR = coverage
@@ -69,17 +68,11 @@ ifeq ($(COVERAGE), 1)
 	$(MAKE) -C . clean
 endif
 	$(MAKE) -C test/ check
-ifeq ($(COVERAGE), 1)
-	mkdir -p $(CCDIR)
-	lcov --directory . --capture --output-file $(CCDIR)/coverage.info
-	genhtml --output-directory $(CCDIR)/html $(CCDIR)/coverage.info
-endif
 
 clean:
 	$(MAKE) -C test/ clean
 	$(MAKE) -C examples/ clean
-	rm -f -r $(ODIR) $(CCDIR)
-	rm -f coverage.info
+	rm -f -r $(ODIR)
 	find . -type f -name '*.o' -exec rm {} \;
 	find . -type f -name '*.dSYM' -exec rm {} \;
 	find . -type f -name '*.gcno' -exec rm {} \;

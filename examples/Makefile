@@ -1,6 +1,6 @@
 
 CC = gcc
-CCOBJDIR = $(CCDIR)/obj
+CCOBJDIR = ../coverage/obj
 CFLAGS = -I../bin -L../bin
 LIBS = -lbmff
 
@@ -9,9 +9,15 @@ OBJ_EXS := $(patsubst %.c, %.o, $(wildcard *.c))
 
 DEBUG ?= 0
 PROFILING ?= 0
+COVERAGE ?= 0
 
 ifeq ($(PROFILING), 1)
 	CFLAGS += -pg
+	DEBUG = 1
+endif
+
+ifeq ($(COVERAGE), 1)
+	CFLAGS += -fprofile-arcs -ftest-coverage -fprofile-dir=$(CCOBJDIR)
 	DEBUG = 1
 endif
 
