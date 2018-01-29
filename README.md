@@ -1,7 +1,9 @@
 # ISO Base Media File Format Parser
-Parses boxes/atoms from the following specs plus a few others.
-- ISO/IEC 14496-12:2015 (ISO BMFF File Format).
-- ISO/IEC 23001-7:2016 (Common Encryption).
+ISOBMFF parsing library written in C. Parses all boxes/atoms into C structures from the following specifications:
+- ISO/IEC 14496-12:2015 - ISO BMFF File Format.
+- ISO/IEC 23001-7:2016 - Common Encryption.
+- ISO/IEC 23009-1:2014 - Dynamic Adaptive Streaming over HTTP (DASH).
+- CMAF N16186, June 24 2016 - Common Media Application Format for Segmented Video.
 
 ## Overview
 This library is intended for content analysis of Mp4/fMp4 files.
