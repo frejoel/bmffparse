@@ -1,7 +1,7 @@
 # ISO Base Media File Format Parser
 Parses boxes/atoms from the following specs plus a few others.
-ISO/IEC 14496-12:2015 (ISO BMFF File Format)
-ISO/IEC 23001-7:2016 (Common Encryption in ISO BMFF)
+- ISO/IEC 14496-12:2015 (ISO BMFF File Format).
+- ISO/IEC 23001-7:2016 (Common Encryption).
 
 ## Overview
 This library is intended for content analysis of Mp4/fMp4 files.
