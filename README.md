@@ -63,14 +63,9 @@ need `lcov` which may also install `genhtml`.
 
 Run the tests with code coverage enabled:
 ```
- make clean
  make check COVERAGE=1
 ```
 The coverage documentation is output into a `coverage/html` directory.
-Failing to clean the project with `make clean` prior to running
-`make check COVERAGE=1` can cause an error to occur when generating the coverage
-documentation.
-
 The debug option `DEBUG=1` is automatically enabled when `COVERAGE=1` is set.
 
 ## Profiling
@@ -118,7 +113,6 @@ To build and run all unit tests validating the library:
 ```
  make check
 ```
-The unit tests will run individually regardless if any fail.
 
 # Examples
 Examples showing how to use the library are in the `examples` directory.
@@ -134,31 +128,8 @@ example source code.
  ./examples/bmffinfo.o myfile.mp4
 ```
 
-# Contributing
-
-## Unit Tests
-Make sure all unit tests are passing.
-Ensure you provide new, or modify existing, unit tests covering any code
-changes.
-
-Build unit tests:
-```
- make tests
-```
-
-Build and execute unit tests:
-```
- make check
-```
-
-See an existing unit test for guidance on writing unit tests.
-The framework is a very basic header file, `test/test.h`.
-
 ## Valgrind - Memory Leaks
-It's generally a good idea to check for memory leaks by running the examples
-through Valgrind.
+valgrind example.
 ```
  valgrind --leak-check=yes --track-origins=yes --log-file=valgrind_report.txt examples/bmffinfo.o myfile.mp4`
 ```
-Not all warnings in Valgrind are valid errors, compare the results with the
-`master` branch.
