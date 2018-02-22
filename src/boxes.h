@@ -659,7 +659,7 @@ typedef struct XMLMetaDataSampleEntry { // metx
     Box                     **other_boxes;
     uint32_t                other_boxes_count;
     const char              *content_encoding;
-    const char              *namespace;
+    const char              *nmspace;
     const char              *schema_location;
     BitRateBox              *bitrate;
 } XMLMetaDataSampleEntry;

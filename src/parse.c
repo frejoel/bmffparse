@@ -3397,7 +3397,7 @@ BMFFCode _bmff_parse_box_xml_meta_data_sample_entry(BMFFContext *ctx, const uint
     ptr += c;
 
     ADV_PARSE_STR(box->content_encoding, ptr);
-    ADV_PARSE_STR(box->namespace, ptr);
+    ADV_PARSE_STR(box->nmspace, ptr);
     ADV_PARSE_STR(box->schema_location, ptr);
 
     if(ptr < end) {

@@ -5166,7 +5166,7 @@ void test_parse_box_xml_meta_data_sample_entry(void)
     test_assert_equal(box->other_boxes_count, 1, "other boxes count");
     test_assert(box->other_boxes != NULL, "other boxes");
     test_assert_equal(strcmp(box->content_encoding, "mimetype"), 0, "content encoding");
-    test_assert_equal(strcmp(box->namespace, "namespace"), 0, "namespace");
+    test_assert_equal(strcmp(box->nmspace, "namespace"), 0, "nmspace");
     test_assert_equal(strcmp(box->schema_location, "schemaloc"), 0, "schema location");
     test_assert(box->bitrate != NULL, "bitrate box");
     test_assert_equal(box->bitrate->buffer_size_db, 0x12345678, "buffer size db");
