@@ -7,7 +7,7 @@ int indent_count;
 char bread_crumb[1024];
 
 // Callback that is fired during the parsing process
-void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, void *data)
+void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, void *data, void *user_data)
 {
     // every box in the file will have this callback triggered during the
     // parsing process (including free and container Boxes)
@@ -415,7 +415,7 @@ int main(int argc, char** argv)
     }
 
     // the callback can be set at any time and gets called during bmff_parse.
-    bmff_set_event_callback(&ctx, on_event);
+    bmff_set_event_callback(&ctx, on_event, NULL);
 
     size_t buffer_size = 1024*1024;
     uint8_t *buffer = (uint8_t*)malloc(buffer_size);

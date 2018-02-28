@@ -3,7 +3,7 @@
 #include "parse_common.h"
 #include "parse.h"
 
-#define CALLBACK(c, e, f, d)  if((c)->callback) { (c)->callback((c), (e), (f), (void*)(d)); }
+#define CALLBACK(c, e, f, d)  if((c)->callback) { (c)->callback((c), (e), (f), (void*)(d), (c)->callback_user_data); }
 
 const MapItem parse_map[] = {
     {"ftyp", 1, _bmff_parse_box_file_type},

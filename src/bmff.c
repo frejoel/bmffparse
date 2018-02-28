@@ -7,7 +7,7 @@
 #include "context.h"
 
 #define BOX_TYPE_IS(d,t) ((d)[0]==(t)[0] && (d)[1]==(t)[1] && (d)[2]==(t)[2] && (d)[3]==(t)[3])
-#define CALLBACK(c, e, f, d)  if((c)->callback) { (c)->callback((c), (e), (f), (void*)(d)); }
+#define CALLBACK(c, e, f, d)  if((c)->callback) { (c)->callback((c), (e), (f), (void*)(d), (c)->callback_user_data); }
 
 const char *bmff_get_version(void)
 {
@@ -34,10 +34,11 @@ BMFFCode bmff_context_destroy(BMFFContext *ctx)
     return BMFF_OK;
 }
 
-BMFFCode bmff_set_event_callback(BMFFContext *ctx, bmff_on_event callback)
+BMFFCode bmff_set_event_callback(BMFFContext *ctx, bmff_on_event callback, void *user_data)
 {
     if(!ctx) return BMFF_INVALID_CONTEXT;
     ctx->callback = callback;
+    ctx->callback_user_data = user_data;
     return BMFF_OK;
 }
 

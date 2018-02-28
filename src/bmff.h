@@ -81,7 +81,8 @@ typedef void (*bmff_free) (void *mem);
 typedef void (*bmff_on_event) (BMFFContext *ctx,
                                 BMFFEventId id,
                                 const uint8_t *fourCC,
-                                void *data);
+                                void *data,
+                                void *user_data);
 
 /**
  * Return codes.
@@ -131,6 +132,8 @@ typedef struct BMFFContext {
     uint8_t default_iv_size;
     // indicates whether the default_iv_size is taken from the default_constant_iv_size from the Track Encryption Box parse.
     eBoolean is_constant_iv;
+    // user data supplied in the callback
+    void *callback_user_data;
 } BMFFContext;
 
 const char *bmff_get_version(void);
@@ -149,7 +152,7 @@ BMFFCode bmff_context_destroy(BMFFContext *ctx);
  * Sets the parsing callback.
  * The user must set the callback to retreive Box information.
  */
-BMFFCode bmff_set_event_callback(BMFFContext *ctx, bmff_on_event callback);
+BMFFCode bmff_set_event_callback(BMFFContext *ctx, bmff_on_event callback, void *user_data);
 
 /**
  * Parses ISO BMFF boxes.
