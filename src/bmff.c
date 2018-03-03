@@ -78,12 +78,16 @@ size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *
 
                 Box *box;
                 CALLBACK(ctx, BMFFEventParseStart, ptr+4, NULL);
+                _bmff_breadcrumb_push(ctx, ptr+4);
+
                 BMFFCode res = parse_map[i].parse_func(ctx, ptr, end-ptr, &box);
                 
                 if(res == BMFF_OK) {
+                    _bmff_breadcrumb_pop(ctx);
                     CALLBACK(ctx, BMFFEventParseComplete, ptr+4, (void*)box);
                 } else {
                     fprintf(stderr, "Error paring box: %d\n", res);
+                    _bmff_breadcrumb_pop(ctx);
                     CALLBACK(ctx, BMFFEventParseError, ptr+4, (void*)ptr);
                 }
                 

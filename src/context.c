@@ -1,4 +1,6 @@
 #include "context.h"
+#include <string.h>
+#include <stdio.h>
 
 void bmff_context_alloc_stack_push(BMFFContext *ctx)
 {
@@ -52,6 +54,34 @@ void * bmff_context_alloc_on_stack(BMFFContext *ctx, size_t size)
             ctx->allocs_stack->used++;
         }
         return mem;
+    }
+    return NULL;
+}
+
+void _bmff_breadcrumb_push(BMFFContext *ctx, const uint8_t *crumb)
+{
+    size_t len = strlen(ctx->breadcrumb);
+    if(len < BMFF_BREADCRUMB_SIZE - 5)
+    {
+        const char *format = len == 0 ? "%c%c%c%c" : ".%c%c%c%c";
+        sprintf(&ctx->breadcrumb[len], format, crumb[0], crumb[1], crumb[2], crumb[3]);
+    }
+}
+
+void _bmff_breadcrumb_pop(BMFFContext *ctx)
+{
+    size_t len = strlen(ctx->breadcrumb);
+    if(len > 4) {
+        ctx->breadcrumb[len-5] = '\00';        
+    }else{
+        ctx->breadcrumb[0] = '\00';
+    }
+}
+
+const char * bmff_get_breadcrumb(BMFFContext *ctx)
+{
+    if(ctx) {
+        return ctx->breadcrumb;
     }
     return NULL;
 }

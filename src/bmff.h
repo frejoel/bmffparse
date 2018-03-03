@@ -30,7 +30,8 @@
 #include "boxes.h"
 
 // Software version, format MAJOR.MINOR.PATCH
-#define BMFF_VERSION                             "0.1.0"
+#define BMFF_VERSION                            "0.1.1"
+#define BMFF_BREADCRUMB_SIZE                    (50)
 
 #ifdef __cplusplus
 extern "C" {
@@ -134,6 +135,8 @@ typedef struct BMFFContext {
     eBoolean is_constant_iv;
     // user data supplied in the callback
     void *callback_user_data;
+    // breadcrumb
+    char breadcrumb[BMFF_BREADCRUMB_SIZE];
 } BMFFContext;
 
 const char *bmff_get_version(void);
@@ -147,6 +150,15 @@ BMFFCode bmff_context_init(BMFFContext *ctx);
  * Destroys an initialized parsing Context.
  */
 BMFFCode bmff_context_destroy(BMFFContext *ctx);
+
+/**
+ * Returns the breadcrumb of the parent box tpyes at any time during the parsing context.
+ * 
+ * @example
+ * During parsing a "vmhd" box, the breadcrumb might be:
+ *     "moov.trak.mdia.minf"
+ */
+const char * bmff_get_breadcrumb(BMFFContext *ctx);
 
 /**
  * Sets the parsing callback.

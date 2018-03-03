@@ -253,11 +253,16 @@ uint32_t _is_valid_cc4(const uint8_t *cc4) {
 BMFFCode _bmff_parse_child(BMFFContext *ctx, parse_func func, const uint8_t *data, size_t size, Box **box_ptr)
 {
     const uint8_t *fourCC = data+4;
+    
     CALLBACK(ctx, BMFFEventParseStart, fourCC, NULL);
+    _bmff_breadcrumb_push(ctx, fourCC);
+
     BMFFCode res = func(ctx, data, size, box_ptr);
     if(res != BMFF_OK) {
+        _bmff_breadcrumb_pop(ctx);
         CALLBACK(ctx, BMFFEventParseError, fourCC, (void*)data);
     }else{
+        _bmff_breadcrumb_pop(ctx);
         CALLBACK(ctx, BMFFEventParseComplete, fourCC, (void*)(*box_ptr));
     }
     return res;

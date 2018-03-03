@@ -25,6 +25,46 @@ size_t read_mp4(uint8_t *dest, int n, int s)
     return size > 0 ? size : 0;
 }
 
+void callback_func(BMFFContext *ctx,
+    BMFFEventId id,
+    const uint8_t *four_cc,
+    void *data,
+    void *user_data)
+{
+    const char *breadcrumb = bmff_get_breadcrumb(ctx);
+
+    if(id == BMFFEventParseStart)
+    {
+        if(strncmp(four_cc, "moov", 4) == 0) {
+            test_assert_equal(strlen(breadcrumb), 0, "breadcrumb should not be set");
+        }
+        else if(strncmp(four_cc, "trak", 4) == 0) {
+            test_assert_equal(strcmp("moov", breadcrumb), 0, "breadcrumb should be moov");
+        }
+        else if(strncmp(four_cc, "tkhd", 4) == 0) {
+            test_assert_equal(strcmp("moov.trak", breadcrumb), 0, "breadcrumb should be moov.trak");
+        }
+        else if(strncmp(four_cc, "minf", 4) == 0) {
+            test_assert_equal(strcmp("moov.trak.mdia", breadcrumb), 0, "breadcrumb should be moov.trak.mdia");
+        }
+    }
+    else if(id == BMFFEventParseComplete)
+    {
+        if(strncmp(four_cc, "moov", 4) == 0) {
+            test_assert_equal(strlen(breadcrumb), 0, "breadcrumb should not be set");
+        }
+        else if(strncmp(four_cc, "trak", 4) == 0) {
+            test_assert_equal(strcmp("moov", breadcrumb), 0, "breadcrumb should be moov");
+        }
+        else if(strncmp(four_cc, "tkhd", 4) == 0) {
+            test_assert_equal(strcmp("moov.trak", breadcrumb), 0, "breadcrumb should be moov.trak");
+        }
+        else if(strncmp(four_cc, "minf", 4) == 0) {
+            test_assert_equal(strcmp("moov.trak.mdia", breadcrumb), 0, "breadcrumb should be moov.trak.mdia");
+        }
+    }
+}
+
 void test_parse(void)
 {
     test_start("test_parse");
@@ -38,6 +78,9 @@ void test_parse(void)
     // create a context for parsing
     BMFFContext ctx;
     bmff_context_init(&ctx);
+
+    // set the parsing callback
+    bmff_set_event_callback(&ctx, callback_func, NULL);
 
     // read 1024 bytes from the file until we reach the end of the file
     int read_size = 1024;

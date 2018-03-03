@@ -46,4 +46,14 @@ void bmff_context_alloc_stack_pop(BMFFContext *ctx);
  */
 void * bmff_context_alloc_on_stack(BMFFContext *ctx, size_t size);
 
+/**
+ * Adds an item onto the breadcrumb
+ */
+void _bmff_breadcrumb_push(BMFFContext *ctx, const uint8_t *crumb);
+
+/**
+ * Removes the last item from the breadcrumb.
+ */
+void _bmff_breadcrumb_pop(BMFFContext *ctx);
+
 #endif // CONTEXT_H
