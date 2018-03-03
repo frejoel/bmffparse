@@ -1916,11 +1916,13 @@ BMFFCode _bmff_parse_box_sample_description(BMFFContext *ctx, const uint8_t *dat
         BOX_MALLOCN(box->entries, SampleEntry*, box->entry_count);
 
         if( strncmp(ctx->handler_type, "vide", 4) == 0 ||
+            strncmp(ctx->handler_type, "encv", 4) == 0 ||
             strncmp(ctx->handler_type, "icpv", 4) == 0)
         {
             parser = _bmff_parse_box_visual_sample_entry;
         }
         else if( strncmp(ctx->handler_type, "soun", 4) == 0 ||
+                 strncmp(ctx->handler_type, "enca", 4) == 0 ||
                  strncmp(ctx->handler_type, "icpa", 4) == 0)
         {
             parser = _bmff_parse_box_audio_sample_entry;
