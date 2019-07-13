@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <bmff.h>
 #include <string.h>
+#include <inttypes.h>
 
 // indenting info
 int indent_count;
@@ -47,7 +48,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
         // data will be parsed box, it will need to be cast to the correct type.
         // fourCC is the character code of the box that was parsed.
         printf("------------------------------------\n");
-        printf("| box: %s, size: %d\n", bread_crumb, ((Box*)data)->size);
+        printf("| box: %s, size: %"PRId64"\n", bread_crumb, ((Box*)data)->size);
         
         // variable for keeping track of timescales
         static uint32_t media_timescale = 0;
@@ -199,7 +200,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("|     Sample Count: %d\n", box->sample_count);
 
             uint32_t c = box->sample_count > 10 ? 10 : box->sample_count;
-            if(c > 0) {
+            if(box->entry_sizes != NULL && c > 0) {
                 printf("|     Sample Entry Sizes (first 10): ");
                 uint32_t i=0;
                 for(; i<c; ++i) {
@@ -266,7 +267,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             }
         }
 
-        else if(strncmp("stco", fourCC, 4 == 0)) {
+        else if(strncmp("stco", fourCC, 4) == 0) {
             ChunkOffsetBox *box = (ChunkOffsetBox*)data;
             printf("|-----------------------------------\n");
             printf("| Chunk Offset:\n");
@@ -276,6 +277,20 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("|     Chunk Offsets into the file (first 10): ");
             for(;i<c; ++i) {
                 printf("%d, ", box->chunk_offsets[i]);
+            }
+            printf("...\n");
+        }
+
+        else if(strncmp("co64", fourCC, 4) == 0) {
+            ChunkLargeOffsetBox *box = (ChunkLargeOffsetBox*)data;
+            printf("|-----------------------------------\n");
+            printf("| Chunk Offset (Large):\n");
+            printf("|     Entry Count: %d\n", box->entry_count);
+            uint32_t i=0;
+            uint32_t c = box->entry_count > 10 ? 10 : box->entry_count;
+            printf("|     Chunk Offsets into the file (first 10): ");
+            for(;i<c; ++i) {
+                printf("%"PRId64", ", box->chunk_offsets[i]);
             }
             printf("...\n");
         }
@@ -417,7 +432,8 @@ int main(int argc, char** argv)
     // the callback can be set at any time and gets called during bmff_parse.
     bmff_set_event_callback(&ctx, on_event);
 
-    size_t buffer_size = 1024*1024;
+    size_t page_size = 5*1024*1024;
+    size_t buffer_size = 5*1024*1024;
     uint8_t *buffer = (uint8_t*)malloc(buffer_size);
     size_t size = fread(buffer, 1, buffer_size, fp);
 
@@ -426,12 +442,30 @@ int main(int argc, char** argv)
         size_t parsed = bmff_parse(&ctx, buffer, size, &res);
         // it's possible to continue parsing parts of the file.
         // a complete Box must be parsed though, you cannot send in partial boxes to the parser.
-        // bmff_parse returns the number of bytes that were sucessfully parsed.
-        if(parsed < size) {
-            memmove(buffer, &buffer[parsed], size-parsed);
+        // bmff_parse returns the number of bytes that were successfully parsed.
+        if(parsed > 0 && parsed < 8) {
+            printf("say what?\n");
         }
-        size = fread(&buffer[parsed], 1, buffer_size-parsed, fp);
+        if(parsed < size) {
+            size_t remaining = size - parsed;
+            if(parsed > 0) {
+                memmove(buffer, &buffer[parsed], remaining);
+            }
+            buffer_size += page_size;
+            buffer = (uint8_t*) realloc(buffer, buffer_size);
+            size_t new_size = fread(&buffer[remaining], 1, buffer_size-remaining, fp);
+            if(new_size == 0) {
+                // we don't have any more buffer to read, exit out
+                printf("Error: No more data available in the file, the file may be incomplete.\n");
+                break;
+            }
+            size = remaining + new_size;
+        }else{
+            size = fread(buffer, 1, buffer_size, fp);
+        }
     };
+
+    free(buffer);
 
     // end the parsing, do NOT start parsing data using the context after parse end
     // has been called.
