@@ -54,7 +54,14 @@ size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *
 
     while(ptr + 8 < end) {
 
-        uint32_t box_size = parse_u32(ptr);
+        uint64_t box_size = parse_u32(ptr);
+        if(box_size == 1) {
+            box_size = parse_u64(&ptr[8]);
+        }
+        if(box_size == 0) {
+            // box goes to the end of the file
+            box_size = (uint64_t)(end - ptr);
+        }
         // make sure we have enough data to parse this box, otherwise exit parsing
         if(ptr + box_size > end) {
             break;
