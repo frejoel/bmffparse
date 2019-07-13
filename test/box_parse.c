@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+void test_parse_box_large_size(void);
 void test_parse_box_file_type(void);
 void test_parse_box_track_reference_type(void);
 void test_parse_box_null_media_header(void);
@@ -111,6 +112,7 @@ void test_parse_box_event_message(void);
 
 int main(int argc, char** argv)
 {
+    test_parse_box_large_size();
     test_parse_box_file_type();
     test_parse_box_track_reference_type();
     test_parse_box_null_media_header();
@@ -215,6 +217,34 @@ int main(int argc, char** argv)
     test_parse_box_event_message();
     //test_parse_box_();
     return 0;
+}
+
+void test_parse_box_large_size(void)
+{
+    test_start("test_parse_box_large_size");
+
+    BMFFContext ctx;
+    MediaDataBox *box;
+    BMFFCode res;
+
+    uint8_t data[] = {
+        0x00, 0x00, 0x00, 0x01,
+        'm', 'd', 'a', 't',
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x0B, 0x8C, 0xE9,
+        0x21, 0x11, 0x45, 0x00,
+    };
+
+    bmff_context_init(&ctx);
+
+    res = _bmff_parse_box_media_data(&ctx, data, sizeof(data), (Box**)&box);
+    test_assert_equal(res, BMFF_OK, "success");
+    test_assert_equal(strncmp(box->box.type, "mdat", 4), 0, "type");
+    test_assert_equal(box->box.size, 0x0B8CE9, "size");
+
+    bmff_context_destroy(&ctx);
+
+    test_end();
 }
 
 void test_parse_box_file_type(void)

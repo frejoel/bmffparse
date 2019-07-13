@@ -62,17 +62,15 @@ typedef enum {
 
 // All Boxes contain the base Box as the first item in the structure.
 typedef struct Box {
-    uint32_t        size;
+    uint64_t        size;
     uint8_t         type[4];
-    size_t          large_size;
     const uint8_t   *user_type;
 } Box;
 
 typedef struct FullBox {
     // Box
-    uint32_t        size;
+    uint64_t        size;
     uint8_t         type[4];
-    size_t          large_size;
     const uint8_t   *user_type;
     // FullBox items
     uint8_t     version;

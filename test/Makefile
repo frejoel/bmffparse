@@ -1,7 +1,7 @@
 CC = gcc
 CCDIR = coverage
 CCOBJDIR = $(CCDIR)/obj
-CFLAGS = -I../bin -L../bin
+CFLAGS = -I../bin -L../bin -Wfatal-errors
 LIBS = -lbmff
 
 .SECONDEXPANSION:
