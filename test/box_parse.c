@@ -239,9 +239,8 @@ void test_parse_box_large_size(void)
 
     res = _bmff_parse_box_media_data(&ctx, data, sizeof(data), (Box**)&box);
     test_assert_equal(res, BMFF_OK, "success");
-    test_assert_equal(box->box.size, 0x01, "size");
     test_assert_equal(strncmp(box->box.type, "mdat", 4), 0, "type");
-    test_assert_equal(box->box.large_size, 0x0B8CE9, "large size");
+    test_assert_equal(box->box.size, 0x0B8CE9, "size");
 
     bmff_context_destroy(&ctx);
 

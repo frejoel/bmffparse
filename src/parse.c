@@ -151,9 +151,10 @@ int parse_box(const uint8_t *data, size_t size, Box *box)
     ptr += 4;
 
     if(box->size == 1) {
-        ADV_PARSE_U64(box->large_size, ptr);
-    }else{
-        box->large_size = 0;
+        ADV_PARSE_U64(box->size, ptr);
+    }
+    if(box->size == 0) {
+        box->size = size;
     }
 
     if(box->type[0] == 'u' && box->type[1] == 'u' && box->type[2] == 'i' && box->type[3] == 'd') {
@@ -170,10 +171,6 @@ int parse_full_box(const uint8_t *data, size_t size, FullBox *box)
 {
     const uint8_t *ptr = data;
     ptr += parse_box(data, size, (Box*)box);
-
-    if(box->size == 1) {
-        ADV_PARSE_U64(box->large_size, ptr);
-    }
 
     box->version = *ptr;
     ptr++;
