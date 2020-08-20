@@ -400,6 +400,33 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("|     data size: %d\n", box->data_size);
         }
 
+        else if(strncmp("tfdt", fourCC, 4) == 0) {
+            TrackFragmentDecodeTimeBox *box = (TrackFragmentDecodeTimeBox*)data;
+            printf("|-----------------------------------\n");
+            printf("| Track Fragment Decode Time:\n");
+            printf("|     base media decode time: %"PRId64"\n", box->base_media_decode_time);
+        }
+
+        else if(strncmp("trun", fourCC, 4) == 0) {
+            TrackRunBox *box = (TrackRunBox*)data;
+            printf("|-----------------------------------\n");
+            printf("| Track Run:\n");
+            printf("|     version: %d\n", box->box.version);
+            printf("|     sample count: %d\n", box->sample_count);
+            printf("|     data offset: %d\n", box->data_offset);
+            printf("|     first sample flags: %d\n", box->first_sample_flags);
+            int i=0;
+            int len = box->sample_count > 3 ? 3 : box->sample_count;
+            for(; i<len; ++i) {
+                TrackRunSample *sample = &box->samples[i];
+                printf("|         sample: %d\n", i);
+                printf("|             duration: %d:\n", sample->duration);
+                printf("|             size: %d:\n", sample->size);
+                printf("|             flags: %d:\n", sample->flags);
+                printf("|             composition time offset: %d:\n", sample->composition_time_offset);
+            }
+        }
+
         printf("------------------------------------\n");
 
         indent_count--;
