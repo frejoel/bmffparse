@@ -146,17 +146,20 @@ PARSER_FUNC(_bmff_parse_box_event_message);
 
 typedef struct MapItem {
     union {
-        const char  box_type[4];    // 4 character code for the Box type.
+        char  box_type[4];    // 4 character code for the Box type.
         uint32_t    box_type_value; // Box type as a 32 bit integer.
     };
     uint8_t     is_container_type;  // whether the Box is a continer Box.
     parse_func  parse_func;         // function used to parse this type of Box.
 } MapItem;
 
+// initializes the global parse map
+void _init_global_parse_map();
+
 /**
  * List of functions used to parse the different ISO BMFF Boxes.
  */
-const MapItem parse_map[PARSE_MAP_LEN];
+MapItem parse_map[PARSE_MAP_LEN];
 
 // TODO: Parsers for the child descriptors
 /*

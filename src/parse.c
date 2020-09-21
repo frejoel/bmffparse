@@ -5,139 +5,149 @@
 
 #define CALLBACK(c, e, f, d)  if((c)->callback) { (c)->callback((c), (e), (f), (void*)(d), (c)->callback_user_data); }
 
-const MapItem parse_map[] = {
-    {"ftyp", 1, _bmff_parse_box_file_type},
-    {"styp", 1, _bmff_parse_box_file_type},
-    {"moov", 1, _bmff_parse_box_generic_container},
-    {"trak", 1, _bmff_parse_box_generic_container},
-    {"edts", 1, _bmff_parse_box_generic_container},
-    {"mdia", 1, _bmff_parse_box_generic_container},
-    {"minf", 1, _bmff_parse_box_generic_container},
-    {"dinf", 1, _bmff_parse_box_generic_container},
-    {"stbl", 1, _bmff_parse_box_generic_container},
-    {"mvex", 1, _bmff_parse_box_generic_container},
-    {"moof", 1, _bmff_parse_box_generic_container},
-    {"traf", 1, _bmff_parse_box_generic_container},
-    {"mfra", 1, _bmff_parse_box_generic_container},
-    {"udta", 1, _bmff_parse_box_generic_container},
-    {"tref", 1, _bmff_parse_box_generic_container},
-    {"meco", 1, _bmff_parse_box_generic_container},
-    {"strk", 1, _bmff_parse_box_generic_container},
-    {"strd", 1, _bmff_parse_box_generic_container},
-    {"schi", 1, _bmff_parse_box_generic_container},
-    {"free", 0, _bmff_parse_box},
-    {"hint", 0, _bmff_parse_box_track_reference_type},
-    {"cdsc", 0, _bmff_parse_box_track_reference_type},
-    {"font", 0, _bmff_parse_box_track_reference_type},
-    {"vdep", 0, _bmff_parse_box_track_reference_type},
-    {"vplx", 0, _bmff_parse_box_track_reference_type},
-    {"subt", 0, _bmff_parse_box_track_reference_type},
-    {"nmhd", 0, _bmff_parse_box_full},
-    {"pdin", 0, _bmff_parse_box_progressive_download_info},
-    {"mdat", 0, _bmff_parse_box_media_data},
-    {"hdlr", 0, _bmff_parse_box_handler},
-    {"pitm", 0, _bmff_parse_box_primary_item},
-    {"iloc", 0, _bmff_parse_box_primary_item},
-    {"infe", 0, _bmff_parse_box_item_info_entry},
-    {"iinf", 0, _bmff_parse_box_item_info},
-    {"ipmc", 0, _bmff_parse_box_ipmp_control},
-    {"frma", 0, _bmff_parse_box_original_format},
-    {"imif", 0, _bmff_parse_box_ipmp_info},
-    {"schm", 0, _bmff_parse_box_scheme_type},
-    {"sinf", 0, _bmff_parse_box_protection_scheme_info},
-    {"ipro", 0, _bmff_parse_box_item_protection},
-    {"meta", 0, _bmff_parse_box_meta},
-    {"mvhd", 0, _bmff_parse_box_movie_header},
-    {"mfhd", 0, _bmff_parse_box_movie_fragment_header},
-    {"tfra", 0, _bmff_parse_box_track_fragment_random_access},
-    {"mfro", 0, _bmff_parse_box_movie_fragment_random_access_offset},
-    {"xml ", 0, _bmff_parse_box_xml},
-    {"bxml", 0, _bmff_parse_box_xml},
-    {"tkhd", 0, _bmff_parse_box_track_header},
-    {"mehd", 0, _bmff_parse_box_movie_extends_header},
-    {"trex", 0, _bmff_parse_box_track_extends},
-    {"tfhd", 0, _bmff_parse_box_track_fragment_header},
-    {"trun", 0, _bmff_parse_box_track_run},
-    {"sdtp", 0, _bmff_parse_box_sample_dependency_type},
-    {"sbgp", 0, _bmff_parse_box_sample_to_group},
-    {"subs", 0, _bmff_parse_box_sub_sample_information},
-    {"cprt", 0, _bmff_parse_box_copyright},
-    {"url ", 0, _bmff_parse_box_data_entry_url},
-    {"urn ", 0, _bmff_parse_box_data_entry_urn},
-    {"dref", 0, _bmff_parse_box_data_reference},
-    {"elst", 0, _bmff_parse_box_edit_list},
-    {"mdhd", 0, _bmff_parse_box_media_header},
-    {"vmhd", 0, _bmff_parse_box_video_media_header},
-    {"smhd", 0, _bmff_parse_box_sound_media_header},
-    {"hmhd", 0, _bmff_parse_box_hint_media_header},
-    {"sthd", 0, _bmff_parse_box_subtitle_media_header},
-    {"stsd", 0, _bmff_parse_box_sample_description},
-    {"stts", 0, _bmff_parse_box_time_to_sample},
-    {"ctts", 0, _bmff_parse_box_composition_offset},
-    {"stsc", 0, _bmff_parse_box_sample_to_chunk},
-    {"stsz", 0, _bmff_parse_box_sample_size},
-    {"stz2", 0, _bmff_parse_box_compact_sample_size},
-    {"stco", 0, _bmff_parse_box_chunk_offset},
-    {"co64", 0, _bmff_parse_box_chunk_large_offset},
-    {"stss", 0, _bmff_parse_box_sync_sample},
-    {"stsh", 0, _bmff_parse_box_shadow_sync_sample},
-    {"padb", 0, _bmff_parse_box_padding_bits},
-    {"stdp", 0, _bmff_parse_box_degradation_priority},
-    {"sgpd", 0, _bmff_parse_box_sample_group_description},
-    {"msrc", 0, _bmff_parse_box_track_group_type},
-    {"elng", 0, _bmff_parse_box_extended_language_tag},
-    {"btrt", 0, _bmff_parse_box_bit_rate},
-    {"cslg", 0, _bmff_parse_box_composition_to_decode},
-    {"saiz", 0, _bmff_parse_box_sample_aux_info_sizes},
-    {"saio", 0, _bmff_parse_box_sample_aux_info_offsets},
-    {"tfdt", 0, _bmff_parse_box_track_fragment_decode_time},
-    {"leva", 0, _bmff_parse_box_level_assignment},
-    {"trep", 0, _bmff_parse_box_track_extension_properties},
-    {"assp", 0, _bmff_parse_box_alt_startup_seq_properties},
-    {"tsel", 0, _bmff_parse_box_track_selection},
-    {"kind", 0, _bmff_parse_box_kind},
-    {"iref", 0, _bmff_parse_box_item_reference},
-    {"idat", 0, _bmff_parse_box_item_data},
-    {"mere", 0, _bmff_parse_box_metabox_relation},
-    {"fpar", 0, _bmff_parse_box_file_partition},
-    {"fecr", 0, _bmff_parse_box_reservoir},
-    {"fire", 0, _bmff_parse_box_reservoir},
-    {"paen", 0, _bmff_parse_box_partition_entry},
-    {"segr", 0, _bmff_parse_box_fd_session_group},
-    {"gitn", 0, _bmff_parse_box_group_id_to_name},
-    {"fiin", 0, _bmff_parse_box_fd_item_information},
-    {"stri", 0, _bmff_parse_box_sub_track_information},
-    {"stsg", 0, _bmff_parse_box_sub_track_sample_group},
-    {"rinf", 0, _bmff_parse_box_protection_scheme_info},
-    {"stvi", 0, _bmff_parse_box_stereo_video},
-    {"sidx", 0, _bmff_parse_box_segment_index},
-    {"prft", 0, _bmff_parse_box_producer_reference_time},
-    {"cinf", 0, _bmff_parse_box_complete_track_info},
-    {"clap", 0, _bmff_parse_box_clean_aperture},
-    {"pasp", 0, _bmff_parse_box_pixel_aspect_ratio},
-    {"chnl", 0, _bmff_parse_box_channel_layout},
-    {"srat", 0, _bmff_parse_box_sampling_rate},
-    {"ssix", 0, _bmff_parse_box_subsegment_index},
-    {"rtp ", 0, _bmff_parse_box_rtp_hint_sample_entry},
-    {"srtp", 0, _bmff_parse_box_rtp_hint_sample_entry},
-    {"rrtp", 0, _bmff_parse_box_rtp_hint_sample_entry},
-    {"rsrp", 0, _bmff_parse_box_rtp_hint_sample_entry},
-    {"fdp ", 0, _bmff_parse_box_fd_hint_sample_entry},
-    {"metx", 0, _bmff_parse_box_xml_meta_data_sample_entry},
-    {"txtC", 0, _bmff_parse_box_full_string},
-    {"mett", 0, _bmff_parse_box_text_meta_data_sample_entry},
-    {"uri ", 0, _bmff_parse_box_full_string},
-    {"uriI", 0, _bmff_parse_box_full_data},
-    {"urim", 0, _bmff_parse_box_uri_meta_sample_entry},
-    {"iods", 0, _bmff_parse_box_object_descriptor},
-    {"esds", 0, _bmff_parse_box_es_descriptor},
-    {"avcC", 0, _bmff_parse_box_avc_decoder_config},
-    {"senc", 0, _bmff_parse_box_sample_encryption},
-    {"tenc", 0, _bmff_parse_box_track_encryption},
-    {"pssh", 0, _bmff_parse_box_protection_system_specific_header},
-    {"ID32", 0, _bmff_parse_box_id3v2_metadata},
-    {"emsg", 0, _bmff_parse_box_event_message},
-    //{"", 0, _bmff_parse_box_},
+//const MapItem parse_map[] = {
+MapItem _create_map_item(const char box_type[4], uint8_t is_container_type, parse_func parse_func)
+{
+	MapItem item;
+	memcpy(item.box_type, box_type, 4);
+	item.is_container_type = is_container_type;
+	item.parse_func = parse_func;
+	return item;
+}
+
+void _init_global_parse_map()
+{
+	parse_map[0] = _create_map_item("ftyp", 1, _bmff_parse_box_file_type);
+	parse_map[1] = _create_map_item("styp", 1, _bmff_parse_box_file_type);
+	parse_map[2] = _create_map_item("moov", 1, _bmff_parse_box_generic_container);
+	parse_map[3] = _create_map_item("trak", 1, _bmff_parse_box_generic_container);
+	parse_map[4] = _create_map_item("edts", 1, _bmff_parse_box_generic_container);
+	parse_map[5] = _create_map_item("mdia", 1, _bmff_parse_box_generic_container);
+	parse_map[6] = _create_map_item("minf", 1, _bmff_parse_box_generic_container);
+	parse_map[7] = _create_map_item("dinf", 1, _bmff_parse_box_generic_container);
+	parse_map[8] = _create_map_item("stbl", 1, _bmff_parse_box_generic_container);
+	parse_map[9] = _create_map_item("mvex", 1, _bmff_parse_box_generic_container);
+	parse_map[10] = _create_map_item("moof", 1, _bmff_parse_box_generic_container);
+	parse_map[11] = _create_map_item("traf", 1, _bmff_parse_box_generic_container);
+	parse_map[12] = _create_map_item("mfra", 1, _bmff_parse_box_generic_container);
+	parse_map[13] = _create_map_item("udta", 1, _bmff_parse_box_generic_container);
+	parse_map[14] = _create_map_item("tref", 1, _bmff_parse_box_generic_container);
+	parse_map[15] = _create_map_item("meco", 1, _bmff_parse_box_generic_container);
+	parse_map[16] = _create_map_item("strk", 1, _bmff_parse_box_generic_container);
+	parse_map[17] = _create_map_item("strd", 1, _bmff_parse_box_generic_container);
+	parse_map[18] = _create_map_item("schi", 1, _bmff_parse_box_generic_container);
+	parse_map[19] = _create_map_item("free", 0, _bmff_parse_box);
+	parse_map[20] = _create_map_item("hint", 0, _bmff_parse_box_track_reference_type);
+	parse_map[21] = _create_map_item("cdsc", 0, _bmff_parse_box_track_reference_type);
+	parse_map[22] = _create_map_item("font", 0, _bmff_parse_box_track_reference_type);
+	parse_map[23] = _create_map_item("vdep", 0, _bmff_parse_box_track_reference_type);
+	parse_map[24] = _create_map_item("vplx", 0, _bmff_parse_box_track_reference_type);
+	parse_map[25] = _create_map_item("subt", 0, _bmff_parse_box_track_reference_type);
+	parse_map[26] = _create_map_item("nmhd", 0, _bmff_parse_box_full);
+	parse_map[27] = _create_map_item("pdin", 0, _bmff_parse_box_progressive_download_info);
+	parse_map[28] = _create_map_item("mdat", 0, _bmff_parse_box_media_data);
+	parse_map[29] = _create_map_item("hdlr", 0, _bmff_parse_box_handler);
+	parse_map[30] = _create_map_item("pitm", 0, _bmff_parse_box_primary_item);
+	parse_map[31] = _create_map_item("iloc", 0, _bmff_parse_box_primary_item);
+	parse_map[32] = _create_map_item("infe", 0, _bmff_parse_box_item_info_entry);
+	parse_map[33] = _create_map_item("iinf", 0, _bmff_parse_box_item_info);
+	parse_map[34] = _create_map_item("ipmc", 0, _bmff_parse_box_ipmp_control);
+	parse_map[35] = _create_map_item("frma", 0, _bmff_parse_box_original_format);
+	parse_map[36] = _create_map_item("imif", 0, _bmff_parse_box_ipmp_info);
+	parse_map[37] = _create_map_item("schm", 0, _bmff_parse_box_scheme_type);
+	parse_map[38] = _create_map_item("sinf", 0, _bmff_parse_box_protection_scheme_info);
+	parse_map[39] = _create_map_item("ipro", 0, _bmff_parse_box_item_protection);
+	parse_map[40] = _create_map_item("meta", 0, _bmff_parse_box_meta);
+	parse_map[41] = _create_map_item("mvhd", 0, _bmff_parse_box_movie_header);
+	parse_map[42] = _create_map_item("mfhd", 0, _bmff_parse_box_movie_fragment_header);
+	parse_map[43] = _create_map_item("tfra", 0, _bmff_parse_box_track_fragment_random_access);
+	parse_map[44] = _create_map_item("mfro", 0, _bmff_parse_box_movie_fragment_random_access_offset);
+	parse_map[45] = _create_map_item("xml ", 0, _bmff_parse_box_xml);
+	parse_map[46] = _create_map_item("bxml", 0, _bmff_parse_box_xml);
+	parse_map[47] = _create_map_item("tkhd", 0, _bmff_parse_box_track_header);
+	parse_map[48] = _create_map_item("mehd", 0, _bmff_parse_box_movie_extends_header);
+	parse_map[49] = _create_map_item("trex", 0, _bmff_parse_box_track_extends);
+	parse_map[50] = _create_map_item("tfhd", 0, _bmff_parse_box_track_fragment_header);
+	parse_map[51] = _create_map_item("trun", 0, _bmff_parse_box_track_run);
+	parse_map[52] = _create_map_item("sdtp", 0, _bmff_parse_box_sample_dependency_type);
+	parse_map[53] = _create_map_item("sbgp", 0, _bmff_parse_box_sample_to_group);
+	parse_map[54] = _create_map_item("subs", 0, _bmff_parse_box_sub_sample_information);
+	parse_map[55] = _create_map_item("cprt", 0, _bmff_parse_box_copyright);
+	parse_map[56] = _create_map_item("url ", 0, _bmff_parse_box_data_entry_url);
+	parse_map[57] = _create_map_item("urn ", 0, _bmff_parse_box_data_entry_urn);
+	parse_map[58] = _create_map_item("dref", 0, _bmff_parse_box_data_reference);
+	parse_map[59] = _create_map_item("elst", 0, _bmff_parse_box_edit_list);
+	parse_map[60] = _create_map_item("mdhd", 0, _bmff_parse_box_media_header);
+	parse_map[61] = _create_map_item("vmhd", 0, _bmff_parse_box_video_media_header);
+	parse_map[62] = _create_map_item("smhd", 0, _bmff_parse_box_sound_media_header);
+	parse_map[63] = _create_map_item("hmhd", 0, _bmff_parse_box_hint_media_header);
+	parse_map[64] = _create_map_item("sthd", 0, _bmff_parse_box_subtitle_media_header);
+	parse_map[65] = _create_map_item("stsd", 0, _bmff_parse_box_sample_description);
+	parse_map[66] = _create_map_item("stts", 0, _bmff_parse_box_time_to_sample);
+	parse_map[67] = _create_map_item("ctts", 0, _bmff_parse_box_composition_offset);
+	parse_map[68] = _create_map_item("stsc", 0, _bmff_parse_box_sample_to_chunk);
+	parse_map[69] = _create_map_item("stsz", 0, _bmff_parse_box_sample_size);
+	parse_map[70] = _create_map_item("stz2", 0, _bmff_parse_box_compact_sample_size);
+	parse_map[71] = _create_map_item("stco", 0, _bmff_parse_box_chunk_offset);
+	parse_map[72] = _create_map_item("co64", 0, _bmff_parse_box_chunk_large_offset);
+	parse_map[73] = _create_map_item("stss", 0, _bmff_parse_box_sync_sample);
+	parse_map[74] = _create_map_item("stsh", 0, _bmff_parse_box_shadow_sync_sample);
+	parse_map[75] = _create_map_item("padb", 0, _bmff_parse_box_padding_bits);
+	parse_map[76] = _create_map_item("stdp", 0, _bmff_parse_box_degradation_priority);
+	parse_map[77] = _create_map_item("sgpd", 0, _bmff_parse_box_sample_group_description);
+	parse_map[78] = _create_map_item("msrc", 0, _bmff_parse_box_track_group_type);
+	parse_map[79] = _create_map_item("elng", 0, _bmff_parse_box_extended_language_tag);
+	parse_map[80] = _create_map_item("btrt", 0, _bmff_parse_box_bit_rate);
+	parse_map[81] = _create_map_item("cslg", 0, _bmff_parse_box_composition_to_decode);
+	parse_map[82] = _create_map_item("saiz", 0, _bmff_parse_box_sample_aux_info_sizes);
+	parse_map[83] = _create_map_item("saio", 0, _bmff_parse_box_sample_aux_info_offsets);
+	parse_map[84] = _create_map_item("tfdt", 0, _bmff_parse_box_track_fragment_decode_time);
+	parse_map[85] = _create_map_item("leva", 0, _bmff_parse_box_level_assignment);
+	parse_map[86] = _create_map_item("trep", 0, _bmff_parse_box_track_extension_properties);
+	parse_map[87] = _create_map_item("assp", 0, _bmff_parse_box_alt_startup_seq_properties);
+	parse_map[88] = _create_map_item("tsel", 0, _bmff_parse_box_track_selection);
+	parse_map[89] = _create_map_item("kind", 0, _bmff_parse_box_kind);
+	parse_map[90] = _create_map_item("iref", 0, _bmff_parse_box_item_reference);
+	parse_map[91] = _create_map_item("idat", 0, _bmff_parse_box_item_data);
+	parse_map[92] = _create_map_item("mere", 0, _bmff_parse_box_metabox_relation);
+	parse_map[93] = _create_map_item("fpar", 0, _bmff_parse_box_file_partition);
+	parse_map[94] = _create_map_item("fecr", 0, _bmff_parse_box_reservoir);
+	parse_map[95] = _create_map_item("fire", 0, _bmff_parse_box_reservoir);
+	parse_map[96] = _create_map_item("paen", 0, _bmff_parse_box_partition_entry);
+	parse_map[97] = _create_map_item("segr", 0, _bmff_parse_box_fd_session_group);
+	parse_map[98] = _create_map_item("gitn", 0, _bmff_parse_box_group_id_to_name);
+	parse_map[99] = _create_map_item("fiin", 0, _bmff_parse_box_fd_item_information);
+	parse_map[100] = _create_map_item("stri", 0, _bmff_parse_box_sub_track_information);
+	parse_map[101] = _create_map_item("stsg", 0, _bmff_parse_box_sub_track_sample_group);
+	parse_map[102] = _create_map_item("rinf", 0, _bmff_parse_box_protection_scheme_info);
+	parse_map[103] = _create_map_item("stvi", 0, _bmff_parse_box_stereo_video);
+	parse_map[104] = _create_map_item("sidx", 0, _bmff_parse_box_segment_index);
+	parse_map[105] = _create_map_item("prft", 0, _bmff_parse_box_producer_reference_time);
+	parse_map[106] = _create_map_item("cinf", 0, _bmff_parse_box_complete_track_info);
+	parse_map[107] = _create_map_item("clap", 0, _bmff_parse_box_clean_aperture);
+	parse_map[108] = _create_map_item("pasp", 0, _bmff_parse_box_pixel_aspect_ratio);
+	parse_map[109] = _create_map_item("chnl", 0, _bmff_parse_box_channel_layout);
+	parse_map[110] = _create_map_item("srat", 0, _bmff_parse_box_sampling_rate);
+	parse_map[111] = _create_map_item("ssix", 0, _bmff_parse_box_subsegment_index);
+	parse_map[112] = _create_map_item("rtp ", 0, _bmff_parse_box_rtp_hint_sample_entry);
+	parse_map[113] = _create_map_item("srtp", 0, _bmff_parse_box_rtp_hint_sample_entry);
+	parse_map[114] = _create_map_item("rrtp", 0, _bmff_parse_box_rtp_hint_sample_entry);
+	parse_map[115] = _create_map_item("rsrp", 0, _bmff_parse_box_rtp_hint_sample_entry);
+	parse_map[116] = _create_map_item("fdp ", 0, _bmff_parse_box_fd_hint_sample_entry);
+	parse_map[117] = _create_map_item("metx", 0, _bmff_parse_box_xml_meta_data_sample_entry);
+	parse_map[118] = _create_map_item("txtC", 0, _bmff_parse_box_full_string);
+	parse_map[119] = _create_map_item("mett", 0, _bmff_parse_box_text_meta_data_sample_entry);
+	parse_map[120] = _create_map_item("uri ", 0, _bmff_parse_box_full_string);
+	parse_map[121] = _create_map_item("uriI", 0, _bmff_parse_box_full_data);
+	parse_map[122] = _create_map_item("urim", 0, _bmff_parse_box_uri_meta_sample_entry);
+	parse_map[123] = _create_map_item("iods", 0, _bmff_parse_box_object_descriptor);
+	parse_map[124] = _create_map_item("esds", 0, _bmff_parse_box_es_descriptor);
+	parse_map[125] = _create_map_item("avcC", 0, _bmff_parse_box_avc_decoder_config);
+	parse_map[126] = _create_map_item("senc", 0, _bmff_parse_box_sample_encryption);
+	parse_map[127] = _create_map_item("tenc", 0, _bmff_parse_box_track_encryption);
+	parse_map[128] = _create_map_item("pssh", 0, _bmff_parse_box_protection_system_specific_header);
+	parse_map[129] = _create_map_item("ID32", 0, _bmff_parse_box_id3v2_metadata);
+	parse_map[130] = _create_map_item("emsg", 0, _bmff_parse_box_event_message);
 };
 
 const int parse_map_len = sizeof(parse_map) / sizeof(MapItem);

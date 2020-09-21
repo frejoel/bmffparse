@@ -430,7 +430,9 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
         printf("------------------------------------\n");
 
         indent_count--;
-        bread_crumb[(indent_count * 5)-1] = 0x00;
+		if (indent_count > 0) {
+			bread_crumb[(indent_count * 5) - 1] = 0x00;
+		}
     }
 }
 
@@ -450,7 +452,12 @@ int main(int argc, char** argv)
 
     printf("opening file:%s\n", argv[1]);
 
+#ifdef _WIN32
+	FILE *fp = NULL;
+	fopen_s(&fp, argv[1], "rb");
+#else
     FILE *fp = fopen(argv[1], "rb");
+#endif
     if(!fp) {
         fprintf(stderr, "failed to open file: %s\n", argv[1]);
         return 1;
