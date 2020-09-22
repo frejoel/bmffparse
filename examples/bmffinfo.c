@@ -61,7 +61,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("|    Major Brand: %c%c%c%c\n", box->major_brand[0], box->major_brand[1], box->major_brand[2], box->major_brand[3]);
             printf("|    Minor Version: %d\n", box->minor_version);
             int i=0;
-            for(; i < box->nb_compatible_brands; ++i) {
+            for(; i < (int)box->nb_compatible_brands; ++i) {
                 const uint8_t *b = &box->compatible_brands[i*4];
                 printf("|    Compatible Brand (%d): %c%c%c%c\n", i+1, b[0], b[1], b[2], b[3]);
             }
@@ -389,7 +389,7 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
                 printf("%02X", box->system_id[i]);
             }
             printf("\n|     kid count: %d\n", box->kid_count);
-            for(i=0;i<box->kid_count;++i) {
+            for(i=0;i<(int)box->kid_count;++i) {
                 printf("|     kid %d: ", i);
                 int j=0;
                 for(;j<16;++j) {
@@ -423,14 +423,16 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
                 printf("|             duration: %d:\n", sample->duration);
                 printf("|             size: %d:\n", sample->size);
                 printf("|             flags: %d:\n", sample->flags);
-                printf("|             composition time offset: %d:\n", sample->composition_time_offset);
+                printf("|             composition time offset: %lld:\n", sample->composition_time_offset);
             }
         }
 
         printf("------------------------------------\n");
 
         indent_count--;
-        bread_crumb[(indent_count * 5)-1] = 0x00;
+        if (indent_count > 0) {
+            bread_crumb[(indent_count * 5) - 1] = 0x00;
+        }
     }
 }
 
@@ -448,11 +450,16 @@ int main(int argc, char** argv)
     // this MUST be done prior to parsing.
     bmff_context_init(&ctx);
 
-    printf("opening file:%s\n", argv[1]);
+    printf("Info: opening file:%s\n", argv[1]);
 
+#ifdef _WIN32
+    FILE *fp = NULL;
+    fopen_s(&fp, argv[1], "rb");
+#else
     FILE *fp = fopen(argv[1], "rb");
+#endif
     if(!fp) {
-        fprintf(stderr, "failed to open file: %s\n", argv[1]);
+        fprintf(stderr, "Error: failed to open file: %s\n", argv[1]);
         return 1;
     }
 
@@ -471,7 +478,7 @@ int main(int argc, char** argv)
         // a complete Box must be parsed though, you cannot send in partial boxes to the parser.
         // bmff_parse returns the number of bytes that were successfully parsed.
         if(parsed > 0 && parsed < 8) {
-            printf("say what?\n");
+            printf("Warning: invalid parse size from bmff_parse\n");
         }
         if(parsed < size) {
             size_t remaining = size - parsed;
@@ -483,7 +490,7 @@ int main(int argc, char** argv)
             size_t new_size = fread(&buffer[remaining], 1, buffer_size-remaining, fp);
             if(new_size == 0) {
                 // we don't have any more buffer to read, exit out
-                printf("Error: No more data available in the file, the file may be incomplete.\n");
+                printf("Error: no more data available in the file, the file may be incomplete.\n");
                 break;
             }
             size = remaining + new_size;

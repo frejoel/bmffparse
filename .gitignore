@@ -1,5 +1,15 @@
 .vscode/*
+*/.vs/*
 test/data/*
 test/coverage
 **/*.o
 bin/*
+**/*.exe
+**/*.lib
+**/*.ilk
+**/*.pdb
+**/*.obj
+**/*.log
+**/*.tlog
+**/Debug
+**/Release
