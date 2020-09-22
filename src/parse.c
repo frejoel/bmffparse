@@ -8,11 +8,11 @@
 //const MapItem parse_map[] = {
 MapItem _create_map_item(const char box_type[4], uint8_t is_container_type, parse_func parse_func)
 {
-	MapItem item;
-	memcpy(item.box_type, box_type, 4);
-	item.is_container_type = is_container_type;
-	item.parse_func = parse_func;
-	return item;
+    MapItem item;
+    memcpy(item.box_type, box_type, 4);
+    item.is_container_type = is_container_type;
+    item.parse_func = parse_func;
+    return item;
 }
 
 void _init_global_parse_map()

@@ -3,9 +3,9 @@
 #include <stdio.h>
 
 #ifdef _WIN32
-#	define SNPRINTF	sprintf_s
+#   define SNPRINTF sprintf_s
 #else
-#	define SNPRINTF	snprintf
+#   define SNPRINTF snprintf
 #endif
 
 void bmff_context_alloc_stack_push(BMFFContext *ctx)
@@ -70,7 +70,7 @@ void _bmff_breadcrumb_push(BMFFContext *ctx, const uint8_t *crumb)
     if(len < BMFF_BREADCRUMB_SIZE - 5)
     {
         const char *format = len == 0 ? "%c%c%c%c" : ".%c%c%c%c";
-		SNPRINTF(&ctx->breadcrumb[len], BMFF_BREADCRUMB_SIZE - 5 - len, format, crumb[0], crumb[1], crumb[2], crumb[3]);
+        SNPRINTF(&ctx->breadcrumb[len], BMFF_BREADCRUMB_SIZE - 5 - len, format, crumb[0], crumb[1], crumb[2], crumb[3]);
     }
 }
 
