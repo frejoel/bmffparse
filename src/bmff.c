@@ -44,12 +44,12 @@ BMFFCode bmff_set_event_callback(BMFFContext *ctx, bmff_on_event callback, void 
 
 size_t bmff_parse(BMFFContext *ctx, const uint8_t *data, size_t size, BMFFCode *code)
 {
-	if (!ctx)        return BMFF_INVALID_CONTEXT;
-	if (!data)       return BMFF_INVALID_DATA;
-	if (size < 20)   return BMFF_INVALID_SIZE;
-	if (!code)       return BMFF_INVALID_PARAMETER;
+    if (!ctx)        return BMFF_INVALID_CONTEXT;
+    if (!data)       return BMFF_INVALID_DATA;
+    if (size < 20)   return BMFF_INVALID_SIZE;
+    if (!code)       return BMFF_INVALID_PARAMETER;
 
-	_init_global_parse_map();
+    _init_global_parse_map();
 
     // parse top level boxes
     const uint8_t *ptr = data;
