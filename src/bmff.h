@@ -35,7 +35,7 @@
 
 // Software version, format MAJOR.MINOR.PATCH
 #define BMFF_VERSION                            "0.1.1"
-#define BMFF_BREADCRUMB_SIZE                    (50)
+#define BMFF_BREADCRUMB_SIZE                    (128)
 
 #ifdef __cplusplus
 extern "C" {

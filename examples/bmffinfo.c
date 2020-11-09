@@ -347,9 +347,19 @@ void on_event(BMFFContext *ctx, BMFFEventId event_id, const uint8_t *fourCC, voi
             printf("|     Default skip Byte Block: %d\n", box->default_skip_byte_block);
             printf("|     Default Is Protected: %s\n", box->default_is_protected == eBooleanTrue ? "Yes" : "No");
             printf("|     Default Per Sample IV size: %d\n", box->default_per_sample_iv_size);
-            printf("|     Default KID: 0x%02X%02X...\n", box->default_kid[0], box->default_kid[1]);
+            printf("|     Default KID: 0x");
+            for (uint8_t i = 0; i < box->default_per_sample_iv_size; ++i) {
+                printf("%02X", box->default_kid[i]);
+            }
+            printf("\n");
             printf("|     Default Constant IV Size: %d\n", box->default_constant_iv_size);
-            printf("|     Default Constant IV: 0x%02X%02X...\n", box->default_constant_iv[0], box->default_constant_iv[1]);
+            if (box->default_constant_iv_size > 0) {
+                printf("|     Default Constant IV: 0x");
+                for (uint8_t i = 0; i < box->default_per_sample_iv_size; ++i) {
+                    printf("%02X", box->default_constant_iv[i]);
+                }
+                printf("\n");
+            }
         }
 
         else if(strncmp("senc", fourCC, 4) == 0) {
